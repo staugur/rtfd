@@ -107,3 +107,4 @@ docs/
 logs/
 nginx/
 runtimes/
+.vscode/

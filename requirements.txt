@@ -1,3 +1,2 @@
-sh>=1.12.14
 Click>=7.0
 Flask-PluginKit>=3.3.0

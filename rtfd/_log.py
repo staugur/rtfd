@@ -13,14 +13,15 @@ from os import mkdir
 from os.path import join, exists
 import logging
 import logging.handlers
-from .config import cfg
+from .config import CfgHandler
 
 
 class Logger:
 
-    def __init__(self, logName, backupCount=10):
+    def __init__(self, logName, cfg=None, backupCount=10):
+        self.cfg = CfgHandler(cfg)
         self.logName = logName
-        self.log_dir = join(cfg.g.base_dir, 'logs')
+        self.log_dir = join(self.cfg.g.base_dir, 'logs')
         self.logFile = join(
             self.log_dir,
             '{0}.log'.format(self.logName)
@@ -49,7 +50,7 @@ class Logger:
         )
         handler.setFormatter(formatter)
         self._logger.addHandler(handler)
-        LOGLEVEL = cfg.g.get("log_level", default="INFO")
+        LOGLEVEL = self.cfg.g.get("log_level", default="INFO")
         self._logger.setLevel(self._levels.get(LOGLEVEL))
 
     @property

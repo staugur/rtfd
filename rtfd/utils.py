@@ -12,16 +12,15 @@
 import shelve
 from os.path import join
 from flask_pluginkit import LocalStorage
-from .config import cfg
-from ._log import Logger
-
-logger = Logger("sys").getLogger
+from subprocess import Popen, PIPE, STDOUT
+from .config import CfgHandler
 
 
 class ProjectStorage(LocalStorage):
 
-    def __init__(self):
-        self.index = join(cfg.g.base_dir, '.rtfd-projects.dat')
+    def __init__(self, cfg=None):
+        self.cfg = CfgHandler(cfg)
+        self.index = join(self.cfg.g.base_dir, '.rtfd-projects.dat')
 
     def _open(self, flag="c"):
         return shelve.open(
@@ -29,3 +28,19 @@ class ProjectStorage(LocalStorage):
             flag=flag,
             protocol=2
         )
+
+
+def run_cmd(*args):
+    """
+    Execute the external command and get its exitcode, stdout and stderr.
+    """
+    proc = Popen(args, stdout=PIPE, stderr=STDOUT)
+    out, err = proc.communicate()
+    exitcode = proc.returncode
+    return exitcode, out, err
+
+
+def run_cmd_stream(*args):
+    proc = Popen(args, stdout=PIPE, stderr=STDOUT)
+    for i in iter(proc.stdout.readline, b''):
+        yield i.rstrip()

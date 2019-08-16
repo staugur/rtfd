@@ -12,8 +12,6 @@
 import os
 from configparser import ConfigParser
 
-__all__ = ["cfg"]
-
 
 class SectionHandler(object):
 
@@ -95,7 +93,3 @@ class CfgHandler(object):
 
     def items(self, section):
         return self._cfg_obj.items(section)
-
-
-#: The rtfd global config
-cfg = CfgHandler()
