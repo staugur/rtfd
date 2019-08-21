@@ -17,56 +17,66 @@ from .exceptions import ProjectExistsError, ProjectNotFound
 class ProjectManager(object):
 
     def __init__(self, cfg=None):
-        self.cps = ProjectStorage(cfg)
+        self._cps = ProjectStorage(cfg)
 
     def create(self, name, url, **kwargs):
         name = name.lower()
-        if name in self.cps.list:
+        if self.has(name):
             raise ProjectExistsError("This project '%s' already exists" % name)
         else:
             kwargs["url"] = url
-            self.cps.set(name, kwargs)
+            return self._cps.set(name, kwargs)
 
     def has(self, name):
         name = name.lower()
-        return name in self.cps.list
+        if self._cps.get(name):
+            return True
+        else:
+            return False
 
     def get(self, name, default=None):
         name = name.lower()
         if self.has(name):
-            return self.cps.get(name, default=default)
+            return self._cps.get(name, default=default)
+        return default
 
-    def update(self):
-        pass
+    def update(self, name, **kwargs):
+        name = name.lower()
+        if self.has(name):
+            data = self.get(name)
+            if isinstance(data, dict):
+                data.update(kwargs)
+                return self._cps.set(name, data)
 
-    def remove(self):
-        pass
+    def remove(self, name):
+        name = name.lower()
+        if self.has(name):
+            return self._cps.set(name, '')
 
 
 class RTFD_BUILDER(object):
 
     def __init__(self, cfg=None):
-        self.cfg_file = cfg or expanduser("~/.rtfd.cfg")
-        self.cpm = ProjectManager(self.cfg_file)
-        self.build_sh = join(dirname(abspath(__file__)), "scripts/builder.sh")
+        self._cfg_file = cfg or expanduser("~/.rtfd.cfg")
+        self._cpm = ProjectManager(self._cfg_file)
+        self._build_sh = join(dirname(abspath(__file__)), "scripts/builder.sh")
 
-    def build(self, name, branch="master"):
+    def build(self, name, branch="master", stream=True):
         name = name
         branch = branch
-        if not self.cpm.has(name):
+        if not self._cpm.has(name):
             raise ProjectNotFound("Did not find this project '%s'" % name)
-        data = self.cpm.get(name)
+        data = self._cpm.get(name)
         if data and isinstance(data, dict) and "url" in data:
             url = data["url"]
-            cmd = ['bash', self.build_sh, '-n', name, '-u', url, '-b', branch,
-                   '-c', self.cfg_file]
-            '''
-            code, out, err = run_cmd()
-            print out,err
-            if code == 0:
-                return True
-            '''
-            for i in run_cmd_stream(*cmd):
-                print i
+            cmd = ['bash', self._build_sh, '-n', name, '-u', url, '-b', branch,
+                   '-c', self._cfg_file]
+            if stream is True:
+                for i in run_cmd_stream(*cmd):
+                    print(i)
+            else:
+                code, out, err = run_cmd(*cmd)
+                if code == 0:
+                    return True
         else:
             raise ValueError("Not found name, data error for %s" % name)

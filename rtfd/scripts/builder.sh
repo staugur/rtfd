@@ -34,6 +34,14 @@ _readINI() {
     echo ${_readIni}
 }
 
+_getDocsConf() {
+    local name=$1
+    local key=$2
+    local default=$3
+    local value=$(rtfd project ${name}:${key})
+    echo ${value:-$default}
+}
+
 _join_path() {
     echo "${1:+$1/}$2" | sed 's#//#/#g'
 }
@@ -66,7 +74,7 @@ _env_manager() {
         #: languages = en,zh_CN
         #: [python]
         #: version = 2
-        #: requirements = docs/requirements.txt,dev-requirements
+        #: requirements = docs/requirements.txt,dev-requirements.txt
         #: install = true
         #: index =  pypi source
         local project_latest=$(_readINI $project_ini project latest)
@@ -77,17 +85,17 @@ _env_manager() {
         local py_install_project=$(_readINI $project_ini python install)
         local py_index=$(_readINI $project_ini python index)
     fi
-    local project_latest=${project_latest:=master}
-    local sphinx_sourcedir=${sphinx_sourcedir:=docs}
+    local project_latest=${project_latest:=$(_getDocsConf $project_name latest master)}
+    local sphinx_sourcedir=${sphinx_sourcedir:=$(_getDocsConf $project_name sourcedir docs)}
+    local sphinx_languages=${sphinx_languages:=$(_getDocsConf $project_name languages en)}
+    local py_version=${py_version:=$(_getDocsConf $project_name version 2)}
+    local py_requirements=${py_requirements:=$(_getDocsConf $project_name requirements)}
+    local py_install_project=${py_install_project:=$(_getDocsConf $project_name install false)}
+    local py_index=${py_index:=$(_getDocsConf $project_name index https://pypi.org/simple)}
     if [[ "${sphinx_sourcedir:0:1}" == "/" || "${sphinx_sourcedir:0:2}" == ".." ]]; then
         echo "In rtfd.ini, sourcedir cannot start with / or .."
         exit 1
     fi
-    local sphinx_languages=${sphinx_languages:=en}
-    local py_version=${py_version:=2}
-    local py_requirements=${py_requirements:=}
-    local py_install_project=${py_install_project:=false}
-    local py_index=${py_index:=https://pypi.org/simple}
     case $py_version in
     2)
         local py_path=$py2_path

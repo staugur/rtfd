@@ -11,6 +11,7 @@
 """
 
 import click
+import json
 from configparser import ConfigParser
 from os import mkdir
 from os.path import expanduser, isfile, isdir
@@ -66,9 +67,56 @@ def init(basedir, loglevel, py2, py3, host, port, config):
 
 
 @cli.command()
-def project():
+@click.option('--action', '-a', default='get', type=click.Choice(["create", "update", "remove", "get"]), help=u'动作', show_default=True)
+@click.option('--url', type=str, help=u'文档项目的git仓库地址')
+@click.option('--latest', default='master', type=str, help=u'latest所指向的分支', show_default=True)
+@click.option('--single/--no-single', default=False, help=u'是否开启单一版本功能', show_default=True)
+@click.option('--sourcedir', '-s',  type=str, default='docs', help=u'实际文档文件所在目录，目录路径是项目的相对位置', show_default=True)
+@click.option('--languages', '-l',  type=str, default='en', help=u'文档语言，支持多种，以英文逗号分隔', show_default=True)
+@click.option('--version', '-v',  type=int, default=2, help=u'Python版本，目前仅支持2、3两个值，对应版本由配置文件定义', show_default=True)
+@click.option('--requirements', '-r',  type=str, default='', help=u'需要安装的依赖包文件（文件路径是项目的相对位置），支持多个，以英文逗号分隔')
+@click.option('--install/--no-install', default=False, help=u'是否需要安装项目，如果值为true，则会在项目目录执行"pip install ."', show_default=True)
+@click.option('--index', '-i',  type=str, default='https://pypi.org/simple', help=u'指定pip安装时的pypi源', show_default=True)
+@click.option('--update-rule', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
+@click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
+@click.argument('name')
+def project(action, url, latest, single, sourcedir, languages, version, requirements, install, index, update_rule, config, name):
     """文档项目管理"""
-    pass
+    from .libs import ProjectManager
+    name = name.lower().encode('utf-8')
+    pm = ProjectManager(config)
+    if action == 'get':
+        name, key = name.split(":") if ":" in name else (name, None)
+        if not pm.has(name):
+            return echo("Not found docs project named %s" % name, fg='red')
+        data = pm.get(name)
+        if key:
+            try:
+                value = data[key]
+            except KeyError:
+                echo("")
+            else:
+                if value is True:
+                    value = 'true'
+                if value is False:
+                    value = 'false'
+                if isinstance(value, int):
+                    value = str(value)
+                echo(value)
+        else:
+            echo(json.dumps(data))
+    elif action == 'create':
+        if not url:
+            return echo("url is required", fg='red')
+        pm.create(name, url, latest=latest, single=single, sourcedir=sourcedir, languages=languages,
+                  version=version, requirements=requirements, install=install, index=index)
+    elif action == 'update':
+        update_rule = json.loads(update_rule)
+        pm.update(name, **update_rule)
+    elif action == 'remove':
+        pm.remove(name)
+    else:
+        return echo("Invalid action", fg='red')
 
 
 @cli.command()
