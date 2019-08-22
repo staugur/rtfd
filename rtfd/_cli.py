@@ -34,12 +34,14 @@ def cli():
 @click.confirmation_option(prompt=u'确定要初始化rtfd吗？')
 @click.option('--basedir', '-b', help=u'rtfd根目录')
 @click.option('--loglevel', '-l', default='INFO', type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]), help=u'日志级别', show_default=True)
+@click.option('--nginxdn', default='localhost.localdomain', help=u'文档生成后用以Nginx访问的顶级域名', show_default=True)
+@click.option('--nginxexec', default='/usr/sbin/nginx', help=u'Nginx管理命令路径', show_default=True)
 @click.option('--py2', default='/usr/bin/python2', help=u"Python2路径", show_default=True)
 @click.option('--py3', default='/usr/bin/python3', help=u"Python3路径", show_default=True)
 @click.option('--host', default='127.0.0.1', help=u"Api监听地址", show_default=True)
 @click.option('--port', default=5000, type=int, help=u"Api监听端口", show_default=True)
 @click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件（不会覆盖）', show_default=True)
-def init(basedir, loglevel, py2, py3, host, port, config):
+def init(basedir, loglevel, nginxdn, nginxexec, py2, py3, host, port, config):
     """初始化rtfd"""
     _cfg_file = config or DEFAULT_CFG
     if not isfile(_cfg_file):
@@ -56,6 +58,8 @@ def init(basedir, loglevel, py2, py3, host, port, config):
         _cfg_obj.add_section("api")
         _cfg_obj.set("g", "base_dir", basedir)
         _cfg_obj.set("g", "log_level", loglevel)
+        _cfg_obj.set("g", "nginx_dn", nginxdn)
+        _cfg_obj.set("g", "nginx_exec", nginxexec)
         _cfg_obj.set("py", "py2", py2)
         _cfg_obj.set("py", "py3", py3)
         _cfg_obj.set("api", "host", host)
@@ -110,9 +114,14 @@ def project(action, url, latest, single, sourcedir, languages, version, requirem
             return echo("url is required", fg='red')
         pm.create(name, url, latest=latest, single=single, sourcedir=sourcedir, languages=languages,
                   version=version, requirements=requirements, install=install, index=index)
+        #: generate nginx template
+        pm.nginx_builder(name)
     elif action == 'update':
         update_rule = json.loads(update_rule)
         pm.update(name, **update_rule)
+        #: update nginx template
+        if "languages" in update_rule or "single" in update_rule:
+            pm.nginx_builder(name)
     elif action == 'remove':
         pm.remove(name)
     else:
