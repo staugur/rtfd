@@ -29,6 +29,7 @@ class Logger:
         self._levels = {
             "DEBUG": logging.DEBUG,
             "INFO": logging.INFO,
+            "WARN": logging.WARNING,
             "WARNING": logging.WARNING,
             "ERROR": logging.ERROR,
             "CRITICAL": logging.CRITICAL
@@ -50,7 +51,7 @@ class Logger:
         )
         handler.setFormatter(formatter)
         self._logger.addHandler(handler)
-        LOGLEVEL = self.cfg.g.get("log_level", default="INFO")
+        LOGLEVEL = self.cfg.g.get("log_level", default="INFO").upper()
         self._logger.setLevel(self._levels.get(LOGLEVEL))
 
     @property

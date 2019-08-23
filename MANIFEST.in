@@ -1,1 +1,2 @@
 recursive-include rtfd/scripts *
+recursive-include rtfd/static *

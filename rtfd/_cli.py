@@ -34,14 +34,18 @@ def cli():
 @click.confirmation_option(prompt=u'确定要初始化rtfd吗？')
 @click.option('--basedir', '-b', help=u'rtfd根目录')
 @click.option('--loglevel', '-l', default='INFO', type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]), help=u'日志级别', show_default=True)
-@click.option('--nginxdn', default='localhost.localdomain', help=u'文档生成后用以Nginx访问的顶级域名', show_default=True)
-@click.option('--nginxexec', default='/usr/sbin/nginx', help=u'Nginx管理命令路径', show_default=True)
+@click.option('--nginx-dn', default='localhost.localdomain', help=u'文档生成后用以Nginx访问的顶级域名', show_default=True)
+@click.option('--nginx-exec', default='/usr/sbin/nginx', help=u'Nginx管理命令路径', show_default=True)
+@click.option('--nginx-ssl/--no-nginx-ssl', default=False, help=u'Nginx开启SSL', show_default=True)
+@click.option('--nginx-ssl-crt', default='${g:base_dir}/nginx/certs/${dn}.crt', help=u'SSL证书', show_default=True)
+@click.option('--nginx-ssl-key', default='${g:base_dir}/nginx/certs/${dn}.key', help=u'SSL证书私钥', show_default=True)
+@click.option('--nginx-ssl-hsts-maxage', default=31536000, type=int, help=u'设置在浏览器收到这个请求后的maxage秒的时间内凡是访问这个域名下的请求都使用HTTPS请求。', show_default=True)
 @click.option('--py2', default='/usr/bin/python2', help=u"Python2路径", show_default=True)
 @click.option('--py3', default='/usr/bin/python3', help=u"Python3路径", show_default=True)
 @click.option('--host', default='127.0.0.1', help=u"Api监听地址", show_default=True)
 @click.option('--port', default=5000, type=int, help=u"Api监听端口", show_default=True)
 @click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件（不会覆盖）', show_default=True)
-def init(basedir, loglevel, nginxdn, nginxexec, py2, py3, host, port, config):
+def init(basedir, loglevel, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, nginx_ssl_key, nginx_ssl_hsts_maxage, py2, py3, host, port, config):
     """初始化rtfd"""
     _cfg_file = config or DEFAULT_CFG
     if not isfile(_cfg_file):
@@ -51,15 +55,23 @@ def init(basedir, loglevel, nginxdn, nginxexec, py2, py3, host, port, config):
             return echo("This basedir parameter is required", fg='red')
         if not isdir(basedir):
             mkdir(basedir)
+        if nginx_ssl_hsts_maxage <= 0:
+            return echo("The nginx-ssl-hsts-maxage is error, it should be greater than 0.")
+        nginx_ssl = "on" if nginx_ssl else "off"
         #: write default configure
         _cfg_obj = ConfigParser()
         _cfg_obj.add_section("g")
+        _cfg_obj.add_section("nginx")
         _cfg_obj.add_section("py")
         _cfg_obj.add_section("api")
-        _cfg_obj.set("g", "base_dir", basedir)
+        _cfg_obj.set("g", "base_dir", basedir.rstrip('/'))
         _cfg_obj.set("g", "log_level", loglevel)
-        _cfg_obj.set("g", "nginx_dn", nginxdn)
-        _cfg_obj.set("g", "nginx_exec", nginxexec)
+        _cfg_obj.set("nginx", "dn", nginx_dn)
+        _cfg_obj.set("nginx", "exec", nginx_exec)
+        _cfg_obj.set("nginx", "ssl", nginx_ssl)
+        _cfg_obj.set("nginx", "ssl_crt", nginx_ssl_crt)
+        _cfg_obj.set("nginx", "ssl_key", nginx_ssl_key)
+        _cfg_obj.set("nginx", "ssl_hsts_maxage", str(nginx_ssl_hsts_maxage))
         _cfg_obj.set("py", "py2", py2)
         _cfg_obj.set("py", "py3", py3)
         _cfg_obj.set("api", "host", host)
@@ -77,14 +89,15 @@ def init(basedir, loglevel, nginxdn, nginxexec, py2, py3, host, port, config):
 @click.option('--single/--no-single', default=False, help=u'是否开启单一版本功能', show_default=True)
 @click.option('--sourcedir', '-s',  type=str, default='docs', help=u'实际文档文件所在目录，目录路径是项目的相对位置', show_default=True)
 @click.option('--languages', '-l',  type=str, default='en', help=u'文档语言，支持多种，以英文逗号分隔', show_default=True)
+@click.option('--default_language', '-dl', type=str, default='en', help=u'文档默认展示的语言，若默认语言不在languages内，则重置为languages中第一语言', show_default=True)
 @click.option('--version', '-v',  type=int, default=2, help=u'Python版本，目前仅支持2、3两个值，对应版本由配置文件定义', show_default=True)
 @click.option('--requirements', '-r',  type=str, default='', help=u'需要安装的依赖包文件（文件路径是项目的相对位置），支持多个，以英文逗号分隔')
 @click.option('--install/--no-install', default=False, help=u'是否需要安装项目，如果值为true，则会在项目目录执行"pip install ."', show_default=True)
 @click.option('--index', '-i',  type=str, default='https://pypi.org/simple', help=u'指定pip安装时的pypi源', show_default=True)
-@click.option('--update-rule', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
+@click.option('--update-rule', '-ur', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
 @click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
-def project(action, url, latest, single, sourcedir, languages, version, requirements, install, index, update_rule, config, name):
+def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, update_rule, config, name):
     """文档项目管理"""
     from .libs import ProjectManager
     name = name.lower().encode('utf-8')
@@ -112,15 +125,27 @@ def project(action, url, latest, single, sourcedir, languages, version, requirem
     elif action == 'create':
         if not url:
             return echo("url is required", fg='red')
-        pm.create(name, url, latest=latest, single=single, sourcedir=sourcedir, languages=languages,
+        url = url.rstrip(".git") if url.endswith(".git") else url
+        if default_language not in languages.split(","):
+            default_language = languages.split(",")[0]
+        pm.create(name, url, latest=latest, single=single, sourcedir=sourcedir, languages=languages, default_language=default_language,
                   version=version, requirements=requirements, install=install, index=index)
         #: generate nginx template
         pm.nginx_builder(name)
     elif action == 'update':
         update_rule = json.loads(update_rule)
+        if not isinstance(update_rule, dict):
+            return echo("the update rule is error", fg='red')
+        for key in update_rule.keys():
+            if key.startswith("_"):
+                return echo("Found keys that are not allowed to be updated", fg='red')
+            if key == "url":
+                url = update_rule["url"]
+                url = url.rstrip(".git") if url.endswith(".git") else url
+                update_rule["url"] = url
         pm.update(name, **update_rule)
         #: update nginx template
-        if "languages" in update_rule or "single" in update_rule:
+        if "languages" in update_rule or "default_language" in update_rule or "single" in update_rule:
             pm.nginx_builder(name)
     elif action == 'remove':
         pm.remove(name)
@@ -138,7 +163,27 @@ def build(config, branch, name):
         return echo("Not Found configuration file %s" % config, fg='red')
     from .libs import RTFD_BUILDER
     rb = RTFD_BUILDER(config)
-    rb.build(name, branch)
+    print(rb.build(name.encode('utf-8'), branch.encode('utf-8')))
+
+
+@cli.command()
+@click.option('--host', help=u"Api监听地址", show_default=True)
+@click.option('--port', type=int, help=u"Api监听端口", show_default=True)
+@click.option('--debug/--no-debug', default=True, help=u'是否开启DEBUG', show_default=True)
+@click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
+def api(host, port, debug, config):
+    """以开发模式运行API"""
+    from flask import Flask
+    from flask_pluginkit import PluginManager
+    from .config import CfgHandler
+    cfg = CfgHandler(config)
+    app = Flask(__name__)
+    PluginManager(app, plugin_packages=["rtfd"])
+    app.run(
+        host=host or cfg.api.get("host", default="127.0.0.1"),
+        port=port or cfg.api.get("port", default=5000),
+        debug=debug
+    )
 
 
 if __name__ == "__main__":

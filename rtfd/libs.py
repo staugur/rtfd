@@ -9,7 +9,7 @@
     :license: BSD 3-Clause, see LICENSE for more details.
 """
 
-from os import mkdir, remove
+from os import mkdir, remove, listdir
 from shutil import rmtree
 from os.path import expanduser, dirname, join, abspath, isdir, isfile
 from jinja2 import Template
@@ -33,7 +33,8 @@ class ProjectManager(object):
         if self.has(name):
             raise ProjectExistsError("This project '%s' already exists" % name)
         else:
-            kwargs["url"] = url
+            kwargs.update(url=url, _dn="%s.%s" %
+                          (name, self._cfg_handler.nginx.dn))
             self._logger.info(
                 "Project.Create: name is %s, create params is %s" % (name, kwargs))
             return self._cps.set(name, kwargs)
@@ -51,12 +52,41 @@ class ProjectManager(object):
             return self._cps.get(name, default=default)
         return default
 
+    def get_for_api(self, name):
+        data = self.get(name)
+        languages = data.get("languages") or data.get("default_language")
+        languages = languages.split(",")
+        versions = {}
+        for lang in languages:
+            lang_dir = join(self._cfg_handler.g.base_dir, "docs", name, lang)
+            if isdir(lang_dir):
+                _versions = listdir(lang_dir)
+                _versions.remove(data["latest"])
+                versions[lang] = _versions
+            else:
+                versions[lang] = []
+        resp = dict(languages=languages, versions=versions,
+                    latest=data.get("latest"), url=data.get("url"),
+                    dn=data.get("_dn"), sourcedir=data.get("sourcedir"),
+                    single=True if data.get("single") in (
+                        True, "true", "True") else False,
+                    showNav=True if data.get("showNav", True) in (True, "true", "True") else False)
+        return resp
+
     def update(self, name, **kwargs):
         name = name.lower()
         if self.has(name):
             data = self.get(name)
             if isinstance(data, dict):
+                if "default_language" in kwargs:
+                    if kwargs["default_language"] not in data["languages"].split(","):
+                        kwargs["default_language"] = data["languages"].split(",")[
+                            0]
                 data.update(kwargs)
+                for k, v in data.iteritems():
+                    if isinstance(v, unicode):
+                        v.encode("utf-8")
+                    data[k] = v
                 self._logger.info(
                     "Project.Update: name is %s, update params is %s" % (name, kwargs))
                 return self._cps.set(name, data)
@@ -65,7 +95,7 @@ class ProjectManager(object):
         name = name.lower()
         if self.has(name):
             self._logger.info(
-                "Project.Remove: name is %s, will remove docs and nginx itself" % name)
+                "Project.Remove: name is %s, will remove docs and nginx itself, then reload nginx" % name)
             #: 删除文档和nginx
             PROJECT_DOCS = join(self._cfg_handler.g.base_dir, "docs", name)
             NGINX_FILE = join(self._cfg_handler.g.base_dir,
@@ -79,7 +109,7 @@ class ProjectManager(object):
 
     def __reload_nginx(self):
         #: reload nginx
-        nginx_exec = self._cfg_handler.g.get("nginx_exec")
+        nginx_exec = self._cfg_handler.nginx.get("exec")
         if nginx_exec:
             exitcode, _, _ = run_cmd(nginx_exec, '-t')
             if exitcode == 0:
@@ -92,7 +122,7 @@ class ProjectManager(object):
             raise ProjectNotFound("Did not find this project '%s'" % name)
         DOCS_DIR = join(self._cfg_handler.g.base_dir, "docs")
         NGINX_DIR = join(self._cfg_handler.g.base_dir, "nginx")
-        NGINX_DN = self._cfg_handler.g.nginx_dn
+        NGINX_DN = self._cfg_handler.nginx.dn
         if not isdir(DOCS_DIR):
             mkdir(DOCS_DIR)
         if not isdir(NGINX_DIR):
@@ -105,8 +135,9 @@ server {
     charset utf-8;
     root {{ docs_dir }}/{{ name }}/;
     index index.html;
+    error_page 403 =404 /404.html;
     location = / {
-        return 301 /en/latest/$is_args$args;
+        return 302 /{{ default_language }}/latest/$is_args$args;
     }
     {% for lang in languages.split(",") %}
     location /{{ lang }}/latest/ {
@@ -120,16 +151,17 @@ server {
     listen 80;
     server_name {{ name }}.{{ nginx_dn }};
     charset utf-8;
-    root {{ docs_dir }}/{{ name }}/{{ languages }}/latest/;
+    root {{ docs_dir }}/{{ name }}/{{ default_language }}/latest/;
     index index.html;
 }'''
-        languages = data.get("languages") or "en"
+        default_language = data.get("default_language") or "en"
+        languages = data.get("languages") or default_language
         is_signle = True if data.get("single") in (
             True, "true", "True") else False
         tpl = Template(single_lang_tpl) if is_signle else Template(
             multi_lang_tpl)
-        rendered_nginx_conf = tpl.render(t=strftime('%Y-%m-%d %H:%M:%S'), name=name, nginx_dn=NGINX_DN, docs_dir=join(
-            DOCS_DIR, name), languages=languages)
+        rendered_nginx_conf = tpl.render(t=strftime('%Y-%m-%d %H:%M:%S'), name=name, nginx_dn=NGINX_DN,
+                                         docs_dir=DOCS_DIR, languages=languages, default_language=default_language)
         self._logger.info(
             "Project.Nginx: name is %s, will render nginx configure" % name)
         with open(join(NGINX_DIR, "%s.conf" % name), "w") as fp:
@@ -149,23 +181,35 @@ class RTFD_BUILDER(object):
         self._logger = Logger("sys", self._cfg_file).getLogger
 
     def build(self, name, branch="master", stream=True):
+        res = dict(code=1)
         name = name
         branch = branch
         if not self._cpm.has(name):
-            raise ProjectNotFound("Did not find this project '%s'" % name)
+            res.update(_err="Did not find this project %s" % name)
+            return res
         data = self._cpm.get(name)
         if data and isinstance(data, dict) and "url" in data:
             self._logger.debug(
                 "RTFD.Builder: build %s with branch %s" % (name, branch))
-            url = data["url"]
-            cmd = ['bash', self._build_sh, '-n', name, '-u', url, '-b', branch,
+            cmd = ['bash', self._build_sh, '-n', name, '-u', data["url"], '-b', branch,
                    '-c', self._cfg_file]
+            #: 响应信息
+            status = "fail"
             if stream is True:
                 for i in run_cmd_stream(*cmd):
+                    if "Build Successfully" in i:
+                        status = "ok"
+                        res.update(code=0)
                     print(i)
             else:
                 code, out, err = run_cmd(*cmd)
+                res.update(code=code, _output=out, _err=err)
                 if code == 0:
-                    return True
+                    status = "ok"
+            #: 更新构建信息
+            self._cpm.update(name, _build_time=strftime(
+                '%Y-%m-%d %H:%M:%S'), _build_branch=branch, _build_status=status)
         else:
-            raise ValueError("Not found name, data error for %s" % name)
+            res.update(_err="Not found name, data error for %s" % name)
+        #: 当code为0基本上表示构建成功了
+        return res

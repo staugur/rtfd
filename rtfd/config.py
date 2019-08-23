@@ -10,7 +10,7 @@
 """
 
 import os
-from configparser import ConfigParser
+from configparser import ConfigParser, ExtendedInterpolation
 
 
 class SectionHandler(object):
@@ -64,7 +64,7 @@ class CfgHandler(object):
 
     def __init__(self, cfg=None):
         self._cfg_file = cfg or os.path.expanduser("~/.rtfd.cfg")
-        self._cfg_obj = ConfigParser()
+        self._cfg_obj = ConfigParser(interpolation=ExtendedInterpolation())
         if os.path.isfile(self._cfg_file):
             self._cfg_obj.read(self._cfg_file)
 
