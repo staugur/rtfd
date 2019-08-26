@@ -44,8 +44,9 @@ def cli():
 @click.option('--py3', default='/usr/bin/python3', help=u"Python3路径", show_default=True)
 @click.option('--host', default='127.0.0.1', help=u"Api监听地址", show_default=True)
 @click.option('--port', default=5000, type=int, help=u"Api监听端口", show_default=True)
+@click.option('--api-secret', default='', help=u"Api密钥", show_default=True)
 @click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件（不会覆盖）', show_default=True)
-def init(basedir, loglevel, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, nginx_ssl_key, nginx_ssl_hsts_maxage, py2, py3, host, port, config):
+def init(basedir, loglevel, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, nginx_ssl_key, nginx_ssl_hsts_maxage, py2, py3, host, port, api_secret, config):
     """初始化rtfd"""
     _cfg_file = config or DEFAULT_CFG
     if not isfile(_cfg_file):
@@ -78,6 +79,7 @@ def init(basedir, loglevel, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, ngin
         _cfg_obj.set("py", "py3", py3)
         _cfg_obj.set("api", "host", host)
         _cfg_obj.set("api", "port", str(port))
+        _cfg_obj.set("api", "secret", api_secret)
         with open(_cfg_file, 'wb') as fp:
             _cfg_obj.write(fp)
     else:
@@ -91,7 +93,7 @@ def init(basedir, loglevel, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, ngin
 @click.option('--single/--no-single', default=False, help=u'是否开启单一版本功能', show_default=True)
 @click.option('--sourcedir', '-s',  type=str, default='docs', help=u'实际文档文件所在目录，目录路径是项目的相对位置', show_default=True)
 @click.option('--languages', '-l',  type=str, default='en', help=u'文档语言，支持多种，以英文逗号分隔', show_default=True)
-@click.option('--default_language', '-dl', type=str, default='en', help=u'文档默认展示的语言，若默认语言不在languages内，则重置为languages中第一语言', show_default=True)
+@click.option('--default-language', '-dl', type=str, default='en', help=u'文档默认展示的语言，若默认语言不在languages内，则重置为languages中第一语言', show_default=True)
 @click.option('--version', '-v',  type=int, default=2, help=u'Python版本，目前仅支持2、3两个值，对应版本由配置文件定义', show_default=True)
 @click.option('--requirements', '-r',  type=str, default='', help=u'需要安装的依赖包文件（文件路径是项目的相对位置），支持多个，以英文逗号分隔')
 @click.option('--install/--no-install', default=False, help=u'是否需要安装项目，如果值为true，则会在项目目录执行"pip install ."', show_default=True)
@@ -165,7 +167,8 @@ def build(config, branch, name):
         return echo("Not Found configuration file %s" % config, fg='red')
     from .libs import RTFD_BUILDER
     rb = RTFD_BUILDER(config)
-    print(rb.build(name.encode('utf-8'), branch.encode('utf-8'), sponsor="cli"))
+    for _out in rb.build(name, branch, "cli"):
+        print(_out)
 
 
 @cli.command()

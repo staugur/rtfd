@@ -43,26 +43,26 @@ def rtfd_api_view():
             except IndexError:
                 msg = ""
             #: 重置res响应数据
-            res = dict(code=0, msg=msg)
+            isRaw = True if request.args.get("raw", True) in (
+                1, "1", "on", True, "True", "true") else False
+            if isRaw:
+                res = msg
+            else:
+                res = dict(code=0, msg=msg)
     else:
         if Action == "buildProject":
             rb = RTFD_BUILDER()
             name = request.form.get("name", request.args.get("name"))
             branch = request.form.get(
                 "branch", request.args.get("branch")) or "latest"
-            stream = request.form.get("stream", request.args.get("stream"))
-            stream = True if stream in ("on", "true", True) else False
             if rb._cpm.has(name):
-                def build():
-                    for i in rb.build(name, branch, True, "api"):
-                        _queue.append(i)
-                start_new_thread(build, ())
+                def build(name, branch):
+                    for _out in rb.build(name, branch, "api"):
+                        _queue.append(_out)
+                start_new_thread(build, (name, branch))
                 res.update(code=0, msg="Already submitted asynchronous task")
             else:
                 res.update(msg="Did not find this project %s" % name)
-        elif Action == "testMsg":
-            from time import strftime
-            res.update(msg=_queue.append(strftime('%Y-%m-%d %H:%M:%S')))
     response = make_response(jsonify(res))
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response
