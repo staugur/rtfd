@@ -14,7 +14,7 @@ import click
 import json
 from configparser import ConfigParser
 from os import mkdir
-from os.path import expanduser, isfile, isdir
+from os.path import expanduser, isfile, isdir, isabs, abspath
 
 DEFAULT_CFG = expanduser("~/.rtfd.cfg")
 
@@ -54,6 +54,8 @@ def init(basedir, loglevel, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, ngin
         if not basedir:
             return echo("This basedir parameter is required", fg='red')
         if not isdir(basedir):
+            if not isabs(basedir):
+                basedir = abspath(basedir)
             mkdir(basedir)
         if nginx_ssl_hsts_maxage <= 0:
             return echo("The nginx-ssl-hsts-maxage is error, it should be greater than 0.")
