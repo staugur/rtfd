@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from .api import register
-from .libs import ProjectManager, RTFD_BUILDER
+from .libs import ProjectManager
 
 __version__ = "0.1.0"
 __author__ = "staugur <staugur@saintic.com>"
@@ -13,4 +13,4 @@ __license__ = "BSD 3-Clause"
 __url__ = "https://github.com/staugur/rtfd"
 
 
-__all__ = ["ProjectManager", "RTFD_BUILDER"]
+__all__ = ["ProjectManager"]

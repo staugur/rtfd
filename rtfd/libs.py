@@ -231,38 +231,46 @@ class RTFD_BUILDER(object):
         self._build_sh = join(dirname(abspath(__file__)), "scripts/builder.sh")
         self._logger = Logger("sys", self._cfg_file).getLogger
 
-    def build(self, name, branch="master", stream=True):
+    def build(self, name, branch="master", stream=True, sponsor=None):
         res = dict(code=1)
-        name = name
-        branch = branch
+        if isinstance(name, unicode):
+            name = name.encode("utf8")
+        if isinstance(branch, unicode):
+            branch = branch.encode("utf8")
         if not self._cpm.has(name):
             res.update(_err="Did not find this project %s" % name)
             return res
         data = self._cpm.get(name)
         if data and isinstance(data, dict) and "url" in data:
-            self._logger.debug(
-                "RTFD.Builder: build %s with branch %s" % (name, branch))
-            cmd = ['bash', self._build_sh, '-n', name, '-u', data["url"], '-b', branch,
-                   '-c', self._cfg_file]
+            if branch == "latest":
+                branch = data["latest"]
+            msg = "RTFD.Builder: build %s with branch %s" % (name, branch)
+            self._logger.debug(msg)
+            cmd = ['bash', self._build_sh, '-n', name, '-u', data["url"],
+                   '-b', branch, '-c', self._cfg_file]
             #: 响应信息
             status = "failing"
             if stream is True:
+                out = []
                 for i in run_cmd_stream(*cmd):
                     if "Build Successfully" in i:
                         status = "passing"
                         res.update(code=0)
                     print(i)
+                    out.append(i)
+                res.update(_output="\n".join(out))
             else:
                 code, out, err = run_cmd(*cmd)
                 res.update(code=code, _output=out, _err=err)
-                if code == 0:
+                if code == 0 and "Build Successfully" in out:
                     status = "passing"
             #: 更新构建信息
             _build_info = {"_build_%s" % branch: dict(
-                btime=strftime('%Y-%m-%d %H:%M:%S'), status=status)
+                btime=strftime('%Y-%m-%d %H:%M:%S'), status=status, sponsor=sponsor)
             }
             self._cpm.update(name, **_build_info)
         else:
             res.update(_err="Not found name, data error for %s" % name)
         #: 当code为0基本上表示构建成功了
+        print(res)
         return res

@@ -165,7 +165,7 @@ def build(config, branch, name):
         return echo("Not Found configuration file %s" % config, fg='red')
     from .libs import RTFD_BUILDER
     rb = RTFD_BUILDER(config)
-    print(rb.build(name.encode('utf-8'), branch.encode('utf-8')))
+    print(rb.build(name.encode('utf-8'), branch.encode('utf-8'), sponsor="cli"))
 
 
 @cli.command()

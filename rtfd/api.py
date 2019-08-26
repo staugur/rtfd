@@ -9,15 +9,20 @@
     :license: BSD 3-Clause, see LICENSE for more details.
 """
 
+from thread import start_new_thread
+from collections import deque
 from flask import request, jsonify, make_response, render_template_string
-from .libs import ProjectManager
+from .libs import ProjectManager, RTFD_BUILDER
+
+#: Build message queue
+_queue = deque()
 
 
 def rtfd_api_view():
     """RTFD接口视图"""
     res = dict(code=-1, msg=None)
+    Action = request.args.get("Action")
     if request.method == "GET":
-        Action = request.args.get("Action")
         if Action == "describeProject":
             name = request.args.get("name")
             if name:
@@ -32,6 +37,32 @@ def rtfd_api_view():
                     res.update(code=404)
             else:
                 res.update(msg='param error')
+        elif Action == "queryBuildmsg":
+            try:
+                msg = _queue.popleft()
+            except IndexError:
+                msg = ""
+            #: 重置res响应数据
+            res = dict(code=0, msg=msg)
+    else:
+        if Action == "buildProject":
+            rb = RTFD_BUILDER()
+            name = request.form.get("name", request.args.get("name"))
+            branch = request.form.get(
+                "branch", request.args.get("branch")) or "latest"
+            stream = request.form.get("stream", request.args.get("stream"))
+            stream = True if stream in ("on", "true", True) else False
+            if rb._cpm.has(name):
+                def build():
+                    for i in rb.build(name, branch, True, "api"):
+                        _queue.append(i)
+                start_new_thread(build, ())
+                res.update(code=0, msg="Already submitted asynchronous task")
+            else:
+                res.update(msg="Did not find this project %s" % name)
+        elif Action == "testMsg":
+            from time import strftime
+            res.update(msg=_queue.append(strftime('%Y-%m-%d %H:%M:%S')))
     response = make_response(jsonify(res))
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response
