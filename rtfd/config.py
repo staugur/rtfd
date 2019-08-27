@@ -84,6 +84,8 @@ class CfgHandler(object):
             return SectionHandler(self, section)
         raise AttributeError("No section: '%s'" % section)
 
+    __getitem__ = __getattr__
+
     @property
     def sections(self):
         return self._cfg_obj.sections()

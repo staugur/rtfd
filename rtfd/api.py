@@ -9,10 +9,13 @@
     :license: BSD 3-Clause, see LICENSE for more details.
 """
 
+import hmac
+from hashlib import sha1
 from thread import start_new_thread
 from collections import deque
 from flask import request, jsonify, make_response, render_template_string
 from .libs import ProjectManager, RTFD_BUILDER
+from .config import CfgHandler
 
 #: Build message queue
 _queue = deque()
@@ -85,17 +88,83 @@ def rtfd_badge_view(name):
     return resp
 
 
+def rtfd_webhook_view(name):
+    """基于webhook自动构建文档"""
+    res = dict(code=-1, msg=None)
+    data = request.json
+    event = request.headers.get("X-GitHub-Event")
+    if data and event in ("push", "release"):
+        cfg = CfgHandler()
+        secret = cfg.api.get("secret")
+        sign_passing = True
+        if secret:
+            sign_passing = False
+            signature = request.headers.get("X-Hub-Signature")
+            if signature:
+                sign_method, sign_ret = signature.split("=")
+                if sign_method == "sha1":
+                    if hmac.new(
+                            secret,
+                            request.data,
+                            sha1).hexdigest() == sign_ret:
+                        sign_passing = True
+                    else:
+                        res.update(msg="Verify signature faling")
+                else:
+                    res.update(msg="Invalid signature method")
+            else:
+                res.update(msg="Invalid signature header")
+        if sign_passing is True:
+            rb = RTFD_BUILDER()
+            if rb._cpm.has(name):
+                allow_build = True
+                if event == "push":
+                    #: Remote branching is not supported
+                    branch = "master"
+                else:
+                    if data["action"] == "published":
+                        branch = data["release"]["tag_name"]
+                    else:
+                        allow_build = False
+                        res.update(
+                            code=0,
+                            msg="This action is ignored in the release event"
+                        )
+                if allow_build is True:
+                    def build(name, branch):
+                        for _out in rb.build(name, branch, "webhook"):
+                            _queue.append(_out)
+                    start_new_thread(build, (name, branch))
+                    res.update(code=0, msg="ok", branch=branch)
+            else:
+                res.update(msg="Did not find this project %s" % name)
+    else:
+        if not data:
+            res.update(msg="Invalid json data")
+        else:
+            if event == "ping":
+                res.update(code=0, ping="pong")
+            else:
+                res.update(msg="Invalid event header")
+    return jsonify(res)
+
+
 def register():
     return dict(
         vep=[
             dict(
-                rule="/api/rtfd",
+                rule="/rtfd/api",
                 view_func=rtfd_api_view,
                 methods=["GET", "POST"]
             ),
             dict(
-                rule="/badge/rtfd/<string:name>",
+                rule="/rtfd/badge/<string:name>",
                 view_func=rtfd_badge_view
+            ),
+            dict(
+                rule="/rtfd/webhook/<string:name>",
+                view_func=rtfd_webhook_view,
+                methods=["POST"]
             )
         ]
     )

@@ -34,6 +34,9 @@ def cli():
 @click.confirmation_option(prompt=u'确定要初始化rtfd吗？')
 @click.option('--basedir', '-b', help=u'rtfd根目录')
 @click.option('--loglevel', '-l', default='INFO', type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]), help=u'日志级别', show_default=True)
+@click.option('--server-url', '-su', default='', help=u'rtfd服务地址，默认是api段的http://host:port')
+@click.option('--server-static_url', '-ssu', default='', help=u'rtfd静态资源地址，默认在server-url下')
+@click.option('--favicon-url', '-fu', default='https://static.saintic.com/rtfd/favicon.png', help=u'文档HTML页面的默认图标地址', show_default=True)
 @click.option('--nginx-dn', default='localhost.localdomain', help=u'文档生成后用以Nginx访问的顶级域名', show_default=True)
 @click.option('--nginx-exec', default='/usr/sbin/nginx', help=u'Nginx管理命令路径', show_default=True)
 @click.option('--nginx-ssl/--no-nginx-ssl', default=False, help=u'Nginx开启SSL', show_default=True)
@@ -46,7 +49,7 @@ def cli():
 @click.option('--port', default=5000, type=int, help=u"Api监听端口", show_default=True)
 @click.option('--api-secret', default='', help=u"Api密钥", show_default=True)
 @click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件（不会覆盖）', show_default=True)
-def init(basedir, loglevel, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, nginx_ssl_key, nginx_ssl_hsts_maxage, py2, py3, host, port, api_secret, config):
+def init(basedir, loglevel, server_url, server_static_url, favicon_url, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, nginx_ssl_key, nginx_ssl_hsts_maxage, py2, py3, host, port, api_secret, config):
     """初始化rtfd"""
     _cfg_file = config or DEFAULT_CFG
     if not isfile(_cfg_file):
@@ -61,6 +64,13 @@ def init(basedir, loglevel, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, ngin
         if nginx_ssl_hsts_maxage <= 0:
             return echo("The nginx-ssl-hsts-maxage is error, it should be greater than 0.")
         nginx_ssl = "on" if nginx_ssl else "off"
+        if not server_url:
+            server_url = "http://%s:%s" % (host, port)
+        if not server_static_url:
+            server_static_url = ''
+        else:
+            if server_static_url[-1] != "/":
+                server_static_url += "/"
         #: write default configure
         _cfg_obj = ConfigParser()
         _cfg_obj.add_section("g")
@@ -69,6 +79,9 @@ def init(basedir, loglevel, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, ngin
         _cfg_obj.add_section("api")
         _cfg_obj.set("g", "base_dir", basedir.rstrip('/'))
         _cfg_obj.set("g", "log_level", loglevel)
+        _cfg_obj.set("g", "server_url", server_url)
+        _cfg_obj.set("g", "server_static_url", server_static_url)
+        _cfg_obj.set("g", "favicon_url", favicon_url)
         _cfg_obj.set("nginx", "dn", nginx_dn)
         _cfg_obj.set("nginx", "exec", nginx_exec)
         _cfg_obj.set("nginx", "ssl", nginx_ssl)
@@ -189,6 +202,21 @@ def api(host, port, debug, config):
         port=port or cfg.api.get("port", default=5000),
         debug=debug
     )
+
+
+@cli.command()
+@click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
+@click.argument('section_item')
+def cfg(config, section_item):
+    """查询配置文件的配置内容"""
+    from .config import CfgHandler
+    _cfg = CfgHandler(config)
+    if ":" in section_item:
+        section, item = section_item.split(":")
+        print(_cfg[section].get(item, default=''))
+    else:
+        for k, v in _cfg.items(section_item):
+            print(k, v)
 
 
 if __name__ == "__main__":
