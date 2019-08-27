@@ -109,7 +109,8 @@ setup(
     },
     install_requires=[
         'Flask-PluginKit>=3.3.0',
-        'Click>=7.0'
+        'Click>=7.0',
+        'configparser'
     ],
     python_requires=">=2.7",
     #tests_require=["flask>0.9", "rsa>=4.0"],

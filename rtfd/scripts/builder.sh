@@ -185,7 +185,7 @@ _code_manager() {
     cd $runtime_dir
     check_exit_retcode
     [ -d $project_name ] && rm -rf $project_name
-    $git clone --recurse-submodules --tags $project_git $project_name
+    $git clone --recurse-submodules $project_git $project_name
     check_exit_retcode
     cd $project_name
     check_exit_retcode
