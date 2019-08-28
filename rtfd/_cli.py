@@ -120,7 +120,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 @click.option('--update-rule', '-ur', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
 @click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
-def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, showNav, update_rule, config, name=''):
+def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, shownav, update_rule, config, name=''):
     """文档项目管理"""
     from .libs import ProjectManager
     from .config import CfgHandler
@@ -156,7 +156,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             _cfg = CfgHandler(config)
             index = _cfg.py.get("index", default="https://pypi.org/simple")
         pm.create(name, url, latest=latest, single=single, sourcedir=sourcedir, languages=languages, default_language=default_language,
-                  version=version, requirements=requirements, install=install, index=index, showNav=showNav)
+                  version=version, requirements=requirements, install=install, index=index, showNav=shownav)
         #: generate nginx template
         pm.nginx_builder(name)
     elif action == 'update':
