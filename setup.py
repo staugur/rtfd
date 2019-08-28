@@ -113,7 +113,6 @@ setup(
         'configparser'
     ],
     python_requires=">=2.7",
-    #tests_require=["flask>0.9", "rsa>=4.0"],
     cmdclass={
         'publish': PublishCommand,
     },

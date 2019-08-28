@@ -20,3 +20,7 @@ class ProjectExistsError(RTFDError):
 
 class ProjectNotFound(RTFDError):
     pass
+
+
+class ProjectUnallowedError(RTFDError):
+    pass

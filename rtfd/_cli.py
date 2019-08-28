@@ -37,6 +37,7 @@ def cli():
 @click.option('--server-url', '-su', default='', help=u'rtfd服务地址，默认是api段的http://host:port')
 @click.option('--server-static_url', '-ssu', default='', help=u'rtfd静态资源地址，默认在server-url下')
 @click.option('--favicon-url', '-fu', default='https://static.saintic.com/rtfd/favicon.png', help=u'文档HTML页面的默认图标地址', show_default=True)
+@click.option('--unallowed-name', '-un', default='', help=u'不允许的文档项目名称，以英文逗号分隔', show_default=True)
 @click.option('--nginx-dn', default='localhost.localdomain', help=u'文档生成后用以Nginx访问的顶级域名', show_default=True)
 @click.option('--nginx-exec', default='/usr/sbin/nginx', help=u'Nginx管理命令路径', show_default=True)
 @click.option('--nginx-ssl/--no-nginx-ssl', default=False, help=u'Nginx开启SSL', show_default=True)
@@ -45,11 +46,12 @@ def cli():
 @click.option('--nginx-ssl-hsts-maxage', default=31536000, type=int, help=u'设置在浏览器收到这个请求后的maxage秒的时间内凡是访问这个域名下的请求都使用HTTPS请求。', show_default=True)
 @click.option('--py2', default='/usr/bin/python2', help=u"Python2路径", show_default=True)
 @click.option('--py3', default='/usr/bin/python3', help=u"Python3路径", show_default=True)
+@click.option('--index', '-i',  type=str, default='https://pypi.org/simple', help=u'pip安装时的默认源', show_default=True)
 @click.option('--host', default='127.0.0.1', help=u"Api监听地址", show_default=True)
 @click.option('--port', default=5000, type=int, help=u"Api监听端口", show_default=True)
 @click.option('--api-secret', default='', help=u"Api密钥", show_default=True)
 @click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件（不会覆盖）', show_default=True)
-def init(basedir, loglevel, server_url, server_static_url, favicon_url, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, nginx_ssl_key, nginx_ssl_hsts_maxage, py2, py3, host, port, api_secret, config):
+def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowed_name, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, nginx_ssl_key, nginx_ssl_hsts_maxage, py2, py3, index, host, port, api_secret, config):
     """初始化rtfd"""
     _cfg_file = config or DEFAULT_CFG
     if not isfile(_cfg_file):
@@ -83,6 +85,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, nginx_dn
         if server_static_url:
             _cfg_obj.set("g", "server_static_url", server_static_url)
         _cfg_obj.set("g", "favicon_url", favicon_url)
+        _cfg_obj.set("g", "unallowed-name", unallowed_name)
         _cfg_obj.set("nginx", "dn", nginx_dn)
         _cfg_obj.set("nginx", "exec", nginx_exec)
         _cfg_obj.set("nginx", "ssl", nginx_ssl)
@@ -91,6 +94,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, nginx_dn
         _cfg_obj.set("nginx", "ssl_hsts_maxage", str(nginx_ssl_hsts_maxage))
         _cfg_obj.set("py", "py2", py2)
         _cfg_obj.set("py", "py3", py3)
+        _cfg_obj.set("py", "index", index)
         _cfg_obj.set("api", "host", host)
         _cfg_obj.set("api", "port", str(port))
         _cfg_obj.set("api", "secret", api_secret)
@@ -101,7 +105,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, nginx_dn
 
 
 @cli.command()
-@click.option('--action', '-a', default='get', type=click.Choice(["create", "update", "remove", "get"]), help=u'动作', show_default=True)
+@click.option('--action', '-a', default='get', type=click.Choice(["create", "update", "remove", "get", "list"]), help=u'动作', show_default=True)
 @click.option('--url', type=str, help=u'文档项目的git仓库地址')
 @click.option('--latest', default='master', type=str, help=u'latest所指向的分支', show_default=True)
 @click.option('--single/--no-single', default=False, help=u'是否开启单一版本功能', show_default=True)
@@ -111,13 +115,14 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, nginx_dn
 @click.option('--version', '-v',  type=int, default=2, help=u'Python版本，目前仅支持2、3两个值，对应版本由配置文件定义', show_default=True)
 @click.option('--requirements', '-r',  type=str, default='', help=u'需要安装的依赖包文件（文件路径是项目的相对位置），支持多个，以英文逗号分隔')
 @click.option('--install/--no-install', default=False, help=u'是否需要安装项目，如果值为true，则会在项目目录执行"pip install ."', show_default=True)
-@click.option('--index', '-i',  type=str, default='https://pypi.org/simple', help=u'指定pip安装时的pypi源', show_default=True)
+@click.option('--index', '-i',  type=str, default='', help=u'指定pip安装时的pypi源，默认是rtfd配置的源（其默认为官方源）', show_default=True)
 @click.option('--update-rule', '-ur', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
 @click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
-def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, update_rule, config, name):
+def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, update_rule, config, name=''):
     """文档项目管理"""
     from .libs import ProjectManager
+    from .config import CfgHandler
     name = name.lower().encode('utf-8')
     pm = ProjectManager(config)
     if action == 'get':
@@ -146,6 +151,9 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
         url = url.rstrip(".git") if url.endswith(".git") else url
         if default_language not in languages.split(","):
             default_language = languages.split(",")[0]
+        if not index:
+            _cfg = CfgHandler(config)
+            index = _cfg.py.get("index", default="https://pypi.org/simple")
         pm.create(name, url, latest=latest, single=single, sourcedir=sourcedir, languages=languages, default_language=default_language,
                   version=version, requirements=requirements, install=install, index=index)
         #: generate nginx template
@@ -167,6 +175,12 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             pm.nginx_builder(name)
     elif action == 'remove':
         pm.remove(name)
+    elif action == 'list':
+        data = pm._cps.list
+        param = name
+        if param == "only":
+            data = data.keys()
+        echo(json.dumps(data))
     else:
         return echo("Invalid action", fg='red')
 

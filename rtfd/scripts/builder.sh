@@ -66,6 +66,7 @@ _env_manager() {
     local rtfd_server=$7
     local server_static_url=$8
     local favicon_url=$9
+    local default_index=$10
     check_exit_param _env_manager_py2_path $py2_path
     check_exit_param _env_manager_py3_path $py3_path
     check_exit_param _env_manager_project_runtime_dir $project_runtime_dir
@@ -75,6 +76,7 @@ _env_manager() {
     check_exit_param _env_manager_rtfd_server $rtfd_server
     check_exit_param _env_manager_server_static_url $server_static_url
     check_exit_param _env_manager_favicon_url $favicon_url
+    check_exit_param _env_manager_default_index $default_index
     cd ${project_runtime_dir}
     check_exit_retcode
     #: 尝试读取项目的文档配置文件
@@ -105,7 +107,7 @@ _env_manager() {
     local py_version=${py_version:=$(_getDocsConf $project_name version 2)}
     local py_requirements=${py_requirements:=$(_getDocsConf $project_name requirements)}
     local py_install_project=${py_install_project:=$(_getDocsConf $project_name install false)}
-    local py_index=${py_index:=$(_getDocsConf $project_name index https://pypi.org/simple)}
+    local py_index=${py_index:=$(_getDocsConf $project_name index $default_index)}
     if [[ "${sphinx_sourcedir:0:1}" == "/" || "${sphinx_sourcedir:0:2}" == ".." ]]; then
         echo "In rtfd.ini, sourcedir cannot start with / or .."
         exit 1
@@ -276,6 +278,7 @@ main() {
     local rtfd_server=$(_getRtfdConf g server_url http://${api_host}:${api_port})
     local server_static_url=$(_getRtfdConf g server_static_url ${rtfd_server}/assets/rtfd/)
     local favicon_url=$(_getRtfdConf g favicon_url https://static.saintic.com/rtfd/favicon.png)
+    local default_index=$(_getRtfdConf py index https://pypi.org/simple)
     echo -e "$base_dir $py2_path $py3_path\n$project_name $project_git $branch $rtfd_server"
     #: 校验参数
     check_exit_param project_name $project_name
@@ -291,7 +294,7 @@ main() {
         check_exit_retcode
         local project_docs_dir=$(_join_path $docs_dir $project_name)
         local project_runtime_dir=$(_join_path $runtimes_dir $project_name)
-        _env_manager $py2_path $py3_path $project_runtime_dir $project_docs_dir $branch $project_name $rtfd_server $server_static_url $favicon_url
+        _env_manager $py2_path $py3_path $project_runtime_dir $project_docs_dir $branch $project_name $rtfd_server $server_static_url $favicon_url $default_index
         check_exit_retcode
         local utime=$(($SECONDS - $stime))
         echo "Build Successfully, $utime seconds passed."

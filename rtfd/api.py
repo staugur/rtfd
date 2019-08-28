@@ -98,6 +98,8 @@ def rtfd_webhook_view(name):
         secret = cfg.api.get("secret")
         sign_passing = True
         if secret:
+            if isinstance(secret, unicode):
+                secret = secret.encode("utf-8")
             sign_passing = False
             signature = request.headers.get("X-Hub-Signature")
             if signature:

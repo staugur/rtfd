@@ -15,7 +15,7 @@ from os.path import expanduser, dirname, join, abspath, isdir, isfile
 from jinja2 import Template
 from time import strftime
 from .utils import ProjectStorage, run_cmd, run_cmd_stream
-from .exceptions import ProjectExistsError, ProjectNotFound
+from .exceptions import ProjectExistsError, ProjectNotFound, ProjectUnallowedError
 from .config import CfgHandler
 from ._log import Logger
 
@@ -27,9 +27,15 @@ class ProjectManager(object):
         self._cfg_handler = CfgHandler(self._cfg_file)
         self._cps = ProjectStorage(self._cfg_file)
         self._logger = Logger("sys", self._cfg_file).getLogger
+        self._unallow_names = self._cfg_handler.g.get(
+            "unallowed_name", default="").split(",")
+        if "www" not in self._unallow_names:
+            self._unallow_names.append("www")
 
     def create(self, name, url, **kwargs):
         name = name.lower()
+        if name in self._unallow_names:
+            raise ProjectUnallowedError("Unallowed project name '%s'" % name)
         if self.has(name):
             raise ProjectExistsError("This project '%s' already exists" % name)
         else:
@@ -85,7 +91,8 @@ class ProjectManager(object):
                     dn=data.get("_dn"), sourcedir=data.get("sourcedir"),
                     single=True if data.get("single") in (
                         True, "true", "True") else False,
-                    showNav=True if data.get("showNav", True) in (True, "true", "True") else False,
+                    showNav=True if data.get("showNav", True) in (
+                        True, "true", "True") else False,
                     icon='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4lc7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMwBHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrzdQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII=')
         return resp
 
