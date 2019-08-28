@@ -101,10 +101,11 @@ class ProjectManager(object):
         if self.has(name):
             data = self.get(name)
             if isinstance(data, dict):
+                if "languages" in kwargs and "default_language" not in kwargs:
+                    kwargs['default_language'] = data.get("default_language")
                 if "default_language" in kwargs:
                     if kwargs["default_language"] not in data["languages"].split(","):
-                        kwargs["default_language"] = data["languages"].split(",")[
-                            0]
+                        kwargs["default_language"] = data["languages"].split(",")[0]
                 data.update(kwargs)
                 for k, v in data.iteritems():
                     if isinstance(v, unicode):

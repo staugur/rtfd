@@ -116,10 +116,11 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 @click.option('--requirements', '-r',  type=str, default='', help=u'需要安装的依赖包文件（文件路径是项目的相对位置），支持多个，以英文逗号分隔')
 @click.option('--install/--no-install', default=False, help=u'是否需要安装项目，如果值为true，则会在项目目录执行"pip install ."', show_default=True)
 @click.option('--index', '-i',  type=str, default='', help=u'指定pip安装时的pypi源，默认是rtfd配置的源（其默认为官方源）', show_default=True)
+@click.option('--showNav/--no-showNav', default=True, help=u'是否显示导航', show_default=True)
 @click.option('--update-rule', '-ur', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
 @click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
-def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, update_rule, config, name=''):
+def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, showNav, update_rule, config, name=''):
     """文档项目管理"""
     from .libs import ProjectManager
     from .config import CfgHandler
@@ -155,7 +156,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             _cfg = CfgHandler(config)
             index = _cfg.py.get("index", default="https://pypi.org/simple")
         pm.create(name, url, latest=latest, single=single, sourcedir=sourcedir, languages=languages, default_language=default_language,
-                  version=version, requirements=requirements, install=install, index=index)
+                  version=version, requirements=requirements, install=install, index=index, showNav=showNav)
         #: generate nginx template
         pm.nginx_builder(name)
     elif action == 'update':
