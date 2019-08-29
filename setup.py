@@ -112,7 +112,7 @@ setup(
         'Click>=7.0',
         'configparser'
     ],
-    python_requires=">=2.7",
+    python_requires=">=2.7,<3",
     cmdclass={
         'publish': PublishCommand,
     },
