@@ -25,7 +25,17 @@ def echo(msg, fg=None):
     )
 
 
-@click.group()
+def print_version(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+    from . import __version__
+    click.echo(__version__)
+    ctx.exit()
+
+
+@click.group(context_settings={'help_option_names': ['-h', '--help']})
+@click.option('--version', '-v', is_flag=True, callback=print_version,
+              expose_value=False, is_eager=True)
 def cli():
     pass
 
@@ -50,7 +60,7 @@ def cli():
 @click.option('--host', default='127.0.0.1', help=u"Api监听地址", show_default=True)
 @click.option('--port', default=5000, type=int, help=u"Api监听端口", show_default=True)
 @click.option('--api-secret', default='', help=u"Api密钥", show_default=True)
-@click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件（不会覆盖）', show_default=True)
+@click.option('--config', '-c', type=click.Path(exists=False), default=DEFAULT_CFG, help=u'rtfd的配置文件（不会覆盖）', show_default=True)
 def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowed_name, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, nginx_ssl_key, nginx_ssl_hsts_maxage, py2, py3, index, host, port, api_secret, config):
     """初始化rtfd"""
     _cfg_file = config or DEFAULT_CFG
@@ -118,7 +128,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 @click.option('--index', '-i',  type=str, default='', help=u'指定pip安装时的pypi源，默认是rtfd配置的源（其默认为官方源）', show_default=True)
 @click.option('--showNav/--no-showNav', default=True, help=u'是否显示导航', show_default=True)
 @click.option('--update-rule', '-ur', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
-@click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
+@click.option('--config', '-c', type=click.Path(exists=True), default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
 def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, shownav, update_rule, config, name=''):
     """文档项目管理"""
@@ -160,7 +170,50 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
         #: generate nginx template
         pm.nginx_builder(name)
     elif action == 'update':
-        update_rule = json.loads(update_rule)
+        if update_rule[-4:] in (".cfg", ".ini") and isfile(update_rule):
+            data = pm.get(name)
+            #: 依照文档的rtfd配置文件内容更新项目信息
+            urc = CfgHandler(update_rule)
+            update_rule = {}
+            try:
+                project = urc.project
+            except AttributeError:
+                pass
+            else:
+                latest = project.get("latest")
+                if latest and latest != data.get("latest"):
+                    update_rule['latest'] = latest
+            try:
+                sphinx = urc.sphinx
+            except AttributeError:
+                pass
+            else:
+                sourcedir = sphinx.get("sourcedir")
+                languages = sphinx.get("languages")
+                if sourcedir and sourcedir != data.get("sourcedir"):
+                    update_rule["sourcedir"] = sourcedir
+                if languages and languages != data.get("languages"):
+                    update_rule["languages"] = languages
+            try:
+                py = urc.python
+            except AttributeError:
+                pass
+            else:
+                version = py.get("version")
+                requirements = py.get("requirements")
+                install = py.get("install")
+                index = py.get("index")
+                if version and version in (2, 3) and version != data.get("version"):
+                    update_rule["version"] = version
+                if requirements and requirements != data.get("requirements"):
+                    update_rule["requirements"] = requirements
+                if install and install in (True, "true", "True", False, "False", "false") and install != data.get("install"):
+                    update_rule["install"] = install
+                if index and index != data.get("index"):
+                    update_rule["index"] = index
+        else:
+            update_rule = json.loads(update_rule)
+        #: 更新内容检测
         if not isinstance(update_rule, dict):
             return echo("the update rule is error", fg='red')
         for key in update_rule.keys():
@@ -187,8 +240,8 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
 
 
 @cli.command()
-@click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.option('--branch', '-b', default='master', help=u'文档构建所在的git分支', show_default=True)
+@click.option('--config', '-c', type=click.Path(exists=True), default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
 def build(config, branch, name):
     """构建文档"""
@@ -204,7 +257,7 @@ def build(config, branch, name):
 @click.option('--host', help=u"Api监听地址", show_default=True)
 @click.option('--port', type=int, help=u"Api监听端口", show_default=True)
 @click.option('--debug/--no-debug', default=True, help=u'是否开启DEBUG', show_default=True)
-@click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
+@click.option('--config', '-c', type=click.Path(exists=True), default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 def api(host, port, debug, config):
     """以开发模式运行API"""
     from flask import Flask
@@ -221,7 +274,7 @@ def api(host, port, debug, config):
 
 
 @cli.command()
-@click.option('--config', '-c', default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
+@click.option('--config', '-c', type=click.Path(exists=True), default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('section_item')
 def cfg(config, section_item):
     """查询配置文件的配置内容"""

@@ -34,7 +34,9 @@ const rtfd = {
     },
     //api url
     api: function () {
-        return this.getUrlQuery("rtfd_api") + "/rtfd/api";
+        var api = this.getUrlQuery("rtfd_api");
+        var anf = this.getUrlQuery("api_no_fill", "no");
+        return anf === "yes" ? api : api + "/rtfd/api";
     },
     //static url
     static: function () {

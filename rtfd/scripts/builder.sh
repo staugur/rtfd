@@ -6,6 +6,8 @@
 #License:     BSD 3-Clause
 #Copyright:   (c) 2019 by staugur.
 
+rtfd_cfg=$HOME/.rtfd.cfg
+
 check_exit_param() {
     local n=$1
     local c=$2
@@ -25,16 +27,6 @@ check_exit_retcode() {
     fi
 }
 
-_readINI() {
-    #: _readINI [配置文件路径+名称] [节点名] [键值]
-    local INIFILE=$1
-    local SECTION=$2
-    local ITEM=$3
-    local default=$4
-    _readIni=$(awk -F '=' '/['$SECTION']/{a=1}a==1&&$1~/'$ITEM'/{print $2;exit}' $INIFILE)
-    echo ${_readIni:-$default}
-}
-
 _getDocsConf() {
     local name=$1
     local key=$2
@@ -44,10 +36,21 @@ _getDocsConf() {
 }
 
 _getRtfdConf() {
+    local config=$1
+    local sfx=${config:0-4}
+    if [[ "$sfx" == ".cfg" || "$sfx" == ".ini" ]]; then
+        local is_cfg="yes"
+    fi
+    if [[ -f $config && "$is_cfg" == "yes" ]]; then
+        shift
+        cmd="rtfd cfg -c $config"
+    else
+        cmd="rtfd cfg -c $rtfd_cfg"
+    fi
     local name=$1
     local key=$2
     local default=$3
-    local value=$(rtfd cfg ${name}:${key})
+    local value=$($cmd ${name}:${key})
     echo ${value:-$default}
 }
 
@@ -93,13 +96,13 @@ _env_manager() {
         #: requirements = docs/requirements.txt,dev-requirements.txt
         #: install = true
         #: index =  pypi source
-        local project_latest=$(_readINI $project_ini project latest)
-        local sphinx_sourcedir=$(_readINI $project_ini sphinx sourcedir)
-        local sphinx_languages=$(_readINI $project_ini sphinx languages)
-        local py_version=$(_readINI $project_ini python version)
-        local py_requirements=$(_readINI $project_ini python requirements)
-        local py_install_project=$(_readINI $project_ini python install)
-        local py_index=$(_readINI $project_ini python index)
+        local project_latest=$(_getRtfdConf $project_ini project latest)
+        local sphinx_sourcedir=$(_getRtfdConf $project_ini sphinx sourcedir)
+        local sphinx_languages=$(_getRtfdConf $project_ini sphinx languages)
+        local py_version=$(_getRtfdConf $project_ini python version)
+        local py_requirements=$(_getRtfdConf $project_ini python requirements)
+        local py_install_project=$(_getRtfdConf $project_ini python install)
+        local py_index=$(_getRtfdConf $project_ini python index)
     fi
     local project_latest=${project_latest:=$(_getDocsConf $project_name latest master)}
     local sphinx_sourcedir=${sphinx_sourcedir:=$(_getDocsConf $project_name sourcedir docs)}
@@ -170,7 +173,13 @@ EOF
     done
     #: 退出虚拟环境
     deactivate
-    return $?
+    code=$?
+    #: 后续处理：依照${project_ini}更新项目信息
+    if [ -f $project_ini ]; then
+        rtfd project -a update -ur $project_ini $project_name
+        return $?
+    fi
+    return $code
 }
 
 _code_manager() {
@@ -265,14 +274,14 @@ main() {
     #: 设置默认配置
     local branch=${branch:=master}
     #: 读取用户级配置文件
-    local rtfd_ini="${config:=$HOME/.rtfd.cfg}"
-    if [ ! -f $rtfd_ini ]; then
-        echo "Not found config file $rtfd_ini"
+    rtfd_cfg="${config:=$rtfd_cfg}"
+    if [ ! -f $rtfd_cfg ]; then
+        echo "Not found config file $rtfd_cfg"
         exit 1
     fi
-    local base_dir=$(_readINI $rtfd_ini g base_dir)
-    local py2_path=$(_readINI $rtfd_ini py py2)
-    local py3_path=$(_readINI $rtfd_ini py py3)
+    local base_dir=$(_getRtfdConf g base_dir)
+    local py2_path=$(_getRtfdConf py py2)
+    local py3_path=$(_getRtfdConf py py3)
     local api_host=$(_getRtfdConf api host 127.0.0.1)
     local api_port=$(_getRtfdConf api port 5000)
     local rtfd_server=$(_getRtfdConf g server_url http://${api_host}:${api_port})
@@ -301,7 +310,7 @@ main() {
         rm -rf $runtimes_dir
         return 0
     else
-        echo "Configuration information is wrong in ${rtfd_ini}"
+        echo "Configuration information is wrong in ${rtfd_cfg}"
         exit 1
     fi
 }
