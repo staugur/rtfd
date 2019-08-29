@@ -11,6 +11,10 @@ dir=$(
 )
 cd $dir
 
+if [ -f online_preboot.sh ]; then
+    source online_preboot.sh
+fi
+
 host=$(rtfd cfg api:host)
 port=$(rtfd cfg api:port)
 basedir=$(rtfd cfg g:base_dir)

@@ -95,7 +95,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
         if server_static_url:
             _cfg_obj.set("g", "server_static_url", server_static_url)
         _cfg_obj.set("g", "favicon_url", favicon_url)
-        _cfg_obj.set("g", "unallowed-name", unallowed_name)
+        _cfg_obj.set("g", "unallowed_name", unallowed_name)
         _cfg_obj.set("nginx", "dn", nginx_dn)
         _cfg_obj.set("nginx", "exec", nginx_exec)
         _cfg_obj.set("nginx", "ssl", nginx_ssl)
