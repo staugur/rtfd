@@ -104,8 +104,9 @@ class ProjectManager(object):
                 if "languages" in kwargs and "default_language" not in kwargs:
                     kwargs['default_language'] = data.get("default_language")
                 if "default_language" in kwargs:
-                    if kwargs["default_language"] not in data["languages"].split(","):
-                        kwargs["default_language"] = data["languages"].split(",")[0]
+                    _lgs = data["languages"].split(",")
+                    if kwargs["default_language"] not in _lgs:
+                        kwargs["default_language"] = _lgs[0]
                 data.update(kwargs)
                 for k, v in data.iteritems():
                     if isinstance(v, unicode):
@@ -138,9 +139,15 @@ class ProjectManager(object):
         #: reload nginx
         nginx_exec = self._cfg_handler.nginx.get("exec")
         if nginx_exec:
-            exitcode, _, _ = run_cmd(nginx_exec, '-t')
+            if " " in nginx_exec:
+                check_cmd = nginx_exec.split("") + ["-t"]
+                reload_cmd = nginx_exec.split("") + ["-s", "reload"]
+            else:
+                check_cmd = [nginx_exec, "-t"]
+                reload_cmd = [nginx_exec, "-s", "reload"]
+            exitcode, _, _ = run_cmd(*check_cmd)
             if exitcode == 0:
-                run_cmd(nginx_exec, '-s', 'reload')
+                run_cmd(*reload_cmd)
             else:
                 self._logger.warning("Project.Nginx: Syntax check failed")
 
