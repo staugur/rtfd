@@ -109,7 +109,7 @@ const rtfd = {
                     that.addJS('tipped.js', function () {
                         that.addHtml(base_str);
                         Tipped.create('#rtfd-header', {
-                            title: `Version: ${branch}`,
+                            title: `Version: ${branch}` + (branch === "latest" ? (" -> " + res.data.latest) : ""),
                             inline: 'rtfd-body',
                             showOn: 'click',
                             hideOn: 'click',

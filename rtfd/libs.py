@@ -83,7 +83,7 @@ class ProjectManager(object):
             if isdir(lang_dir):
                 _versions = listdir(lang_dir)
                 _versions.remove(data["latest"])
-                versions[lang] = _versions
+                versions[lang] = sorted(_versions, reverse=True)
             else:
                 versions[lang] = []
         resp = dict(languages=languages, versions=versions,
@@ -113,6 +113,9 @@ class ProjectManager(object):
                     data[k] = v
                 self._logger.info(
                     "Project.Update: name is %s, update params is %s" % (name, kwargs))
+                #: update nginx template
+                if "languages" in kwargs or "default_language" in kwargs or "single" in kwargs:
+                    self.nginx_builder(name)
                 return self._cps.set(name, data)
 
     def remove(self, name):
@@ -247,6 +250,7 @@ class RTFD_BUILDER(object):
             branch = branch.encode("utf8")
         if not self._cpm.has(name):
             yield "Did not find this project %s" % name
+            return
         data = self._cpm.get(name)
         if data and isinstance(data, dict) and "url" in data:
             if branch == "latest":

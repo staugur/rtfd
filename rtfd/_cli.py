@@ -213,6 +213,8 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
                     update_rule["index"] = index
         else:
             update_rule = json.loads(update_rule)
+            if "latest" in update_rule:
+                return echo("Unallow update latest with cli", fg="red")
         #: 更新内容检测
         if not isinstance(update_rule, dict):
             return echo("the update rule is error", fg='red')
@@ -224,9 +226,6 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
                 url = url.rstrip(".git") if url.endswith(".git") else url
                 update_rule["url"] = url
         pm.update(name, **update_rule)
-        #: update nginx template
-        if "languages" in update_rule or "default_language" in update_rule or "single" in update_rule:
-            pm.nginx_builder(name)
     elif action == 'remove':
         pm.remove(name)
     elif action == 'list':
