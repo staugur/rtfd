@@ -59,9 +59,8 @@ def cli():
 @click.option('--index', '-i',  type=str, default='https://pypi.org/simple', help=u'pip安装时的默认源', show_default=True)
 @click.option('--host', default='127.0.0.1', help=u"Api监听地址", show_default=True)
 @click.option('--port', default=5000, type=int, help=u"Api监听端口", show_default=True)
-@click.option('--api-secret', default='', help=u"Api密钥", show_default=True)
 @click.option('--config', '-c', type=click.Path(exists=False), default=DEFAULT_CFG, help=u'rtfd的配置文件（不会覆盖）', show_default=True)
-def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowed_name, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, nginx_ssl_key, nginx_ssl_hsts_maxage, py2, py3, index, host, port, api_secret, config):
+def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowed_name, nginx_dn, nginx_exec, nginx_ssl, nginx_ssl_crt, nginx_ssl_key, nginx_ssl_hsts_maxage, py2, py3, index, host, port, config):
     """初始化rtfd"""
     _cfg_file = config or DEFAULT_CFG
     if not isfile(_cfg_file):
@@ -106,7 +105,6 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
         _cfg_obj.set("py", "index", index)
         _cfg_obj.set("api", "host", host)
         _cfg_obj.set("api", "port", str(port))
-        _cfg_obj.set("api", "secret", api_secret)
         with open(_cfg_file, 'wb') as fp:
             _cfg_obj.write(fp)
     else:
@@ -125,11 +123,12 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 @click.option('--requirements', '-r',  type=str, default='', help=u'需要安装的依赖包文件（文件路径是项目的相对位置），支持多个，以英文逗号分隔')
 @click.option('--install/--no-install', default=False, help=u'是否需要安装项目，如果值为true，则会在项目目录执行"pip install ."', show_default=True)
 @click.option('--index', '-i',  type=str, default='', help=u'指定pip安装时的pypi源，默认是rtfd配置的源（其默认为官方源）', show_default=True)
-@click.option('--showNav/--no-showNav', default=True, help=u'是否显示导航', show_default=True)
+@click.option('--show-nav/--no-show-nav', default=True, help=u'是否显示导航', show_default=True)
+@click.option('--webhook-secret', '-ws', default='', help=u"Webhook密钥", show_default=True)
 @click.option('--update-rule', '-ur', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
 @click.option('--config', '-c', type=click.Path(exists=True), default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
-def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, shownav, update_rule, config, name=''):
+def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, show_nav, webhook_secret, update_rule, config, name=''):
     """文档项目管理"""
     from .libs import ProjectManager
     from .config import CfgHandler
@@ -165,7 +164,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             _cfg = CfgHandler(config)
             index = _cfg.py.get("index", default="https://pypi.org/simple")
         pm.create(name, url, latest=latest, single=single, sourcedir=sourcedir, languages=languages, default_language=default_language,
-                  version=version, requirements=requirements, install=install, index=index, showNav=shownav)
+                  version=version, requirements=requirements, install=install, index=index, show_nav=show_nav, webhook_secret=webhook_secret)
         #: generate nginx template
         pm.nginx_builder(name)
     elif action == 'update':

@@ -13,9 +13,9 @@ import hmac
 from hashlib import sha1
 from thread import start_new_thread
 from collections import deque
-from flask import request, jsonify, make_response, render_template_string
+from flask import request, jsonify, make_response, render_template_string,\
+    current_app
 from .libs import ProjectManager, RTFD_BUILDER
-from .config import CfgHandler
 
 #: Build message queue
 _queue = deque()
@@ -24,12 +24,13 @@ _queue = deque()
 def rtfd_api_view():
     """RTFD接口视图"""
     res = dict(code=-1, msg=None)
+    cfg = current_app.config.get("RTFD_CFG")
     Action = request.args.get("Action")
     if request.method == "GET":
         if Action == "describeProject":
             name = request.args.get("name")
             if name:
-                cpm = ProjectManager()
+                cpm = ProjectManager(cfg)
                 if cpm.has(name):
                     data = cpm.get_for_api(name)
                     if data:
@@ -54,7 +55,7 @@ def rtfd_api_view():
                 res = dict(code=0, msg=msg)
     else:
         if Action == "buildProject":
-            rb = RTFD_BUILDER()
+            rb = RTFD_BUILDER(cfg)
             name = request.form.get("name", request.args.get("name"))
             branch = request.form.get(
                 "branch", request.args.get("branch")) or "latest"
@@ -73,7 +74,7 @@ def rtfd_api_view():
 
 def rtfd_badge_view(name):
     """RTFD徽章视图"""
-    cpm = ProjectManager()
+    cpm = ProjectManager(current_app.config.get("RTFD_CFG"))
     status = cpm.get_for_badge(
         name, branch=request.args.get("branch") or "latest"
     )
@@ -93,9 +94,13 @@ def rtfd_webhook_view(name):
     res = dict(code=-1, msg=None)
     data = request.json
     event = request.headers.get("X-GitHub-Event")
-    if data and event in ("push", "release"):
-        cfg = CfgHandler()
-        secret = cfg.api.get("secret")
+    cfg = current_app.config.get("RTFD_CFG")
+    pm = ProjectManager(cfg)
+    if not pm.has(name):
+        res.update(code=404, msg="Not found project")
+    elif data and event in ("push", "release"):
+        docsInfo = pm.get(name)
+        secret = docsInfo.get("webhook_secret")
         sign_passing = True
         if secret:
             if isinstance(secret, unicode):
@@ -117,7 +122,7 @@ def rtfd_webhook_view(name):
             else:
                 res.update(msg="Invalid signature header")
         if sign_passing is True:
-            rb = RTFD_BUILDER()
+            rb = RTFD_BUILDER(cfg)
             if rb._cpm.has(name):
                 allow_build = True
                 if event == "push":

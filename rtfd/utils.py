@@ -34,10 +34,15 @@ def run_cmd(*args):
     """
     Execute the external command and get its exitcode, stdout and stderr.
     """
-    proc = Popen(args, stdout=PIPE, stderr=STDOUT)
-    out, err = proc.communicate()
-    exitcode = proc.returncode
-    return exitcode, out, err
+    try:
+        proc = Popen(args, stdout=PIPE, stderr=STDOUT)
+    except (OSError, Exception) as e:
+        out, err, exitcode = (str(e), None, 1)
+    else:
+        out, err = proc.communicate()
+        exitcode = proc.returncode
+    finally:
+        return exitcode, out, err
 
 
 def run_cmd_stream(*args):
