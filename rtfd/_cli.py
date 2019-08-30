@@ -42,17 +42,17 @@ def cli():
 
 @cli.command()
 @click.confirmation_option(prompt=u'确定要初始化rtfd吗？')
-@click.option('--basedir', '-b', help=u'rtfd根目录')
+@click.option('--basedir', '-b', type=click.Path(), help=u'rtfd根目录')
 @click.option('--loglevel', '-l', default='INFO', type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"]), help=u'日志级别', show_default=True)
 @click.option('--server-url', '-su', default='', help=u'rtfd服务地址，默认是api段的http://host:port')
 @click.option('--server-static_url', '-ssu', default='', help=u'rtfd静态资源地址，默认在server-url下')
 @click.option('--favicon-url', '-fu', default='https://static.saintic.com/rtfd/favicon.png', help=u'文档HTML页面的默认图标地址', show_default=True)
 @click.option('--unallowed-name', '-un', default='', help=u'不允许的文档项目名称，以英文逗号分隔', show_default=True)
 @click.option('--nginx-dn', default='localhost.localdomain', help=u'文档生成后用以Nginx访问的顶级域名', show_default=True)
-@click.option('--nginx-exec', default='/usr/sbin/nginx', help=u'Nginx管理命令路径', show_default=True)
+@click.option('--nginx-exec', type=click.Path(exists=True), default='/usr/sbin/nginx', help=u'Nginx管理命令路径', show_default=True)
 @click.option('--nginx-ssl/--no-nginx-ssl', default=False, help=u'Nginx开启SSL', show_default=True)
-@click.option('--nginx-ssl-crt', default='${g:base_dir}/certs/${dn}.crt', help=u'SSL证书', show_default=True)
-@click.option('--nginx-ssl-key', default='${g:base_dir}/certs/${dn}.key', help=u'SSL证书私钥', show_default=True)
+@click.option('--nginx-ssl-crt', type=click.Path(), default='${g:base_dir}/certs/${dn}.crt', help=u'SSL证书', show_default=True)
+@click.option('--nginx-ssl-key', type=click.Path(), default='${g:base_dir}/certs/${dn}.key', help=u'SSL证书私钥', show_default=True)
 @click.option('--nginx-ssl-hsts-maxage', default=31536000, type=int, help=u'设置在浏览器收到这个请求后的maxage秒的时间内凡是访问这个域名下的请求都使用HTTPS请求。', show_default=True)
 @click.option('--py2', type=click.Path(exists=True), default='/usr/bin/python2', help=u"Python2路径", show_default=True)
 @click.option('--py3', type=click.Path(exists=True), default='/usr/bin/python3', help=u"Python3路径", show_default=True)
@@ -128,7 +128,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 @click.option('--update-rule', '-ur', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
 @click.option('--config', '-c', type=click.Path(exists=True), default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
-def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, show_nav, webhook_secret, update_rule, config, name=''):
+def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, show_nav, webhook_secret, update_rule, config, name):
     """文档项目管理"""
     from .libs import ProjectManager
     from .config import CfgHandler

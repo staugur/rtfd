@@ -49,3 +49,9 @@ def run_cmd_stream(*args):
     proc = Popen(args, stdout=PIPE, stderr=STDOUT)
     for i in iter(proc.stdout.readline, b''):
         yield i.rstrip()
+
+
+def is_true(value):
+    if value and value in (True, "True", "true", "on", 1, "1", "yes"):
+        return True
+    return False

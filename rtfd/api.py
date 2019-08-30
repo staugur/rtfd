@@ -16,6 +16,7 @@ from collections import deque
 from flask import request, jsonify, make_response, render_template_string,\
     current_app
 from .libs import ProjectManager, RTFD_BUILDER
+from .utils import is_true
 
 #: Build message queue
 _queue = deque()
@@ -47,8 +48,7 @@ def rtfd_api_view():
             except IndexError:
                 msg = ""
             #: 重置res响应数据
-            isRaw = True if request.args.get("raw", True) in (
-                1, "1", "on", True, "True", "true") else False
+            isRaw = is_true(request.args.get("raw", True))
             if isRaw:
                 res = msg
             else:
@@ -58,13 +58,14 @@ def rtfd_api_view():
             rb = RTFD_BUILDER(cfg)
             name = request.form.get("name", request.args.get("name"))
             branch = request.form.get(
-                "branch", request.args.get("branch")) or "latest"
+                "branch", request.args.get("branch")
+            ) or "latest"
             if rb._cpm.has(name):
                 def build(name, branch):
                     for _out in rb.build(name, branch, "api"):
                         _queue.append(_out)
                 start_new_thread(build, (name, branch))
-                res.update(code=0, msg="Already submitted asynchronous task")
+                res.update(code=0, branch=branch, msg="ok")
             else:
                 res.update(msg="Did not find this project %s" % name)
     response = make_response(jsonify(res))
