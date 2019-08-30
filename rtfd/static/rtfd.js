@@ -65,7 +65,7 @@ const rtfd = {
     //Initiate an ajax request to get the initialization code of the document
     init: function () {
         var that = this;
-        var name = location.host.split('.')[0];
+        var name = that.getUrlQuery("name");
         $.ajax({
             url: that.api() + '?Action=describeProject&name=' + name,
             type: "GET",
