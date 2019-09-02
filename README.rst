@@ -17,10 +17,20 @@ Installation
 Quickstart
 ----------
 
-1. rtfd init -b xx --other-options
+1. rtfd init -b your_data_dir --other-options
 
-2. rtfd project -a create --other-options your-docs-project
+2. rtfd project -a create --url git-url --other-options your-docs-project
 
 3. rtfd build your-docs-project
 
 More options with ``--help / -h`` option.
+
+
+Documention
+-----------
+
+|DocsStatus|
+
+.. |DocsStatus| image:: https://open.saintic.com/rtfd/badge/saintic-docs
+    :target: https://docs.saintic.com/rtfd/
+    :alt: Documentation Status

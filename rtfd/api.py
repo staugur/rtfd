@@ -59,7 +59,7 @@ def rtfd_api_view():
             name = request.form.get("name", request.args.get("name"))
             branch = request.form.get(
                 "branch", request.args.get("branch")
-            ) or "latest"
+            ) or "master"
             if rb._cpm.has(name):
                 def build(name, branch):
                     for _out in rb.build(name, branch, "api"):
