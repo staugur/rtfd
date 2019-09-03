@@ -113,7 +113,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 
 @cli.command()
 @click.option('--action', '-a', default='get', type=click.Choice(["create", "update", "remove", "get", "list"]), help=u'动作', show_default=True)
-@click.option('--url', type=str, help=u'文档项目的git仓库地址')
+@click.option('--url', type=str, help=u'文档项目的git仓库地址，如果是私有仓库，请在url协议后携带编码后的username:password')
 @click.option('--latest', default='master', type=str, help=u'latest所指向的分支', show_default=True)
 @click.option('--single/--no-single', default=False, help=u'是否开启单一版本功能', show_default=True)
 @click.option('--sourcedir', '-s',  type=str, default='docs', help=u'实际文档文件所在目录，目录路径是项目的相对位置', show_default=True)
@@ -125,10 +125,14 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 @click.option('--index', '-i',  type=str, default='', help=u'指定pip安装时的pypi源，默认是rtfd配置的源（其默认为官方源）', show_default=True)
 @click.option('--show-nav/--no-show-nav', default=True, help=u'是否显示导航', show_default=True)
 @click.option('--webhook-secret', '-ws', default='', help=u"Webhook密钥", show_default=True)
+@click.option('--custom-domain', '-cd', default='', help=u'文档项目开启自定义域名功能', show_default=True)
+@click.option('--ssl/--no-ssl', default=False, help=u'文档项目自定义域名是否开启SSL', show_default=True)
+@click.option('--ssl-crt', type=click.Path(exists=True), help=u'自定义域名的SSL证书', show_default=True)
+@click.option('--ssl-key', type=click.Path(exists=True), help=u'自定义域名的SSL证书私钥', show_default=True)
 @click.option('--update-rule', '-ur', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
 @click.option('--config', '-c', type=click.Path(exists=True), default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
-def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, show_nav, webhook_secret, update_rule, config, name):
+def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, show_nav, webhook_secret, custom_domain, ssl, ssl_crt, ssl_key, update_rule, config, name):
     """文档项目管理"""
     from .libs import ProjectManager
     from .config import CfgHandler

@@ -15,7 +15,8 @@ from os.path import expanduser, dirname, join, abspath, isdir, isfile
 from jinja2 import Template
 from time import strftime
 from .utils import ProjectStorage, run_cmd, run_cmd_stream, is_true
-from .exceptions import ProjectExistsError, ProjectNotFound, ProjectUnallowedError
+from .exceptions import ProjectExistsError, ProjectNotFound, \
+    ProjectUnallowedError, CfgNotFound
 from .config import CfgHandler
 from ._log import Logger
 
@@ -24,6 +25,8 @@ class ProjectManager(object):
 
     def __init__(self, cfg=None):
         self._cfg_file = cfg or expanduser("~/.rtfd.cfg")
+        if not isfile(self._cfg_file):
+            raise CfgNotFound("Not found config file: %s" % self._cfg_file)
         self._cfg_handler = CfgHandler(self._cfg_file)
         self._cps = ProjectStorage(self._cfg_file)
         self._logger = Logger("sys", self._cfg_file).getLogger
@@ -33,14 +36,16 @@ class ProjectManager(object):
             self._unallow_names.append("www")
 
     def create(self, name, url, **kwargs):
-        name = name.lower()
+        name = name.lower().replace("_", "-").replace(" ", "")
         if name in self._unallow_names:
             raise ProjectUnallowedError("Unallowed project name '%s'" % name)
         if self.has(name):
             raise ProjectExistsError("This project '%s' already exists" % name)
         else:
-            kwargs.update(url=url, _dn="%s.%s" %
-                          (name, self._cfg_handler.nginx.dn))
+            kwargs.update(
+                url=url,
+                _dn="%s.%s" % (name, self._cfg_handler.nginx.dn)
+            )
             self._logger.info(
                 "Project.Create: name is %s, create params is %s" %
                 (name, kwargs)
@@ -213,6 +218,9 @@ server {
         #: SSL模板
         if NGINX_SSL:
             nginx_tpl = '''
+    if ($scheme = http) {
+        return 301 https://$server_name$request_uri;
+    }
     ssl_certificate %s;
     ssl_certificate_key %s;
     ssl_stapling on;

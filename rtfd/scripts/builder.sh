@@ -288,7 +288,7 @@ main() {
     local server_static_url=$(_getRtfdConf g server_static_url ${rtfd_server}/assets/rtfd/)
     local favicon_url=$(_getRtfdConf g favicon_url https://static.saintic.com/rtfd/favicon.png)
     local default_index=$(_getRtfdConf py index https://pypi.org/simple)
-    echo -e "$base_dir $py2_path $py3_path\n$project_name $project_git $branch $rtfd_server"
+    #: echo -e "$base_dir $py2_path $py3_path\n$project_name $project_git $branch $rtfd_server"
     #: 校验参数
     check_exit_param project_name $project_name
     check_exit_param project_git $project_git

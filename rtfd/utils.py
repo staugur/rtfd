@@ -10,6 +10,7 @@
 """
 
 import shelve
+from re import compile
 from os.path import join
 from flask_pluginkit import LocalStorage
 from subprocess import Popen, PIPE, STDOUT
@@ -54,4 +55,14 @@ def run_cmd_stream(*args):
 def is_true(value):
     if value and value in (True, "True", "true", "on", 1, "1", "yes"):
         return True
+    return False
+
+
+def is_domain(value):
+    if value and isinstance(value, basestring):
+        pat = compile(
+            r'^(?=^.{3,255}$)[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$'
+        )
+        if pat.match(value):
+            return True
     return False

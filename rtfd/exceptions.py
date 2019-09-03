@@ -24,3 +24,7 @@ class ProjectNotFound(RTFDError):
 
 class ProjectUnallowedError(RTFDError):
     pass
+
+
+class CfgNotFound(RTFDError):
+    pass
