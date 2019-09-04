@@ -3,7 +3,7 @@
 import string
 import unittest
 from shutil import rmtree
-from os import remove
+from os import remove, getenv, getcwd
 from os.path import join
 from random import sample
 from tempfile import gettempdir
@@ -25,7 +25,11 @@ class UtilsTest(unittest.TestCase):
         self.assertEqual(out.strip("\n"), __version__)
 
     def test_projectstorage(self):
-        basedir = join(gettempdir(), self.gen_tmpstr())
+        with self.assertRaises(AttributeError):
+            ProjectStorage()
+
+        basedir = join(gettempdir() if not getenv("TRAVIS")
+                       else getcwd(), self.gen_tmpstr())
         cfg = "%s.cfg" % basedir
         run_cmd("rtfd", "init", "--yes", "-b", basedir,
                 "--py3", "/usr/bin/python2", "-c", cfg)
