@@ -3,16 +3,22 @@ rtfd
 
 Build, read your exclusive and fuck docs.
 
+|Build Status| |Documentation Status| |codecov| |PyPI|
+
 Installation
 ------------
 
 - Production Version
 
-    `$ pip install -U rtfd`
+    .. code-block:: bash
+
+        $ pip install -U rtfd
 
 - Development Version
 
-    `$ pip install -U git+https://github.com/staugur/rtfd.git@master`
+    .. code-block:: bash
+
+        $ pip install -U git+https://github.com/staugur/rtfd.git@master
 
 Quickstart
 ----------
@@ -26,11 +32,14 @@ Quickstart
 More options with ``--help / -h`` option.
 
 
-Documention
------------
-
-|DocsStatus|
-
-.. |DocsStatus| image:: https://open.saintic.com/rtfd/badge/saintic-docs
+.. |Documentation Status| image:: https://open.saintic.com/rtfd/badge/saintic-docs
     :target: https://docs.saintic.com/rtfd/
-    :alt: Documentation Status
+
+.. |Build Status| image:: https://travis-ci.org/staugur/rtfd.svg?branch=master
+    :target: https://travis-ci.org/staugur/rtfd
+
+.. |codecov| image:: https://codecov.io/gh/staugur/rtfd/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/staugur/rtfd
+
+.. |PyPI| image:: https://img.shields.io/pypi/v/rtfd.svg?style=popout
+    :target: https://pypi.org/project/rtfd/

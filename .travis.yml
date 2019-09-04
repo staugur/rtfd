@@ -1,0 +1,31 @@
+language: python
+sudo: enabled
+env:
+  - CODECOV_TOKEN="c2ffcd3e-19f7-4df6-9ec8-8e61b9757366"
+python:
+  - "2.7"
+  - "pypy"
+matrix:
+  allow_failures:
+  - python: "pypy"
+before_install:
+  - sudo apt-get update
+install:
+  - pip install codecov
+  - make dev
+script:
+  - coverage run setup.py test
+after_success:
+  - codecov
+deploy:
+  provider: pypi
+  user: saintic
+  password:
+    secure: qIFYcJ/u2xOYVrMe/UKjfygKj9gTzvtFHIs5v3LGtkFMc7QJ6jEEsC3yWh8upAB5iddb2pI5wLcrYn4J13sxMd7I0na+sDHyq/CKrN3qJzdmD2U9FlHI8eLoOCPCEAfySyvO7hgWhk5oga4eJarEZBlq+5UGb6YfQnx7J32ViHEBEBWD6GFKAwAwtKOAYtRqlsRyJjz/41JnphXK7tpcUHZIO0s0XVC765CnXvHDlLPzol+ynEJz0/avTKJkUhC+I961QTSUgZC+J9QJcSepg+Bq6EssoRF5ldVKpRtrsjTNAEc535z/5JsvddNK7/+iay2X42YDBSvxYIOrFuqFLJK7AxxdGtHhiU5nwkYbDMERDVOmHCBbSMSqTOt9HMT486RGnizKGUUyk9Gsc+xZcYa+vSg4C9bCVdTBaJQ31Rv5NraMV7+APtL6iCcFufWyv5dHjKiyDNBKFtvpxDKC3Y+Hd3mOiS8+INNNMRoxZ7tbgYrQ2u3MkAAwLEyWJ2qgJI/Rx9jSTUVRcaT6csxwmSWNrvakUr3vZUR7EVA6nOcp7ShnCclEPTKgmqFZYqC3gA9KoO2MF/mSNYosrlCTPc23WEKqVobkqlLWVCR6dpw3k0JbPLB5rSIsHXz2dXdWDsHa45WhCiz6nfAsUpqGlk9NIty+NXuTrcQaE54HqAo=
+  distributions: sdist bdist_wheel
+  skip_existing: true
+  skip_cleanup: true
+  on:
+    python: 2.7
+    tags: true
+    branch: master

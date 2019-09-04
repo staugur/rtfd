@@ -3,6 +3,7 @@
 help:
 	@echo "  clean           remove unwanted stuff"
 	@echo "  dev             make a development package"
+	@echo "  test            run the tests"
 	@echo "  publish-test    package and upload a release to test.pypi.org"
 	@echo "  publish-release package and upload a release to pypi.org"
 
@@ -17,6 +18,10 @@ clean:
 
 dev:
 	pip install .
+	$(MAKE) clean
+
+test:
+	python setup.py test
 	$(MAKE) clean
 
 publish-test:

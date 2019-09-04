@@ -63,10 +63,13 @@ def is_domain(value):
     if value in ("false", False, "False", "off"):
         return False
     if value and isinstance(value, basestring):
-        pat = compile(
+        dn_pat = compile(
             r'^(?=^.{3,255}$)[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$'
         )
-        if pat.match(value):
+        ip_pat = compile(
+            r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+        )
+        if dn_pat.match(value) and not ip_pat.match(value):
             return True
     return False
 
