@@ -38,7 +38,7 @@ class SectionHandler(object):
                 value = False
             return value
         raise AttributeError(
-            "No option '%s' in section: '%s'" % (option, self._section)
+            "No option %s in section: %s" % (option, self._section)
         )
 
     __getitem__ = __getattr__
@@ -82,7 +82,7 @@ class CfgHandler(object):
         section = section.lower()
         if self._cfg_obj.has_section(section):
             return SectionHandler(self, section)
-        raise AttributeError("No section: '%s'" % section)
+        raise AttributeError("No section: %s" % section)
 
     __getitem__ = __getattr__
 

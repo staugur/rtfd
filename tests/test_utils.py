@@ -25,8 +25,6 @@ class UtilsTest(unittest.TestCase):
         self.assertEqual(out.strip("\n"), __version__)
 
     def test_projectstorage(self):
-        with self.assertRaises(AttributeError):
-            ProjectStorage()
         basedir = join(gettempdir(), self.gen_tmpstr())
         cfg = "%s.cfg" % basedir
         run_cmd("rtfd", "init", "--yes", "-b", basedir,

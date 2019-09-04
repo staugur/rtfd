@@ -38,7 +38,7 @@ class ProjectManager(object):
     def create(self, name, url, **kwargs):
         name = name.lower().replace("_", "-").replace(" ", "")
         if name in self._unallow_names:
-            raise ProjectUnallowedError("Unallowed project name '%s'" % name)
+            raise ProjectUnallowedError("Unallowed project name %s" % name)
         if self.has(name):
             raise ProjectExistsError("This project %s already exists" % name)
         else:
