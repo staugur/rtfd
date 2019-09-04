@@ -161,7 +161,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             echo(json.dumps(data))
     elif action == 'create':
         if not url or not url.startswith("http"):
-            return echo("url is required", fg='red')
+            return echo("Need a valid url", fg='red')
         url = url.rstrip(".git") if url.endswith(".git") else url
         if default_language not in languages.split(","):
             default_language = languages.split(",")[0]

@@ -126,7 +126,10 @@ class ProjectManager(object):
                         v.encode("utf-8")
                     data[k] = v
                 self._logger.info(
-                    "Project.Update: name is %s, update params is %s" % (name, kwargs))
+                    "Project.Update: name is %s, update params is %s" %
+                    (name, kwargs)
+                )
+                self._cps.set(name, data)
                 #: update nginx template
                 if "languages" in kwargs or "default_language" in kwargs or \
                         "single" in kwargs or "custom_domain" in kwargs or \
@@ -134,7 +137,6 @@ class ProjectManager(object):
                         "ssl_key" in kwargs:
                     self._logger.info("Project.Update: rendering nginx again")
                     self.nginx_builder(name)
-                return self._cps.set(name, data)
 
     def remove(self, name):
         name = name.lower()
