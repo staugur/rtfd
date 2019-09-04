@@ -12,6 +12,7 @@
 import shelve
 from re import compile
 from os.path import join
+from time import strftime
 from flask_pluginkit import LocalStorage
 from subprocess import Popen, PIPE, STDOUT
 from .config import CfgHandler
@@ -59,6 +60,8 @@ def is_true(value):
 
 
 def is_domain(value):
+    if value in ("false", False, "False", "off"):
+        return False
     if value and isinstance(value, basestring):
         pat = compile(
             r'^(?=^.{3,255}$)[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$'
@@ -66,3 +69,7 @@ def is_domain(value):
         if pat.match(value):
             return True
     return False
+
+
+def get_now():
+    return strftime('%Y-%m-%d %H:%M:%S')

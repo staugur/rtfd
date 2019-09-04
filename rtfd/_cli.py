@@ -136,6 +136,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
     """文档项目管理"""
     from .libs import ProjectManager
     from .config import CfgHandler
+    from .utils import is_domain
     name = name.lower().encode('utf-8')
     pm = ProjectManager(config)
     if action == 'get':
@@ -159,7 +160,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
         else:
             echo(json.dumps(data))
     elif action == 'create':
-        if not url:
+        if not url or not url.startswith("http"):
             return echo("url is required", fg='red')
         url = url.rstrip(".git") if url.endswith(".git") else url
         if default_language not in languages.split(","):
@@ -167,8 +168,18 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
         if not index:
             _cfg = CfgHandler(config)
             index = _cfg.py.get("index", default="https://pypi.org/simple")
-        pm.create(name, url, latest=latest, single=single, sourcedir=sourcedir, languages=languages, default_language=default_language,
-                  version=version, requirements=requirements, install=install, index=index, show_nav=show_nav, webhook_secret=webhook_secret)
+        if custom_domain and not is_domain(custom_domain):
+            return echo("You have set custom_domain, but the format is "
+                        "incorrect, custom_domain does not take effect.",
+                        fg="red")
+        pm.create(
+            name, url, latest=latest, single=single, sourcedir=sourcedir,
+            languages=languages, default_language=default_language,
+            version=version, requirements=requirements, install=install,
+            index=index, show_nav=show_nav, webhook_secret=webhook_secret,
+            custom_domain=custom_domain if is_domain(custom_domain) else False,
+            ssl=ssl, ssl_crt=ssl_crt, ssl_key=ssl_key,
+        )
         #: generate nginx template
         pm.nginx_builder(name)
     elif action == 'update':
@@ -217,11 +228,16 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             update_rule = json.loads(update_rule)
             if "latest" in update_rule:
                 return echo("Unallow update latest with cli", fg="red")
+            if "custom_domain" in update_rule:
+                if update_rule["custom_domain"] not in \
+                        ("false", False, "False", "off"):
+                    if not is_domain(update_rule["custom_domain"]):
+                        return echo("Invalid custom_domain", fg="red")
         #: 更新内容检测
         if not isinstance(update_rule, dict):
             return echo("the update rule is error", fg='red')
         for key in update_rule.keys():
-            if key.startswith("_"):
+            if key.startswith("_") or "-" in key:
                 return echo("Found keys that are not allowed to be updated", fg='red')
             if key == "url":
                 url = update_rule["url"]

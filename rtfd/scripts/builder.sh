@@ -58,6 +58,13 @@ _join_path() {
     echo "${1:+$1/}$2" | sed 's#//#/#g'
 }
 
+_echo() {
+    local log_level=$(_getRtfdConf g log_level)
+    if [[ "$log_level" == "debug" || "$log_level" == "DEBUG" ]]; then
+        echo -e "$@"
+    fi
+}
+
 _env_manager() {
     #: 切换到项目中，创建虚拟环境并构建文档
     local py2_path=$1
@@ -85,17 +92,6 @@ _env_manager() {
     #: 尝试读取项目的文档配置文件
     project_ini=".rtfd.ini"
     if [ -f $project_ini ]; then
-        #: 采用ini格式作为配置文件，示例如下：
-        #: [project]
-        #: latest = master
-        #: [sphinx]
-        #: sourcedir = docs
-        #: languages = en,zh_CN
-        #: [python]
-        #: version = 2
-        #: requirements = docs/requirements.txt,dev-requirements.txt
-        #: install = true
-        #: index =  pypi source
         local project_latest=$(_getRtfdConf $project_ini project latest)
         local sphinx_sourcedir=$(_getRtfdConf $project_ini sphinx sourcedir)
         local sphinx_languages=$(_getRtfdConf $project_ini sphinx languages)
@@ -184,7 +180,7 @@ EOF
 
 _code_manager() {
     #: 检出代码并切换到相应分支
-    local git="git"
+    local git=$(_getRtfdConf g git git)
     local project_name=$1
     local project_git=$2
     local branch=$3
@@ -288,7 +284,7 @@ main() {
     local server_static_url=$(_getRtfdConf g server_static_url ${rtfd_server}/assets/rtfd/)
     local favicon_url=$(_getRtfdConf g favicon_url https://static.saintic.com/rtfd/favicon.png)
     local default_index=$(_getRtfdConf py index https://pypi.org/simple)
-    #: echo -e "$base_dir $py2_path $py3_path\n$project_name $project_git $branch $rtfd_server"
+    _echo "$base_dir $py2_path $py3_path\n$project_name $project_git $branch $rtfd_server $server_static_url"
     #: 校验参数
     check_exit_param project_name $project_name
     check_exit_param project_git $project_git
