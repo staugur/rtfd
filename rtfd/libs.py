@@ -161,8 +161,8 @@ class ProjectManager(object):
         nginx_exec = self._cfg_handler.nginx.get("exec")
         if nginx_exec:
             if " " in nginx_exec:
-                check_cmd = nginx_exec.split("") + ["-t"]
-                reload_cmd = nginx_exec.split("") + ["-s", "reload"]
+                check_cmd = nginx_exec.split(" ") + ["-t"]
+                reload_cmd = nginx_exec.split(" ") + ["-s", "reload"]
             else:
                 check_cmd = [nginx_exec, "-t"]
                 reload_cmd = [nginx_exec, "-s", "reload"]
