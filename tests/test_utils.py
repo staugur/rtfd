@@ -31,8 +31,10 @@ class UtilsTest(unittest.TestCase):
         basedir = join(gettempdir() if not getenv("TRAVIS")
                        else getcwd(), self.gen_tmpstr())
         cfg = "%s.cfg" % basedir
-        run_cmd("rtfd", "init", "--yes", "-b", basedir,
-                "--py3", "/usr/bin/python2", "-c", cfg)
+        exitcode, out, _ = run_cmd("rtfd", "init", "--yes", "-b", basedir,
+                                   "--py3", "/usr/bin/python2", "-c", cfg)
+        if exitcode != 0:
+            print(out)
         storage = ProjectStorage(cfg)
         self.assertIsInstance(storage, LocalStorage)
         #: Refer to the test of flask-pluginkit
