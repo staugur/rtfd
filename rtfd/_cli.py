@@ -76,7 +76,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
             return echo("The nginx-ssl-hsts-maxage is error, it should be greater than 0.")
         nginx_ssl = "on" if nginx_ssl else "off"
         if not server_url:
-            server_url = "http://%s:%s" % (host, port)
+            server_url = "http://${api.host}:${api.port}"
         if not server_static_url:
             server_static_url = ''
         else:

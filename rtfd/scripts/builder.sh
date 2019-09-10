@@ -140,7 +140,7 @@ _env_manager() {
         $venv_pip_install -r $req
         check_exit_retcode
     done
-    if [[ "${py_install_project}" = "true" || "${py_install_project}" = "True" ]]; then
+    if [[ "${py_install_project}" == "true" || "${py_install_project}" == "True" ]]; then
         $venv_pip_install .
         check_exit_retcode
     fi

@@ -92,39 +92,61 @@ def rtfd_badge_view(name):
 
 def rtfd_webhook_view(name):
     """基于webhook自动构建文档"""
-    res = dict(code=-1, msg=None)
+    res = dict(code=1, msg=None)
+    agent = request.headers.get("User-Agent") or ""
+    if agent.startswith("GitHub-Hookshot"):
+        gst = "github"
+    elif agent == "git-oschina-hook":
+        gst = "gitee"
+    else:
+        res.update(msg="Unsupported git service provider")
+        return jsonify(res)
+
+    #: check params
     data = request.json
-    event = request.headers.get("X-GitHub-Event")
+    if not data:
+        res.update(msg="Invalid json data")
+        return jsonify(res)
     cfg = current_app.config.get("RTFD_CFG")
     pm = ProjectManager(cfg)
     if not pm.has(name):
         res.update(code=404, msg="Not found project")
-    elif data and event in ("push", "release"):
-        docsInfo = pm.get(name)
-        secret = docsInfo.get("webhook_secret")
-        sign_passing = True
-        if secret:
-            if isinstance(secret, unicode):
-                secret = secret.encode("utf-8")
-            sign_passing = False
-            signature = request.headers.get("X-Hub-Signature")
-            if signature:
-                sign_method, sign_ret = signature.split("=")
-                if sign_method == "sha1":
-                    if hmac.new(
-                            secret,
-                            request.data,
-                            sha1).hexdigest() == sign_ret:
-                        sign_passing = True
+        return jsonify(res)
+
+    def build(_name, _branch):
+        rb = RTFD_BUILDER(cfg)
+        for _out in rb.build(_name, _branch, "webhook"):
+            _queue.append(_out)
+
+    #: hook handler for github or gitee
+    if gst == "github":
+        event = request.headers.get("X-GitHub-Event")
+        if event == "ping":
+            res.update(code=0, ping="pong")
+        elif event in ("push", "release"):
+            docsInfo = pm.get(name)
+            secret = docsInfo.get("webhook_secret")
+            sign_passing = True
+            if secret:
+                if isinstance(secret, unicode):
+                    secret = secret.encode("utf-8")
+                sign_passing = False
+                signature = request.headers.get("X-Hub-Signature")
+                if signature:
+                    sign_method, sign_ret = signature.split("=")
+                    if sign_method == "sha1":
+                        if hmac.new(
+                                secret,
+                                request.data,
+                                sha1).hexdigest() == sign_ret:
+                            sign_passing = True
+                        else:
+                            res.update(msg="Verify signature failed")
                     else:
-                        res.update(msg="Verify signature faling")
+                        res.update(msg="Invalid signature method")
                 else:
-                    res.update(msg="Invalid signature method")
-            else:
-                res.update(msg="Invalid signature header")
-        if sign_passing is True:
-            rb = RTFD_BUILDER(cfg)
-            if rb._cpm.has(name):
+                    res.update(msg="Invalid signature header")
+            if sign_passing is True:
                 allow_build = True
                 if event == "push":
                     #: Remote branching is not supported
@@ -139,21 +161,44 @@ def rtfd_webhook_view(name):
                             msg="This action is ignored in the release event"
                         )
                 if allow_build is True:
-                    def build(name, branch):
-                        for _out in rb.build(name, branch, "webhook"):
-                            _queue.append(_out)
                     start_new_thread(build, (name, branch))
                     res.update(code=0, msg="ok", branch=branch)
-            else:
-                res.update(msg="Did not find this project %s" % name)
-    else:
-        if not data:
-            res.update(msg="Invalid json data")
         else:
-            if event == "ping":
-                res.update(code=0, ping="pong")
-            else:
-                res.update(msg="Invalid event header")
+            res.update(msg="Invalid event type")
+    elif gst == "gitee":
+        event = request.headers.get("X-Gitee-Event")
+        if is_true(request.headers.get("X-Gitee-Ping")):
+            event = "ping"
+        else:
+            if event == "Push Hook":
+                event = "push"
+            elif event == "Tag Push Hook":
+                event = "release"
+        if event == "ping":
+            res.update(code=0, ping="pong")
+        elif event in ("push", "release"):
+            docsInfo = pm.get(name)
+            secret = docsInfo.get("webhook_secret")
+            sign_passing = True
+            if secret:
+                if isinstance(secret, unicode):
+                    secret = secret.encode("utf-8")
+                sign_passing = False
+                token = request.headers.get("X-Gitee-Token")
+                if token and secret == token:
+                    sign_passing = True
+                else:
+                    res.update(msg="Verify token failed")
+            if sign_passing is True:
+                if event == "push":
+                    branch = "master"
+                else:
+                    branch = data["ref"].split("/")[-1]
+                start_new_thread(build, (name, branch))
+                res.update(code=0, msg="ok", branch=branch)
+        else:
+            res.update(msg="Invalid event type")
+
     return jsonify(res)
 
 
