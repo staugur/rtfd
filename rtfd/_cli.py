@@ -173,6 +173,8 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             return echo("You have set custom_domain, but the format is "
                         "incorrect, custom_domain does not take effect.",
                         fg="red")
+        if pm.has_custom_domain(custom_domain):
+            return echo("The domain name is already occupied", fg='red')
         pm.create(
             name, url, latest=latest, single=single, sourcedir=sourcedir,
             languages=languages, default_language=default_language,
@@ -229,11 +231,6 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             update_rule = json.loads(update_rule)
             if "latest" in update_rule:
                 return echo("Unallow update latest with cli", fg="red")
-            if "custom_domain" in update_rule:
-                if update_rule["custom_domain"] not in \
-                        ("false", False, "False", "off"):
-                    if not is_domain(update_rule["custom_domain"]):
-                        return echo("Invalid custom_domain", fg="red")
         #: 更新内容检测
         if not isinstance(update_rule, dict):
             return echo("the update rule is error", fg='red')
@@ -248,6 +245,13 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
                 url = url.rstrip(".git") if url.endswith(".git") else url
                 update_rule["url"] = url
                 update_rule["_type"] = c_res["_type"]
+            if key == "custom_domain":
+                custom_domain = update_rule["custom_domain"]
+                if custom_domain not in ("false", False, "False"):
+                    if not is_domain(custom_domain):
+                        return echo("Invalid custom_domain", fg="red")
+                    if pm.has_custom_domain(custom_domain):
+                        return echo("The domain name is already occupied", fg='red')
         pm.update(name, **update_rule)
     elif action == 'remove':
         pm.remove(name)

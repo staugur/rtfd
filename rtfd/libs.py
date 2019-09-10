@@ -59,6 +59,13 @@ class ProjectManager(object):
         else:
             return False
 
+    def has_custom_domain(self, dn):
+        return dn in [
+            data["custom_domain"]
+            for data in self._cps.list.values()
+            if data.get("custom_domain")
+        ]
+
     def get(self, name, default=None):
         name = name.lower()
         if self.has(name):
