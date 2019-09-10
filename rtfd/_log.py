@@ -50,7 +50,8 @@ class Logger:
             datefmt=self._logfmt
         )
         handler.setFormatter(formatter)
-        self._logger.addHandler(handler)
+        if not self._logger.handlers:
+            self._logger.addHandler(handler)
         LOGLEVEL = self.cfg.g.get("log_level", default="INFO").upper()
         self._logger.setLevel(self._levels.get(LOGLEVEL))
 

@@ -158,7 +158,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
                     value = str(value)
                 echo(value)
         else:
-            echo(json.dumps(data))
+            echo(json.dumps(data, sort_keys=True))
     elif action == 'create':
         c_res = check_giturl(url)
         if not c_res["status"]:
@@ -262,7 +262,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             data = {k: v for k, v in data.iteritems() if pm.has(k)}
         if param == "only":
             data = data.keys()
-        echo(json.dumps(data))
+        echo(json.dumps(data, sort_keys=True))
     else:
         return echo("Invalid action", fg='red')
 
