@@ -63,7 +63,7 @@ class ProjectManager(object):
         return dn in [
             data["custom_domain"]
             for data in self._cps.list.values()
-            if data.get("custom_domain")
+            if data and isinstance(data, dict) and data.get("custom_domain")
         ]
 
     def get(self, name, default=None):
