@@ -136,7 +136,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
     """文档项目管理"""
     from .libs import ProjectManager
     from .config import CfgHandler
-    from .utils import is_domain
+    from .utils import is_domain, check_giturl
     name = name.lower().encode('utf-8')
     pm = ProjectManager(config)
     if action == 'get':
@@ -160,9 +160,10 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
         else:
             echo(json.dumps(data))
     elif action == 'create':
-        if not url or not url.startswith("http"):
-            return echo("Need a valid url", fg='red')
-        url = url.rstrip(".git") if url.endswith(".git") else url
+        c_res = check_giturl(url)
+        if not c_res["status"]:
+            return echo(c_res["msg"], fg='red')
+        url = url[:-4] if url.endswith(".git") else url
         if default_language not in languages.split(","):
             default_language = languages.split(",")[0]
         if not index:
@@ -178,7 +179,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             version=version, requirements=requirements, install=install,
             index=index, show_nav=show_nav, webhook_secret=webhook_secret,
             custom_domain=custom_domain if is_domain(custom_domain) else False,
-            ssl=ssl, ssl_crt=ssl_crt, ssl_key=ssl_key,
+            ssl=ssl, ssl_crt=ssl_crt, ssl_key=ssl_key, _type=c_res["_type"],
         )
         #: generate nginx template
         pm.nginx_builder(name)
@@ -241,14 +242,20 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
                 return echo("Found keys that are not allowed to be updated", fg='red')
             if key == "url":
                 url = update_rule["url"]
+                c_res = check_giturl(url)
+                if not c_res["status"]:
+                    return echo(c_res["msg"], fg='red')
                 url = url.rstrip(".git") if url.endswith(".git") else url
                 update_rule["url"] = url
+                update_rule["_type"] = c_res["_type"]
         pm.update(name, **update_rule)
     elif action == 'remove':
         pm.remove(name)
     elif action == 'list':
         data = pm._cps.list
         param = name
+        if param != "raw":
+            data = {k: v for k, v in data.iteritems() if pm.has(k)}
         if param == "only":
             data = data.keys()
         echo(json.dumps(data))
@@ -299,7 +306,10 @@ def cfg(config, section_item):
     _cfg = CfgHandler(config)
     if ":" in section_item:
         section, item = section_item.split(":")
-        print(_cfg[section].get(item, default=''))
+        if section in _cfg.sections:
+            print(_cfg[section].get(item, default=''))
+        else:
+            print('')
     else:
         for k, v in _cfg.items(section_item):
             print(k, v)

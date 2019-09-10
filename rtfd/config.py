@@ -68,9 +68,6 @@ class CfgHandler(object):
         if os.path.isfile(self._cfg_file):
             self._cfg_obj.read(self._cfg_file)
 
-    def update_conf(self, section, **options):
-        pass
-
     def __str__(self):
         return "<%s object at %s, the config file is %s>" % (
             self.__class__.__name__, hex(id(self)), self._cfg_file

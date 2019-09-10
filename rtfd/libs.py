@@ -14,7 +14,7 @@ from shutil import rmtree
 from os.path import expanduser, dirname, join, abspath, isdir, isfile
 from jinja2 import Template
 from .utils import ProjectStorage, run_cmd, run_cmd_stream, is_true, get_now,\
-    is_domain
+    is_domain, get_public_giturl
 from .exceptions import ProjectExistsError, ProjectNotFound, \
     ProjectUnallowedError, CfgNotFound
 from .config import CfgHandler
@@ -82,6 +82,8 @@ class ProjectManager(object):
 
     def get_for_api(self, name):
         data = self.get(name)
+        url = data["url"]
+        _type = data.get("_type") or "public"
         languages = data.get("languages") or data.get("default_language")
         languages = languages.split(",")
         versions = {}
@@ -98,14 +100,15 @@ class ProjectManager(object):
                 versions[lang] = []
         resp = dict(
             languages=languages, versions=versions, latest=data.get("latest"),
-            url=data.get("url"),
+            url=url if _type == "public" else get_public_giturl(url),
             dn=data.get("_dn"),
             custom_dn=data.get("custom_domain") if is_domain(
                 data.get("custom_domain")) else False,
             sourcedir=data.get("sourcedir"),
             single=is_true(data.get("single")),
             showNav=is_true(data.get("show_nav", True)),
-            icon='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4lc7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMwBHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrzdQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII='
+            icon='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4lc7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMwBHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrzdQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII=',
+            type=_type,
         )
         return resp
 
@@ -113,13 +116,14 @@ class ProjectManager(object):
         name = name.lower()
         if self.has(name):
             data = self.get(name)
-            if data and isinstance(data, dict):
-                if "languages" in kwargs and "default_language" not in kwargs:
-                    kwargs['default_language'] = data.get("default_language")
+            if data and isinstance(data, dict) and kwargs:
+                if "languages" in kwargs:
+                    if "default_language" not in kwargs:
+                        kwargs['default_language'] = data["default_language"]
                 if "default_language" in kwargs:
-                    _lgs = data["languages"].split(",")
-                    if kwargs["default_language"] not in _lgs:
-                        kwargs["default_language"] = _lgs[0]
+                    lgs = kwargs.get("languages", data["languages"]).split(",")
+                    if kwargs["default_language"] not in lgs:
+                        kwargs["default_language"] = lgs[0]
                 data.update(kwargs)
                 for k, v in data.iteritems():
                     if isinstance(v, unicode):
@@ -142,7 +146,7 @@ class ProjectManager(object):
         name = name.lower()
         if self.has(name):
             self._logger.info(
-                "Project.Remove: name is %s, will remove docs and nginx,"
+                "Project.Remove: name is %s, will remove docs and nginx, "
                 "then reload nginx" % name
             )
             #: 删除文档和nginx

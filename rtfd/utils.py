@@ -13,6 +13,7 @@ import shelve
 from re import compile
 from os.path import join
 from time import strftime
+from urlparse import urlparse
 from flask_pluginkit import LocalStorage
 from subprocess import Popen, PIPE, STDOUT
 from .config import CfgHandler
@@ -76,3 +77,35 @@ def is_domain(value):
 
 def get_now():
     return strftime('%Y-%m-%d %H:%M:%S')
+
+
+def check_giturl(url):
+    res = dict(status=False, msg=None)
+    if url and isinstance(url, basestring) and (url.startswith("http://") or
+                                                url.startswith("https://")):
+        rst = urlparse(url)
+        if rst.hostname in ("github.com", "gitee.com"):
+            if rst.username:
+                if not rst.password:
+                    res.update(
+                        msg="The warehouse has set up users but no password"
+                    )
+                else:
+                    res.update(status=True, _type="private")
+            else:
+                res.update(status=True, _type="public")
+        else:
+            res.update(msg="Unsupported git service provider")
+    else:
+        res.update(msg="Invalid url")
+    return res
+
+
+def get_public_giturl(url):
+    c_res = check_giturl(url)
+    if c_res["status"]:
+        if c_res["_type"] == "public":
+            return url
+        else:
+            rst = urlparse(url)
+            return rst._replace(netloc=rst.netloc.split("@")[-1]).geturl()
