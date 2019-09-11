@@ -4,10 +4,15 @@ env:
 - CODECOV_TOKEN="c2ffcd3e-19f7-4df6-9ec8-8e61b9757366"
 python:
 - '2.7'
+- '3.5'
+- '3.6'
+- '3.7'
+- nightly
 - pypy
+- pypy3
 matrix:
   allow_failures:
-  - python: pypy
+  - python: nightly
 before_install:
 - sudo apt-get update
 - sudo apt-get install nginx

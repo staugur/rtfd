@@ -11,12 +11,16 @@
 
 import hmac
 from hashlib import sha1
-from thread import start_new_thread
 from collections import deque
 from flask import request, jsonify, make_response, render_template_string,\
     current_app
+from flask_pluginkit._compat import PY2, text_type
 from .libs import ProjectManager, RTFD_BUILDER
 from .utils import is_true
+if PY2:
+    from thread import start_new_thread
+else:
+    from _thread import start_new_thread
 
 #: Build message queue
 _queue = deque()
@@ -128,7 +132,7 @@ def rtfd_webhook_view(name):
             secret = docsInfo.get("webhook_secret")
             sign_passing = True
             if secret:
-                if isinstance(secret, unicode):
+                if isinstance(secret, text_type):
                     secret = secret.encode("utf-8")
                 sign_passing = False
                 signature = request.headers.get("X-Hub-Signature")
@@ -181,7 +185,7 @@ def rtfd_webhook_view(name):
             secret = docsInfo.get("webhook_secret")
             sign_passing = True
             if secret:
-                if isinstance(secret, unicode):
+                if isinstance(secret, text_type):
                     secret = secret.encode("utf-8")
                 sign_passing = False
                 token = request.headers.get("X-Gitee-Token")

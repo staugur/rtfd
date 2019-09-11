@@ -15,6 +15,8 @@ import json
 from configparser import ConfigParser
 from os import mkdir
 from os.path import expanduser, isfile, isdir, isabs, abspath
+from flask_pluginkit._compat import iteritems
+
 
 DEFAULT_CFG = expanduser("~/.rtfd.cfg")
 
@@ -76,7 +78,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
             return echo("The nginx-ssl-hsts-maxage is error, it should be greater than 0.")
         nginx_ssl = "on" if nginx_ssl else "off"
         if not server_url:
-            server_url = "http://${api.host}:${api.port}"
+            server_url = "http://${api:host}:${api:port}"
         if not server_static_url:
             server_static_url = ''
         else:
@@ -105,7 +107,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
         _cfg_obj.set("py", "index", index)
         _cfg_obj.set("api", "host", host)
         _cfg_obj.set("api", "port", str(port))
-        with open(_cfg_file, 'wb') as fp:
+        with open(_cfg_file, 'w') as fp:
             _cfg_obj.write(fp)
     else:
         return echo("Found configuration file %s" % _cfg_file, fg='green')
@@ -137,7 +139,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
     from .libs import ProjectManager
     from .config import CfgHandler
     from .utils import is_domain, check_giturl
-    name = name.lower().encode('utf-8')
+    name = name.lower()
     pm = ProjectManager(config)
     if action == 'get':
         name, key = name.split(":") if ":" in name else (name, None)
@@ -259,7 +261,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
         data = pm._cps.list
         param = name
         if param != "raw":
-            data = {k: v for k, v in data.iteritems() if pm.has(k)}
+            data = {k: v for k, v in iteritems(data) if pm.has(k)}
         if param == "only":
             data = data.keys()
         echo(json.dumps(data, sort_keys=True))

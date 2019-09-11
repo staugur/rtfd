@@ -9,8 +9,10 @@
     :license: BSD 3-Clause, see LICENSE for more details.
 """
 
-import os
+from os.path import isfile, expanduser
 from configparser import ConfigParser, ExtendedInterpolation
+
+__all__ = ["CfgHandler"]
 
 
 class SectionHandler(object):
@@ -63,9 +65,9 @@ class SectionHandler(object):
 class CfgHandler(object):
 
     def __init__(self, cfg=None):
-        self._cfg_file = cfg or os.path.expanduser("~/.rtfd.cfg")
+        self._cfg_file = cfg or expanduser("~/.rtfd.cfg")
         self._cfg_obj = ConfigParser(interpolation=ExtendedInterpolation())
-        if os.path.isfile(self._cfg_file):
+        if isfile(self._cfg_file):
             self._cfg_obj.read(self._cfg_file)
 
     def __str__(self):

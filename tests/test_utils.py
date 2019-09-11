@@ -4,12 +4,14 @@ import string
 import unittest
 from shutil import rmtree
 from os import remove, getenv, getcwd
-from os.path import join
+from os.path import join, expanduser, isfile
 from random import sample
 from tempfile import gettempdir
 from rtfd import __version__
-from rtfd.utils import is_domain, ProjectStorage, run_cmd
+from rtfd.utils import is_domain, ProjectStorage, run_cmd, check_giturl, \
+    get_public_giturl
 from flask_pluginkit.utils import LocalStorage
+from flask_pluginkit._compat import PY2, string_types
 
 
 class UtilsTest(unittest.TestCase):
@@ -22,11 +24,14 @@ class UtilsTest(unittest.TestCase):
         self.assertIsInstance(result, tuple)
         self.assertEqual(len(result), 3)
         _, out, _ = result
+        if not PY2 and not isinstance(out, string_types):
+            out = out.decode("utf-8")
         self.assertEqual(out.strip("\n"), __version__)
 
     def test_projectstorage(self):
-        with self.assertRaises(AttributeError):
-            ProjectStorage()
+        if not isfile(expanduser("~/.rtfd.cfg")):
+            with self.assertRaises(AttributeError):
+                ProjectStorage()
 
         basedir = join(gettempdir() if not getenv("TRAVIS")
                        else getcwd(), self.gen_tmpstr())
@@ -78,6 +83,25 @@ class UtilsTest(unittest.TestCase):
         self.assertTrue(is_domain("x-y-z.com"))
         self.assertTrue(is_domain("abc.com"))
         self.assertTrue(is_domain("localhost.localdomain"))
+
+    def test_checkgiturl(self):
+        self.assertFalse(check_giturl("")["status"])
+        self.assertFalse(check_giturl([])["status"])
+        self.assertFalse(check_giturl({})["status"])
+        self.assertFalse(check_giturl(123)["status"])
+        self.assertFalse(check_giturl("abc")["status"])
+        self.assertFalse(check_giturl("example.com")["status"])
+        self.assertFalse(check_giturl("git@github.com:staugur/rtfd")["status"])
+        self.assertFalse(check_giturl("svn://gitee.com/staugur/xxx")["status"])
+        self.assertFalse(check_giturl(
+            "http://coding.net/staugur/xxx")["status"])
+        self.assertTrue(check_giturl("http://gitee.com/staugur/xxx")["status"])
+        self.assertTrue(check_giturl(
+            "https://github.com/staugur/rtfd")["status"])
+        private_url = "https://user:pass@github.com/staugur/rtfd"
+        self.assertTrue(check_giturl(private_url)["status"])
+        self.assertEqual(get_public_giturl(private_url),
+                         "https://github.com/staugur/rtfd")
 
 
 if __name__ == '__main__':

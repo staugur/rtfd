@@ -13,10 +13,11 @@ from os import mkdir, remove, listdir
 from shutil import rmtree
 from os.path import expanduser, dirname, join, abspath, isdir, isfile
 from jinja2 import Template
+from flask_pluginkit._compat import iteritems, text_type, string_types, PY2
 from .utils import ProjectStorage, run_cmd, run_cmd_stream, is_true, get_now,\
     is_domain, get_public_giturl
 from .exceptions import ProjectExistsError, ProjectNotFound, \
-    ProjectUnallowedError, CfgNotFound
+    ProjectUnallowedError, CfgNotFound, RTFDError
 from .config import CfgHandler
 from ._log import Logger
 
@@ -46,6 +47,10 @@ class ProjectManager(object):
                 url=url,
                 _dn="%s.%s" % (name, self._cfg_handler.nginx.dn)
             )
+            if is_domain(kwargs.get("custom_domain")):
+                if kwargs["custom_domain"] == kwargs["_dn"]:
+                    raise RTFDError("Custom domain name is duplicated "
+                                    "with default domain name")
             self._logger.info(
                 "Project.Create: name is %s, create params is %s" %
                 (name, kwargs)
@@ -60,11 +65,13 @@ class ProjectManager(object):
             return False
 
     def has_custom_domain(self, dn):
-        return dn in [
-            data["custom_domain"]
-            for data in self._cps.list.values()
-            if data and isinstance(data, dict) and data.get("custom_domain")
-        ]
+        dns = []
+        for data in self._cps.list.values():
+            if data and isinstance(data, dict):
+                if data.get("custom_domain"):
+                    dns.append(data["custom_domain"])
+                dns.append(data["_dn"])
+        return dn in dns
 
     def get(self, name, default=None):
         name = name.lower()
@@ -132,8 +139,8 @@ class ProjectManager(object):
                     if kwargs["default_language"] not in lgs:
                         kwargs["default_language"] = lgs[0]
                 data.update(kwargs)
-                for k, v in data.iteritems():
-                    if isinstance(v, unicode):
+                for k, v in iteritems(data):
+                    if isinstance(v, text_type):
                         v.encode("utf-8")
                     data[k] = v
                 self._logger.info(
@@ -158,14 +165,16 @@ class ProjectManager(object):
             )
             #: 删除文档和nginx
             PROJECT_DOCS = join(self._cfg_handler.g.base_dir, "docs", name)
-            NGINX_FILE = join(
-                self._cfg_handler.g.base_dir,
-                "nginx", "%s.conf" % name
-            )
+            NGINX_DIR = join(self._cfg_handler.g.base_dir, "nginx")
+            default_nginx_file = join(NGINX_DIR, "%s.conf" % name)
+            custom_nginx_file = join(NGINX_DIR, "%s.ext.conf" % name)
             if isdir(PROJECT_DOCS):
                 rmtree(PROJECT_DOCS)
-            if isfile(NGINX_FILE):
-                remove(NGINX_FILE)
+            if isfile(default_nginx_file) or isfile(custom_nginx_file):
+                if isfile(default_nginx_file):
+                    remove(default_nginx_file)
+                if isfile(custom_nginx_file):
+                    remove(custom_nginx_file)
                 self.__reload_nginx()
             return self._cps.set(name, '')
 
@@ -336,10 +345,6 @@ class RTFD_BUILDER(object):
         self._logger = self._cpm._logger
 
     def build(self, name, branch="master", sender=None):
-        if isinstance(name, unicode):
-            name = name.encode("utf8")
-        if isinstance(branch, unicode):
-            branch = branch.encode("utf8")
         if not self._cpm.has(name):
             yield "Did not find this project %s" % name
             return
@@ -347,6 +352,8 @@ class RTFD_BUILDER(object):
         if data and isinstance(data, dict) and "url" in data:
             if branch == "latest":
                 branch = data["latest"]
+            if not PY2 and not isinstance(branch, string_types):
+                branch = branch.decode("utf-8")
             msg = "RTFD.Builder: build %s with branch %s" % (name, branch)
             self._logger.debug(msg)
             cmd = ['bash', self._build_sh, '-n', name, '-u', data["url"],

@@ -13,10 +13,14 @@ import shelve
 from re import compile
 from os.path import join
 from time import strftime
-from urlparse import urlparse
 from flask_pluginkit import LocalStorage
+from flask_pluginkit._compat import PY2, string_types
 from subprocess import Popen, PIPE, STDOUT
 from .config import CfgHandler
+if PY2:
+    from urlparse import urlparse
+else:
+    from urllib.parse import urlparse
 
 
 class ProjectStorage(LocalStorage):
@@ -51,6 +55,7 @@ def run_cmd(*args):
 def run_cmd_stream(*args):
     proc = Popen(args, stdout=PIPE, stderr=STDOUT)
     for i in iter(proc.stdout.readline, b''):
+        i = i if isinstance(i, string_types) else i.decode("utf-8")
         yield i.rstrip()
 
 
@@ -63,7 +68,7 @@ def is_true(value):
 def is_domain(value):
     if value in ("false", False, "False", "off"):
         return False
-    if value and isinstance(value, basestring):
+    if value and isinstance(value, string_types):
         dn_pat = compile(
             r'^(?=^.{3,255}$)[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$'
         )
@@ -81,8 +86,8 @@ def get_now():
 
 def check_giturl(url):
     res = dict(status=False, msg=None)
-    if url and isinstance(url, basestring) and (url.startswith("http://") or
-                                                url.startswith("https://")):
+    if url and isinstance(url, string_types) and \
+            (url.startswith("http://") or url.startswith("https://")):
         rst = urlparse(url)
         if rst.hostname in ("github.com", "gitee.com"):
             if rst.username:
