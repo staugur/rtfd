@@ -236,6 +236,8 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
         #: 更新内容检测
         if not isinstance(update_rule, dict):
             return echo("the update rule is error", fg='red')
+        #: 检测键值，需要二次更新的存入单独的字典中，迭代完成后更新回update_rule
+        _will_update = {}
         for key in update_rule.keys():
             if key.startswith("_") or "-" in key:
                 return echo("Found keys that are not allowed to be updated", fg='red')
@@ -244,9 +246,9 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
                 c_res = check_giturl(url)
                 if not c_res["status"]:
                     return echo(c_res["msg"], fg='red')
-                url = url.rstrip(".git") if url.endswith(".git") else url
-                update_rule["url"] = url
-                update_rule["_type"] = c_res["_type"]
+                url = url[:-4] if url.endswith(".git") else url
+                _will_update["url"] = url
+                _will_update["_type"] = c_res["_type"]
             if key == "custom_domain":
                 custom_domain = update_rule["custom_domain"]
                 if custom_domain not in ("false", False, "False"):
@@ -254,6 +256,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
                         return echo("Invalid custom_domain", fg="red")
                     if pm.has_custom_domain(custom_domain):
                         return echo("The domain name is already occupied", fg='red')
+        update_rule.update(_will_update)
         pm.update(name, **update_rule)
     elif action == 'remove':
         pm.remove(name)

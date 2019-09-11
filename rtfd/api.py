@@ -185,8 +185,6 @@ def rtfd_webhook_view(name):
             secret = docsInfo.get("webhook_secret")
             sign_passing = True
             if secret:
-                if isinstance(secret, text_type):
-                    secret = secret.encode("utf-8")
                 sign_passing = False
                 token = request.headers.get("X-Gitee-Token")
                 if token and secret == token:
@@ -203,6 +201,7 @@ def rtfd_webhook_view(name):
         else:
             res.update(msg="Invalid event type")
 
+    pm._logger.debug("Trigger webhook with event %s, from %s" % (event, gst))
     return jsonify(res)
 
 
