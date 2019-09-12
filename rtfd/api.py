@@ -201,7 +201,7 @@ def rtfd_webhook_view(name):
         else:
             res.update(msg="Invalid event type")
 
-    pm._logger.debug("Trigger webhook with event %s, from %s" % (event, gst))
+    pm._logger.debug("Trigger webhook with %s event, from %s" % (event, gst))
     return jsonify(res)
 
 

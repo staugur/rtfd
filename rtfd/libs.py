@@ -139,10 +139,6 @@ class ProjectManager(object):
                     if kwargs["default_language"] not in lgs:
                         kwargs["default_language"] = lgs[0]
                 data.update(kwargs)
-                for k, v in iteritems(data):
-                    if isinstance(v, text_type):
-                        v.encode("utf-8")
-                    data[k] = v
                 self._logger.info(
                     "Project.Update: name is %s, update params is %s" %
                     (name, kwargs)
@@ -345,6 +341,8 @@ class RTFD_BUILDER(object):
         self._logger = self._cpm._logger
 
     def build(self, name, branch="master", sender=None):
+        if PY2 and isinstance(name, text_type):
+            name = name.encode("utf-8")
         if not self._cpm.has(name):
             yield "Did not find this project %s" % name
             return

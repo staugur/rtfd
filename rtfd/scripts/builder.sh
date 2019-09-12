@@ -135,7 +135,7 @@ _env_manager() {
     #: 安装依赖
     local venv_py=$(_join_path $project_runtime_dir ${vd}/bin/python)
     local venv_pip_install="${venv_py} -m pip install -i ${py_index} --no-cache-dir"
-    $venv_pip_install --upgrade pip sphinx setuptools
+    $venv_pip_install --upgrade sphinx
     for req in ${py_requirements//,/ }; do
         $venv_pip_install -r $req
         check_exit_retcode
