@@ -14,7 +14,7 @@ from re import compile
 from os.path import join
 from time import strftime
 from flask_pluginkit import LocalStorage
-from flask_pluginkit._compat import PY2, string_types
+from flask_pluginkit._compat import PY2, string_types, text_type
 from subprocess import Popen, PIPE, STDOUT
 from .config import CfgHandler
 if PY2:
@@ -35,6 +35,17 @@ class ProjectStorage(LocalStorage):
             flag=flag,
             protocol=2
         )
+
+    def set(self, key, value):
+        db = self._open()
+        try:
+            if PY2 and isinstance(key, text_type):
+                key = key.encode("utf-8")
+            if not PY2 and not isinstance(key, text_type):
+                key = key.decode("utf-8")
+            db[key] = value
+        finally:
+            db.close()
 
 
 def run_cmd(*args):

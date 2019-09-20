@@ -13,7 +13,7 @@ from os import mkdir, remove, listdir
 from shutil import rmtree
 from os.path import expanduser, dirname, join, abspath, isdir, isfile
 from jinja2 import Template
-from flask_pluginkit._compat import iteritems, text_type, string_types, PY2
+from flask_pluginkit._compat import text_type, string_types, PY2
 from .utils import ProjectStorage, run_cmd, run_cmd_stream, is_true, get_now,\
     is_domain, get_public_giturl
 from .exceptions import ProjectExistsError, ProjectNotFound, \
