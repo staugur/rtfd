@@ -163,7 +163,9 @@ EOF
     #: 执行构建前的钩子命令：
     local before_hook=$(_getDocsConf $project_name before_hook)
     if [ ! -z "$before_hook" ]; then
+        _echo "Trigger before_hook: ${before_hook}"
         ($before_hook)
+        check_exit_retcode
     fi
     #: 构建
     local sphinx_build=$(_join_path $project_runtime_dir ${vd}/bin/sphinx-build)
@@ -185,6 +187,7 @@ EOF
     #: 执行构建成功后的钩子命令：
     local after_hook=$(_getDocsConf $project_name after_hook)
     if [ ! -z "$after_hook" ]; then
+        _echo "Trigger after_hook: ${after_hook}"
         ($after_hook)
     fi
     return $code
