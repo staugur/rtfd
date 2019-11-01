@@ -1,8 +1,17 @@
 # -*- coding: utf-8 -*-
+"""
+    rtfd
+    ~~~~
+
+    Build, read your exclusive and fuck docs.
+
+    :copyright: (c) 2019 by staugur.
+    :license: BSD 3-Clause, see LICENSE for more details.
+"""
 
 from .api import register
 
-__version__ = "0.3.4"
+__version__ = "0.4.0"
 __author__ = "staugur <staugur@saintic.com>"
 
 #: define metadata for flask-pluginkit

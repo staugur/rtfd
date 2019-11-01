@@ -131,15 +131,18 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 @click.option('--ssl/--no-ssl', default=False, help=u'文档项目自定义域名是否开启SSL', show_default=True)
 @click.option('--ssl-crt', type=click.Path(exists=True), help=u'自定义域名的SSL证书', show_default=True)
 @click.option('--ssl-key', type=click.Path(exists=True), help=u'自定义域名的SSL证书私钥', show_default=True)
+@click.option('--builder', '-b', type=click.Choice(["html", "dirhtml", "singlehtml"]), default='html', help=u"Sphinx构建器", show_default=True)
 @click.option('--update-rule', '-ur', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
 @click.option('--config', '-c', type=click.Path(exists=True), default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
-def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, show_nav, webhook_secret, custom_domain, ssl, ssl_crt, ssl_key, update_rule, config, name):
+def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, show_nav, webhook_secret, custom_domain, ssl, ssl_crt, ssl_key, builder, update_rule, config, name):
     """文档项目管理"""
     from .libs import ProjectManager
     from .config import CfgHandler
     from .utils import is_domain, check_giturl
     name = name.lower()
+    if "_" in name:
+        return echo("Underline is not allowed", fg="red")
     pm = ProjectManager(config)
     if action == 'get':
         name, key = name.split(":") if ":" in name else (name, None)
@@ -183,7 +186,8 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             version=version, requirements=requirements, install=install,
             index=index, show_nav=show_nav, webhook_secret=webhook_secret,
             custom_domain=custom_domain if is_domain(custom_domain) else False,
-            ssl=ssl, ssl_crt=ssl_crt, ssl_key=ssl_key, _type=c_res["_type"],
+            ssl=ssl, ssl_crt=ssl_crt, ssl_key=ssl_key, builder=builder,
+            _type=c_res["_type"],
         )
         #: generate nginx template
         pm.nginx_builder(name)
@@ -208,10 +212,13 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             else:
                 sourcedir = sphinx.get("sourcedir")
                 languages = sphinx.get("languages")
+                builder = sphinx.get("builder")
                 if sourcedir and sourcedir != data.get("sourcedir"):
                     update_rule["sourcedir"] = sourcedir
                 if languages and languages != data.get("languages"):
                     update_rule["languages"] = languages
+                if builder and builder != data.get("builder"):
+                    update_rule["builder"] = builder
             try:
                 py = urc.python
             except AttributeError:
@@ -293,12 +300,9 @@ def build(config, branch, name):
 @click.option('--config', '-c', type=click.Path(exists=True), default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 def api(host, port, debug, config):
     """以开发模式运行API"""
-    from flask import Flask
-    from flask_pluginkit import PluginManager
+    from .app import app
     from .config import CfgHandler
     cfg = CfgHandler(config)
-    app = Flask(__name__)
-    PluginManager(app, plugin_packages=["rtfd"])
     app.run(
         host=host or cfg.api.get("host", default="127.0.0.1"),
         port=port or cfg.api.get("port", default=5000),

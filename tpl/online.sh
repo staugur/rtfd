@@ -11,15 +11,22 @@ dir=$(
 )
 cd $dir
 
+#可以覆盖的默认变量
+APP_MODULE="rtfd.app:app"
+
 if [ -f online_preboot.sh ]; then
     source online_preboot.sh
 fi
 
+procname="rtfd"
 host=$(rtfd cfg api:host)
 port=$(rtfd cfg api:port)
 basedir=$(rtfd cfg g:base_dir)
-procname=rtfd
-cpu_count=$(cat /proc/cpuinfo | grep "processor" | wc -l)
+cpu_count=$(rtfd cfg api:count)
+cpus=$(cat /proc/cpuinfo | grep "processor" | wc -l)
+if [ -z $cpu_count ]; then
+    cpu_count=$cpus
+fi
 [ -d ${basedir}/logs ] || mkdir -p ${basedir}/logs
 logfile=${basedir}/logs/gunicorn.log
 pidfile=${basedir}/logs/rtfd.pid
@@ -30,7 +37,7 @@ start)
         echo "Has pid($(cat $pidfile)) in $pidfile, please check, exit."
         exit 1
     else
-        gunicorn -w $cpu_count -b ${host}:${port} app:app --daemon --pid $pidfile --log-file $logfile -n $procname --max-requests 250
+        gunicorn -w $cpu_count -b ${host}:${port} $APP_MODULE --daemon --pid $pidfile --log-file $logfile -n $procname --max-requests 250
         sleep 1
         pid=$(cat $pidfile)
         [ "$?" != "0" ] && exit 1
@@ -39,7 +46,7 @@ start)
     ;;
 
 run)
-    gunicorn -w $cpu_count -b ${host}:${port} app:app --max-requests 250 --name $procname
+    gunicorn -w $cpu_count -b ${host}:${port} $APP_MODULE --max-requests 250 --name $procname
     ;;
 
 stop)

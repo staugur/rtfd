@@ -1,6 +1,6 @@
 #!/bin/bash
 #Author:      staugur
-#Version:     0.1
+#Version:     0.2
 #Description: 最终调用的核心脚本，此脚本只负责构建，会在docs的项目下，生成不同语言和不同版本的文档
 #CreateTime:  2019-08-05
 #License:     BSD 3-Clause
@@ -95,6 +95,7 @@ _env_manager() {
         local project_latest=$(_getRtfdConf $project_ini project latest)
         local sphinx_sourcedir=$(_getRtfdConf $project_ini sphinx sourcedir)
         local sphinx_languages=$(_getRtfdConf $project_ini sphinx languages)
+        local sphinx_builder=$(_getRtfdConf $project_ini sphinx builder)
         local py_version=$(_getRtfdConf $project_ini python version)
         local py_requirements=$(_getRtfdConf $project_ini python requirements)
         local py_install_project=$(_getRtfdConf $project_ini python install)
@@ -103,6 +104,7 @@ _env_manager() {
     local project_latest=${project_latest:=$(_getDocsConf $project_name latest master)}
     local sphinx_sourcedir=${sphinx_sourcedir:=$(_getDocsConf $project_name sourcedir docs)}
     local sphinx_languages=${sphinx_languages:=$(_getDocsConf $project_name languages en)}
+    local sphinx_builder=${sphinx_builder:=$(_getDocsConf $project_name builder html)}
     local py_version=${py_version:=$(_getDocsConf $project_name version 2)}
     local py_requirements=${py_requirements:=$(_getDocsConf $project_name requirements)}
     local py_install_project=${py_install_project:=$(_getDocsConf $project_name install false)}
@@ -147,7 +149,7 @@ _env_manager() {
     #: 更新conf.py
     local sphinx_conf=$(_join_path $sphinx_sourcedir conf.py)
     if [ ! -f $sphinx_conf ]; then
-        echo "Not found docs config.py in $(_join_path $project_runtime_dir $sphinx_sourcedir)"
+        echo "Not found docs conf.py in $(_join_path $project_runtime_dir $sphinx_sourcedir)"
         exit 1
     fi
     cat >>$sphinx_conf <<EOF
@@ -158,11 +160,16 @@ html_js_files.append(("${server_static_url}rtfd.js?v=$(rtfd -v)",{"id":"rtfd-scr
 if not 'html_favicon' in globals():
     html_favicon = '${favicon_url}'
 EOF
+    #: 执行构建前的钩子命令：
+    local before_hook=$(_getDocsConf $project_name before_hook)
+    if [ ! -z "$before_hook" ]; then
+        ($before_hook)
+    fi
     #: 构建
     local sphinx_build=$(_join_path $project_runtime_dir ${vd}/bin/sphinx-build)
     for lang in ${sphinx_languages//,/ }; do
         local project_docs_lang_dir=$(_join_path ${project_docs_dir} ${lang})
-        $sphinx_build -E -T -D language=${lang} -b html $sphinx_sourcedir $(_join_path ${project_docs_lang_dir} ${branch})
+        $sphinx_build -E -T -D language=${lang} -b ${sphinx_builder} $sphinx_sourcedir $(_join_path ${project_docs_lang_dir} ${branch})
         check_exit_retcode
         ln -nsf $(_join_path ${project_docs_lang_dir} ${project_latest}) $(_join_path ${project_docs_lang_dir} latest)
         check_exit_retcode
@@ -174,6 +181,11 @@ EOF
     if [ -f $project_ini ]; then
         rtfd project -a update -ur $project_ini $project_name
         return $?
+    fi
+    #: 执行构建成功后的钩子命令：
+    local after_hook=$(_getDocsConf $project_name after_hook)
+    if [ ! -z "$after_hook" ]; then
+        ($after_hook)
     fi
     return $code
 }
