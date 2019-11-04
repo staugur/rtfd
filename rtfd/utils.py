@@ -125,3 +125,14 @@ def get_public_giturl(url):
         else:
             rst = urlparse(url)
             return rst._replace(netloc=rst.netloc.split("@")[-1]).geturl()
+
+
+def get_git_service_provider(url):
+    public_url = get_public_giturl(url)
+    if public_url:
+        dn = public_url.split("//")[-1]
+        if dn.lower().startswith('github'):
+            return "GitHub"
+        elif dn.lower().startswith('gitee'):
+            return "Gitee"
+    return "Unknown"

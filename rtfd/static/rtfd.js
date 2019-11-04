@@ -1,28 +1,6 @@
 'use strict';
+var _rtfd_script = document.getElementsByTagName('script')[document.getElementsByTagName('script').length - 1];
 const rtfd = {
-    //Get script self data
-    getUrlQuery: function (key, acq) {
-        /*
-            Get the query parameters after the URL, without the anchor part,
-            such as url is http://x.com/user/message/?status=1&Action=getCount.
-            If there is no query key, the entire query parameter object is
-            returned, which returns {status: "1", Action: "getCount"};
-            If there is a query key, the object value is returned.
-            The return value can specify the default value acq:
-                such as key=status, return 1; key=non_exsits_key returns acq
-        */
-        var str = document.getElementById('rtfd-script').getAttribute('data');
-        var obj = {};
-        if (str) {
-            //str = str.substring(1, str.length);
-            var arr = str.split("&");
-            for (var i = 0; i < arr.length; i++) {
-                var tmp_arr = arr[i].split("=");
-                obj[decodeURIComponent(tmp_arr[0])] = decodeURIComponent(tmp_arr[1]);
-            }
-        }
-        return key ? obj[key] || acq : obj;
-    },
     //Determines whether the id exists on the page. This id returns true, otherwise it returns false.
     hasId: function (id) {
         var element = document.getElementById(id);
@@ -31,6 +9,32 @@ const rtfd = {
         } else {
             return false
         }
+    },
+    //Get script self data
+    getUrlQuery: function (key, acq) {
+        /*
+            Get the parameters from the url query or data.
+            If there is a query key, the object value is returned.
+            The return value can specify the default value acq:
+                such as key=status, return 1; key=non_exsits_key returns acq
+        */
+        if (this.hasId("rtfd-script") === true) {
+            var str = document.getElementById('rtfd-script').getAttribute('data');
+        } else {
+            if (_rtfd_script && _rtfd_script.getAttribute("src") && _rtfd_script.getAttribute("src").indexOf("rtfd.js") > -1) {
+                var src = _rtfd_script.getAttribute("src");
+                var str = src.indexOf("?") > -1 ? src.substr(src.indexOf("?") + 1) : "";
+            }
+        }
+        var obj = {};
+        if (str) {
+            var arr = str.split("&");
+            for (var i = 0; i < arr.length; i++) {
+                var tmp_arr = arr[i].split("=");
+                obj[decodeURIComponent(tmp_arr[0])] = decodeURIComponent(tmp_arr[1]);
+            }
+        }
+        return key ? obj[key] || acq : obj;
     },
     //api url
     api: function () {
@@ -95,7 +99,10 @@ const rtfd = {
                             //for tag
                             github_str += `<dd><a href=${res.data.url}/blob/${branch}/${res.data.sourcedir}/${path_rst}>View</a></dd>`;
                         }
-                        var base_str = `<div class=rtfd><div id=rtfd-header><img src="${res.data.icon}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id=rtfd-body><dl><dt>Languages</dt>${langs_str}</dl><dl><dt>Versions</dt>${vers_str}</dl><dl><dt>On GitHub</dt>${github_str}</dl><hr><small class=footer><span>Powered by <a href=https://github.com/staugur/rtfd>rtfd</a></span></small></div></div>`;
+                        if (res.data.showNavGit === false) {
+                            github_str = '';
+                        }
+                        var base_str = `<div class=rtfd><div id=rtfd-header><img src="${res.data.icon}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id=rtfd-body><dl><dt>Languages</dt>${langs_str}</dl><dl><dt>Versions</dt>${vers_str}</dl><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class=footer><span>Powered by <a href=https://github.com/staugur/rtfd>rtfd</a></span></small></div></div>`;
                     } else {
                         var branch = "latest";
                         var other_path = location.pathname.split('/').slice(1).join('/');
@@ -103,7 +110,10 @@ const rtfd = {
                         var github_str = '';
                         github_str += `<dd><a href=${res.data.url}/blob/master/${res.data.sourcedir}/${path_rst}>View</a></dd>`;
                         github_str += `<dd><a href=${res.data.url}/edit/master/${res.data.sourcedir}/${path_rst}>Edit</a></dd>`;
-                        var base_str = `<div class=rtfd><div id=rtfd-header><img src="${res.data.icon}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id=rtfd-body><dl><dt>On GitHub</dt>${github_str}</dl><hr><small class=footer><span>Powered by <a href=https://github.com/staugur/rtfd>rtfd</a></span></small></div></div>`;
+                        if (res.data.showNavGit === false) {
+                            github_str = '';
+                        }
+                        var base_str = `<div class=rtfd><div id=rtfd-header><img src="${res.data.icon}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id=rtfd-body><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class=footer><span>Powered by <a href=https://github.com/staugur/rtfd>rtfd</a></span></small></div></div>`;
                     }
                     that.addCSS('tipped.css');
                     that.addJS('tipped.js', function () {

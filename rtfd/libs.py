@@ -15,7 +15,7 @@ from os.path import expanduser, dirname, join, abspath, isdir, isfile
 from jinja2 import Template
 from flask_pluginkit._compat import text_type, string_types, PY2
 from .utils import ProjectStorage, run_cmd, run_cmd_stream, is_true, get_now,\
-    is_domain, get_public_giturl
+    is_domain, get_public_giturl, get_git_service_provider
 from .exceptions import ProjectExistsError, ProjectNotFound, \
     ProjectUnallowedError, CfgNotFound, RTFDError
 from .config import CfgHandler
@@ -122,7 +122,8 @@ class ProjectManager(object):
             single=is_true(data.get("single")),
             showNav=is_true(data.get("show_nav", True)),
             icon='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4lc7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMwBHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrzdQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII=',
-            type=_type,
+            type=_type, showNavGit=is_true(data.get("show_nav_git", True)),
+            gsp=data.get("gsp", get_git_service_provider(url)),
         )
         return resp
 

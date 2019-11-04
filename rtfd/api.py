@@ -22,8 +22,8 @@ if PY2:
 else:
     from _thread import start_new_thread
 
-#: Build message queue
-_queue = deque()
+#: Build message map
+MESSAGE_MAP = {}
 
 
 def rtfd_api_view():
@@ -47,9 +47,10 @@ def rtfd_api_view():
             else:
                 res.update(msg='param error')
         elif Action == "queryBuildmsg":
+            name = request.args.get("name")
             try:
-                msg = _queue.popleft()
-            except IndexError:
+                msg = MESSAGE_MAP[name].popleft()
+            except (IndexError, KeyError):
                 msg = ""
             #: 重置res响应数据
             isRaw = is_true(request.args.get("raw", True))
@@ -66,8 +67,10 @@ def rtfd_api_view():
             ) or "master"
             if rb._cpm.has(name):
                 def build(name, branch):
+                    if name not in MESSAGE_MAP:
+                        MESSAGE_MAP[name] = deque()
                     for _out in rb.build(name, branch, "api"):
-                        _queue.append(_out)
+                        MESSAGE_MAP[name].append(_out)
                 start_new_thread(build, (name, branch))
                 res.update(code=0, branch=branch, msg="ok")
             else:
@@ -119,8 +122,10 @@ def rtfd_webhook_view(name):
 
     def build(_name, _branch):
         rb = RTFD_BUILDER(cfg)
+        if name not in MESSAGE_MAP:
+            MESSAGE_MAP[name] = deque()
         for _out in rb.build(_name, _branch, "webhook"):
-            _queue.append(_out)
+            MESSAGE_MAP[name].append(_out)
 
     #: hook handler for github or gitee
     if gst == "github":

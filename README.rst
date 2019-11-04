@@ -31,6 +31,10 @@ Quickstart
 
 More options with ``--help / -h`` option.
 
+Documentation
+-------------
+
+More please see the `detailed documentation <https://docs.saintic.com/rtfd>`_
 
 .. |Documentation Status| image:: https://open.saintic.com/rtfd/badge/saintic-docs
     :target: https://docs.saintic.com/rtfd/

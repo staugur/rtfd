@@ -139,10 +139,8 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
     """文档项目管理"""
     from .libs import ProjectManager
     from .config import CfgHandler
-    from .utils import is_domain, check_giturl
+    from .utils import is_domain, check_giturl, get_git_service_provider
     name = name.lower()
-    if "_" in name:
-        return echo("Underline is not allowed", fg="red")
     pm = ProjectManager(config)
     if action == 'get':
         name, key = name.split(":") if ":" in name else (name, None)
@@ -187,7 +185,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             index=index, show_nav=show_nav, webhook_secret=webhook_secret,
             custom_domain=custom_domain if is_domain(custom_domain) else False,
             ssl=ssl, ssl_crt=ssl_crt, ssl_key=ssl_key, builder=builder,
-            _type=c_res["_type"],
+            _type=c_res["_type"], gsp=get_git_service_provider(url),
         )
         #: generate nginx template
         pm.nginx_builder(name)
