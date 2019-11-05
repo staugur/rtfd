@@ -3,6 +3,7 @@
 #Version:     0.2
 #Description: 最终调用的核心脚本，此脚本只负责构建，会在docs的项目下，生成不同语言和不同版本的文档
 #CreateTime:  2019-08-05
+#ModifyTime:  2019-11-04
 #License:     BSD 3-Clause
 #Copyright:   (c) 2019 by staugur.
 
@@ -138,6 +139,7 @@ _env_manager() {
     local venv_py=$(_join_path $project_runtime_dir ${vd}/bin/python)
     local venv_pip_install="${venv_py} -m pip install -i ${py_index} --no-cache-dir"
     $venv_pip_install --upgrade sphinx
+    check_exit_retcode
     for req in ${py_requirements//,/ }; do
         $venv_pip_install -r $req
         check_exit_retcode

@@ -185,7 +185,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             index=index, show_nav=show_nav, webhook_secret=webhook_secret,
             custom_domain=custom_domain if is_domain(custom_domain) else False,
             ssl=ssl, ssl_crt=ssl_crt, ssl_key=ssl_key, builder=builder,
-            _type=c_res["_type"], gsp=get_git_service_provider(url),
+            _type=c_res["_type"], _gsp=get_git_service_provider(url),
         )
         #: generate nginx template
         pm.nginx_builder(name)

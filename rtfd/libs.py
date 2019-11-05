@@ -123,7 +123,7 @@ class ProjectManager(object):
             showNav=is_true(data.get("show_nav", True)),
             icon='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4lc7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMwBHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrzdQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII=',
             type=_type, showNavGit=is_true(data.get("show_nav_git", True)),
-            gsp=data.get("gsp", get_git_service_provider(url)),
+            gsp=data.get("_gsp", get_git_service_provider(url)),
         )
         return resp
 

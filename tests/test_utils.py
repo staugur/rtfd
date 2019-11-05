@@ -9,7 +9,7 @@ from random import sample
 from tempfile import gettempdir
 from rtfd import __version__
 from rtfd.utils import is_domain, ProjectStorage, run_cmd, check_giturl, \
-    get_public_giturl
+    get_public_giturl, get_git_service_provider
 from flask_pluginkit.utils import LocalStorage
 from flask_pluginkit._compat import PY2, string_types
 
@@ -102,6 +102,13 @@ class UtilsTest(unittest.TestCase):
         self.assertTrue(check_giturl(private_url)["status"])
         self.assertEqual(get_public_giturl(private_url),
                          "https://github.com/staugur/rtfd")
+
+        self.assertEqual(
+            "GitHub", get_git_service_provider("https://github.com"))
+        self.assertEqual(
+            "Gitee", get_git_service_provider("https://gitee.com"))
+        self.assertEqual(
+            "Unknown", get_git_service_provider("https://gitlab.com"))
 
 
 if __name__ == '__main__':
