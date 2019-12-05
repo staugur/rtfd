@@ -12,4 +12,4 @@
 from flask_pluginkit import PluginManager, Flask
 
 app = Flask(__name__)
-PluginManager(app, plugin_packages=["rtfd"])
+PluginManager(app, plugin_packages=["rtfd"], static_url_path="/rtfd/assets")
