@@ -108,7 +108,7 @@ setup(
         ]
     },
     install_requires=[
-        'Flask-PluginKit>=3.3.0',
+        'Flask-PluginKit>=3.5.0',
         'Click>=7.0',
         'configparser'
     ],

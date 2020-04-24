@@ -52,14 +52,10 @@ class UtilsTest(unittest.TestCase):
         # test setitem getitem
         storage["test"] = "hello"
         self.assertEqual("hello", storage["test"])
-        # Invalid, LocalStorage did not implement this method
         del storage["test"]
-        self.assertEqual("hello", storage["test"])
+        self.assertIsNone(storage["test"])
         self.assertIsNone(storage['_non_existent_key_'])
         self.assertEqual(1, storage.get('_non_existent_key_', 1))
-        # test other index
-        storage.index = '_non_existent_index_'
-        self.assertEqual(0, len(storage))
         #: after
         rmtree(basedir)
         remove(cfg)

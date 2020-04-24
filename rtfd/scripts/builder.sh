@@ -3,7 +3,7 @@
 #Version:     0.2
 #Description: 最终调用的核心脚本，此脚本只负责构建，会在docs的项目下，生成不同语言和不同版本的文档
 #CreateTime:  2019-08-05
-#ModifyTime:  2019-11-04
+#ModifyTime:  2020-04-24
 #License:     BSD 3-Clause
 #Copyright:   (c) 2019 by staugur.
 
@@ -59,7 +59,7 @@ _join_path() {
     echo "${1:+$1/}$2" | sed 's#//#/#g'
 }
 
-_echo() {
+_debugp() {
     local log_level=$(_getRtfdConf g log_level)
     if [[ "$log_level" == "debug" || "$log_level" == "DEBUG" ]]; then
         echo -e "$@"
@@ -159,13 +159,13 @@ _env_manager() {
 if not 'html_js_files' in globals():
     html_js_files = []
 html_js_files.append("${server_static_url}rtfd.js?v=$(rtfd -v)&name=${project_name}&branch=${branch}&rtfd_api=${rtfd_server}&rtfd_static=${server_static_url}")
-if not 'html_favicon' in globals():
+if 'html_favicon' not in globals():
     html_favicon = '${favicon_url}'
 EOF
     #: 执行构建前的钩子命令：
     local before_hook=$(_getDocsConf $project_name before_hook)
     if [ ! -z "$before_hook" ]; then
-        _echo "Trigger before_hook: ${before_hook}"
+        _debugp "Trigger before_hook: ${before_hook}"
         ($before_hook)
         check_exit_retcode
     fi
@@ -189,14 +189,14 @@ EOF
     #: 执行构建成功后的钩子命令：
     local after_hook=$(_getDocsConf $project_name after_hook)
     if [ ! -z "$after_hook" ]; then
-        _echo "Trigger after_hook: ${after_hook}"
-        ($after_hook)
+        _debugp "Trigger after_hook: ${after_hook}"
+        ($after_hook) && _debugp "after_hook ok" || _debugp "after_hook fail"
     fi
     return $code
 }
 
 _code_manager() {
-    #: 检出代码并切换到相应分支
+    #: 克隆指定分支代码并切换项目中
     local git=$(_getRtfdConf g git git)
     local project_name=$1
     local project_git=$2
@@ -209,22 +209,10 @@ _code_manager() {
     cd $runtime_dir
     check_exit_retcode
     [ -d $project_name ] && rm -rf $project_name
-    $git clone --recurse-submodules $project_git $project_name
+    $git clone --branch $branch --recurse-submodules $project_git $project_name
     check_exit_retcode
     cd $project_name
     check_exit_retcode
-    local tags=($($git tag -l))
-    local branches=(master ${tags[@]})
-    if echo "${branches[@]}" | grep -w "${branch}" &>/dev/null; then
-        if [ "$branch" != "master" ]; then
-            $git checkout $branch
-            check_exit_retcode
-            return 0
-        fi
-    else
-        echo "Not found ${branch}, the allowed branches are ${branches[@]}"
-        exit 1
-    fi
 }
 
 usage() {
@@ -298,10 +286,10 @@ main() {
     local api_host=$(_getRtfdConf api host 127.0.0.1)
     local api_port=$(_getRtfdConf api port 5000)
     local rtfd_server=$(_getRtfdConf g server_url http://${api_host}:${api_port})
-    local server_static_url=$(_getRtfdConf g server_static_url ${rtfd_server}/assets/rtfd/)
+    local server_static_url=$(_getRtfdConf g server_static_url ${rtfd_server}/rtfd/assets/)
     local favicon_url=$(_getRtfdConf g favicon_url https://static.saintic.com/rtfd/favicon.png)
     local default_index=$(_getRtfdConf py index https://pypi.org/simple)
-    _echo "$base_dir $py2_path $py3_path\n$project_name $project_git $branch $rtfd_server $server_static_url"
+    _debugp "$base_dir $py2_path $py3_path\n$project_name $project_git $branch $rtfd_server $server_static_url"
     #: 校验参数
     check_exit_param project_name $project_name
     check_exit_param project_git $project_git

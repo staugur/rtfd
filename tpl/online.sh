@@ -23,9 +23,12 @@ host=$(rtfd cfg api:host)
 port=$(rtfd cfg api:port)
 basedir=$(rtfd cfg g:base_dir)
 cpu_count=$(rtfd cfg api:count)
-cpus=$(cat /proc/cpuinfo | grep "processor" | wc -l)
 if [ -z $cpu_count ]; then
-    cpu_count=$cpus
+    if [ -f /proc/cpuinfo ]; then
+        cpu_count=$(cat /proc/cpuinfo | grep "processor" | wc -l)
+    else
+        cpu_count=1
+    fi
 fi
 [ -d ${basedir}/logs ] || mkdir -p ${basedir}/logs
 logfile=${basedir}/logs/gunicorn.log

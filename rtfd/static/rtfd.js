@@ -76,7 +76,7 @@ const rtfd = {
             dataType: "json",
             success: function (res) {
                 //console.log(res);
-                if (res.code === 0 && res.data.showNav != false) {
+                if (res.code === 0 && res.data.show_nav != false) {
                     if (res.data.single === false) {
                         var lang = location.pathname.split('/')[1];
                         var branch = location.pathname.split('/')[2];
@@ -99,10 +99,10 @@ const rtfd = {
                             //for tag
                             github_str += `<dd><a href=${res.data.url}/blob/${branch}/${res.data.sourcedir}/${path_rst}>View</a></dd>`;
                         }
-                        if (res.data.showNavGit === false) {
+                        if (res.data.show_nav_git === false) {
                             github_str = '';
                         }
-                        var base_str = `<div class=rtfd><div id=rtfd-header><img src="${res.data.icon}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id=rtfd-body><dl><dt>Languages</dt>${langs_str}</dl><dl><dt>Versions</dt>${vers_str}</dl><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class=footer><span>Powered by <a href=https://github.com/staugur/rtfd>rtfd</a></span></small></div></div>`;
+                        var base_str = `<div class="rtfd"><div id="rtfd-header"><img src="${res.data.icon}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id="rtfd-body"><dl><dt>Languages</dt>${langs_str}</dl><dl><dt>Versions</dt>${vers_str}</dl><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class="footer"><span>Powered by <a href="https://github.com/staugur/rtfd">rtfd</a></span></small></div></div>`;
                     } else {
                         var branch = "latest";
                         var other_path = location.pathname.split('/').slice(1).join('/');
@@ -110,10 +110,10 @@ const rtfd = {
                         var github_str = '';
                         github_str += `<dd><a href=${res.data.url}/blob/master/${res.data.sourcedir}/${path_rst}>View</a></dd>`;
                         github_str += `<dd><a href=${res.data.url}/edit/master/${res.data.sourcedir}/${path_rst}>Edit</a></dd>`;
-                        if (res.data.showNavGit === false) {
+                        if (res.data.show_nav_git === false) {
                             github_str = '';
                         }
-                        var base_str = `<div class=rtfd><div id=rtfd-header><img src="${res.data.icon}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id=rtfd-body><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class=footer><span>Powered by <a href=https://github.com/staugur/rtfd>rtfd</a></span></small></div></div>`;
+                        var base_str = `<div class="rtfd"><div id="rtfd-header"><img src="${res.data.icon}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id="rtfd-body"><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class="footer"><span>Powered by <a href="https://github.com/staugur/rtfd">rtfd</a></span></small></div></div>`;
                     }
                     that.addCSS('tipped.css');
                     that.addJS('tipped.js', function () {
@@ -125,7 +125,7 @@ const rtfd = {
                             hideOn: 'click',
                             close: 'overlap',
                             position: 'left',
-                            maxWidth: 300
+                            maxWidth: 250,
                         });
                     });
                 }
@@ -135,4 +135,7 @@ const rtfd = {
 }
 $(function () {
     rtfd.init();
+    $(window).scroll(function() {
+        Tipped.hide('#rtfd-header');
+    });
 });

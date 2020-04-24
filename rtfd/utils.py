@@ -9,12 +9,11 @@
     :license: BSD 3-Clause, see LICENSE for more details.
 """
 
-import shelve
 from re import compile
 from os.path import join
 from time import strftime
 from flask_pluginkit import LocalStorage
-from flask_pluginkit._compat import PY2, string_types, text_type
+from flask_pluginkit._compat import PY2, string_types
 from subprocess import Popen, PIPE, STDOUT
 from .config import CfgHandler
 if PY2:
@@ -23,29 +22,10 @@ else:
     from urllib.parse import urlparse
 
 
-class ProjectStorage(LocalStorage):
-
-    def __init__(self, cfg=None):
-        self.cfg = CfgHandler(cfg)
-        self.index = join(self.cfg.g.base_dir, '.rtfd-projects.dat')
-
-    def _open(self, flag="c"):
-        return shelve.open(
-            filename=self.index,
-            flag=flag,
-            protocol=2
-        )
-
-    def set(self, key, value):
-        db = self._open()
-        try:
-            if PY2 and isinstance(key, text_type):
-                key = key.encode("utf-8")
-            if not PY2 and not isinstance(key, text_type):
-                key = key.decode("utf-8")
-            db[key] = value
-        finally:
-            db.close()
+def ProjectStorage(cfg=None):
+    _cfg = CfgHandler(cfg)
+    _index = join(_cfg.g.base_dir, '.rtfd-projects.dat')
+    return LocalStorage(path=_index)
 
 
 def run_cmd(*args):

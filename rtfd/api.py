@@ -13,7 +13,7 @@ import hmac
 from hashlib import sha1
 from collections import deque
 from flask import request, jsonify, make_response, render_template_string,\
-    current_app
+    current_app, Blueprint
 from flask_pluginkit._compat import PY2, text_type
 from .libs import ProjectManager, RTFD_BUILDER
 from .utils import is_true
@@ -25,8 +25,16 @@ else:
 #: Build message map
 MESSAGE_MAP = {}
 
+#: Blueprint(bep) instead of vep
+#:
+#: ..versionadded:: 0.4.2
+bp = Blueprint(
+    "rtfd", "rtfd", static_folder="static", static_url_path="/assets"
+)
 
-def rtfd_api_view():
+
+@bp.route("/api", methods=["GET", "POST"])
+def api_view():
     """RTFD接口视图"""
     res = dict(code=-1, msg=None)
     cfg = current_app.config.get("RTFD_CFG")
@@ -80,7 +88,8 @@ def rtfd_api_view():
     return response
 
 
-def rtfd_badge_view(name):
+@bp.route("/badge")
+def badge_view(name):
     """RTFD徽章视图"""
     cpm = ProjectManager(current_app.config.get("RTFD_CFG"))
     status = cpm.get_for_badge(
@@ -97,7 +106,8 @@ def rtfd_badge_view(name):
     return resp
 
 
-def rtfd_webhook_view(name):
+@bp.route("/webhook/<string:name>", methods=["POST"])
+def webhook_view(name):
     """基于webhook自动构建文档"""
     res = dict(code=1, msg=None)
     agent = request.headers.get("User-Agent") or ""
@@ -212,20 +222,8 @@ def rtfd_webhook_view(name):
 
 def register():
     return dict(
-        vep=[
-            dict(
-                rule="/rtfd/api",
-                view_func=rtfd_api_view,
-                methods=["GET", "POST"]
-            ),
-            dict(
-                rule="/rtfd/badge/<string:name>",
-                view_func=rtfd_badge_view
-            ),
-            dict(
-                rule="/rtfd/webhook/<string:name>",
-                view_func=rtfd_webhook_view,
-                methods=["POST"]
-            )
-        ]
+        bep=dict(
+            blueprint=bp,
+            prefix="/rtfd"
+        )
     )

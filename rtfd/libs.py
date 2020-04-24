@@ -120,9 +120,17 @@ class ProjectManager(object):
                 data.get("custom_domain")) else False,
             sourcedir=data.get("sourcedir"),
             single=is_true(data.get("single")),
+            #: TODO For compatibility, it will be scrapped later
             showNav=is_true(data.get("show_nav", True)),
-            icon='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4lc7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMwBHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrzdQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII=',
-            type=_type, showNavGit=is_true(data.get("show_nav_git", True)),
+            showNavGit=is_true(data.get("show_nav_git", True)),
+            show_nav=is_true(data.get("show_nav", True)),
+            icon='data:image/png;base64,'
+            'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ'
+            '4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4l'
+            'c7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMw'
+            'BHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrz'
+            'dQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII=',
+            type=_type, show_nav_git=is_true(data.get("show_nav_git", True)),
             gsp=data.get("_gsp", get_git_service_provider(url)),
         )
         return resp
@@ -173,7 +181,7 @@ class ProjectManager(object):
                 if isfile(custom_nginx_file):
                     remove(custom_nginx_file)
                 self.__reload_nginx()
-            return self._cps.set(name, '')
+            return self._cps.remove(name)
 
     def __reload_nginx(self):
         #: reload nginx
@@ -355,19 +363,27 @@ class RTFD_BUILDER(object):
                 branch = branch.decode("utf-8")
             msg = "RTFD.Builder: build %s with branch %s" % (name, branch)
             self._logger.debug(msg)
-            cmd = ['bash', self._build_sh, '-n', name, '-u', data["url"],
-                   '-b', branch, '-c', self._cfg_file]
+            cmd = [
+                'bash', self._build_sh, '-n', name, '-u', data["url"],
+                '-b', branch, '-c', self._cfg_file
+            ]
             #: 响应信息
             status = "failing"
+            usedtime = -1
             for i in run_cmd_stream(*cmd):
                 if "Build Successfully" in i:
                     status = "passing"
+                    try:
+                        usedtime = int(i.split(" ")[2])
+                    except (ValueError, TypeError):
+                        pass
                 yield i
             #: 更新构建信息
             _build_info = {"_build_%s" % branch: dict(
                 btime=get_now(),
                 status=status,
-                sender=sender
+                sender=sender,
+                usedtime=usedtime,
             )}
             self._cpm.update(name, **_build_info)
         else:

@@ -126,7 +126,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 @click.option('--install/--no-install', default=False, help=u'是否需要安装项目，如果值为true，则会在项目目录执行"pip install ."', show_default=True)
 @click.option('--index', '-i',  type=str, default='', help=u'指定pip安装时的pypi源，默认是rtfd配置的源（其默认为官方源）', show_default=True)
 @click.option('--show-nav/--no-show-nav', default=True, help=u'是否显示导航', show_default=True)
-@click.option('--webhook-secret', '-ws', default='', help=u"Webhook密钥", show_default=True)
+@click.option('--webhook-secret', '-ws', default='', help=u"Webhook密钥")
 @click.option('--custom-domain', '-cd', default='', help=u'文档项目开启自定义域名功能', show_default=True)
 @click.option('--ssl/--no-ssl', default=False, help=u'文档项目自定义域名是否开启SSL', show_default=True)
 @click.option('--ssl-crt', type=click.Path(exists=True), help=u'自定义域名的SSL证书', show_default=True)
