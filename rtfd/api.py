@@ -88,7 +88,7 @@ def api_view():
     return response
 
 
-@bp.route("/badge")
+@bp.route("/badge/<string:name>")
 def badge_view(name):
     """RTFD徽章视图"""
     cpm = ProjectManager(current_app.config.get("RTFD_CFG"))

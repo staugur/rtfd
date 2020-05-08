@@ -11,7 +11,7 @@
 
 from .api import register
 
-__version__ = "0.4.2"
+__version__ = "0.4.3"
 __author__ = "staugur <staugur@saintic.com>"
 
 #: define metadata for flask-pluginkit
