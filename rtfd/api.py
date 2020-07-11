@@ -168,8 +168,7 @@ def webhook_view(name):
             if sign_passing is True:
                 allow_build = True
                 if event == "push":
-                    #: Remote branching is not supported
-                    branch = "master"
+                    branch = data.get("ref", "").split("/")[-1] or "master"
                 else:
                     if data["action"] == "published":
                         branch = data["release"]["tag_name"]
@@ -208,7 +207,7 @@ def webhook_view(name):
                     res.update(msg="Verify token failed")
             if sign_passing is True:
                 if event == "push":
-                    branch = "master"
+                    branch = data.get("ref", "").split("/")[-1] or "master"
                 else:
                     branch = data["ref"].split("/")[-1]
                 start_new_thread(build, (name, branch))
