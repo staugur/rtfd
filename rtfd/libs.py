@@ -166,6 +166,8 @@ class ProjectManager(object):
     def remove(self, name):
         name = name.lower()
         if self.has(name):
+            if PY2 and isinstance(name, text_type):
+                name = name.encode("utf-8")
             self._logger.info(
                 "Project.Remove: name is %s, will remove docs and nginx, "
                 "then reload nginx" % name
