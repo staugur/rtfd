@@ -22,6 +22,13 @@ else:
     from urllib.parse import urlparse
 
 
+name_pat = compile(r'^[a-zA-Z][0-9a-zA-Z\_\-]{1,100}$')
+
+
+def is_project_name(name):
+    return True if name and name_pat.match(name) else False
+
+
 def ProjectStorage(cfg=None):
     _cfg = CfgHandler(cfg)
     _index = join(_cfg.g.base_dir, '.rtfd-projects.dat')

@@ -45,7 +45,7 @@ class SectionHandler(object):
 
     __getitem__ = __getattr__
 
-    def get(self, option, converter=None, default=None, err_ignore=True):
+    def get(self, option, default=None, converter=None, err_ignore=True):
         try:
             value = getattr(self, option)
         except AttributeError:

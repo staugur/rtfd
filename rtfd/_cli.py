@@ -55,7 +55,7 @@ def cli():
 @click.option('--nginx-ssl/--no-nginx-ssl', default=False, help=u'Nginx开启SSL', show_default=True)
 @click.option('--nginx-ssl-crt', type=click.Path(), default='${g:base_dir}/certs/${dn}.crt', help=u'SSL证书', show_default=True)
 @click.option('--nginx-ssl-key', type=click.Path(), default='${g:base_dir}/certs/${dn}.key', help=u'SSL证书私钥', show_default=True)
-@click.option('--nginx-ssl-hsts-maxage', default=31536000, type=int, help=u'设置在浏览器收到这个请求后的maxage秒的时间内凡是访问这个域名下的请求都使用HTTPS请求。', show_default=True)
+@click.option('--nginx-ssl-hsts-maxage', default=0, type=int, help=u'设置在浏览器收到这个请求后的maxage秒的时间内凡是访问这个域名下的请求都使用HTTPS请求。', show_default=True)
 @click.option('--py2', type=click.Path(exists=True), default='/usr/bin/python2', help=u"Python2路径", show_default=True)
 @click.option('--py3', type=click.Path(exists=True), default='/usr/bin/python3', help=u"Python3路径", show_default=True)
 @click.option('--index', '-i',  type=str, default='https://pypi.org/simple', help=u'pip安装时的默认源', show_default=True)
@@ -74,7 +74,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
             if not isabs(basedir):
                 basedir = abspath(basedir)
             mkdir(basedir)
-        if nginx_ssl_hsts_maxage <= 0:
+        if nginx_ssl_hsts_maxage < 0:
             return echo("The nginx-ssl-hsts-maxage is error, it should be greater than 0.")
         nginx_ssl = "on" if nginx_ssl else "off"
         if not server_url:
@@ -131,11 +131,12 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 @click.option('--ssl/--no-ssl', default=False, help=u'文档项目自定义域名是否开启SSL', show_default=True)
 @click.option('--ssl-crt', type=click.Path(exists=True), help=u'自定义域名的SSL证书', show_default=True)
 @click.option('--ssl-key', type=click.Path(exists=True), help=u'自定义域名的SSL证书私钥', show_default=True)
+@click.option('--ssl-hsts-maxage', default=0, type=int, help=u'设置在浏览器收到这个请求后的maxage秒的时间内凡是访问这个域名下的请求都使用HTTPS请求。', show_default=True)
 @click.option('--builder', '-b', type=click.Choice(["html", "dirhtml", "singlehtml"]), default='html', help=u"Sphinx构建器", show_default=True)
 @click.option('--update-rule', '-ur', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
 @click.option('--config', '-c', type=click.Path(exists=True), default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
-def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, show_nav, webhook_secret, custom_domain, ssl, ssl_crt, ssl_key, builder, update_rule, config, name):
+def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, show_nav, webhook_secret, custom_domain, ssl, ssl_crt, ssl_key, ssl_hsts_maxage, builder, update_rule, config, name):
     """文档项目管理"""
     from .libs import ProjectManager
     from .config import CfgHandler
@@ -185,6 +186,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
             index=index, show_nav=show_nav, webhook_secret=webhook_secret,
             custom_domain=custom_domain if is_domain(custom_domain) else False,
             ssl=ssl, ssl_crt=ssl_crt, ssl_key=ssl_key, builder=builder,
+            ssl_hsts_maxage=ssl_hsts_maxage,
             _type=c_res["_type"], _gsp=get_git_service_provider(url),
         )
         #: generate nginx template

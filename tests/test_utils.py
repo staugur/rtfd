@@ -9,7 +9,7 @@ from random import sample
 from tempfile import gettempdir
 from rtfd import __version__
 from rtfd.utils import is_domain, ProjectStorage, run_cmd, check_giturl, \
-    get_public_giturl, get_git_service_provider
+    get_public_giturl, get_git_service_provider, is_project_name
 from flask_pluginkit.utils import LocalStorage
 from flask_pluginkit._compat import PY2, string_types
 
@@ -27,6 +27,17 @@ class UtilsTest(unittest.TestCase):
         if not PY2 and not isinstance(out, string_types):
             out = out.decode("utf-8")
         self.assertEqual(out.strip("\n"), __version__)
+
+    def test_name(self):
+        self.assertTrue(is_project_name("a1"))
+        self.assertTrue(is_project_name("Bxxa-"))
+        self.assertTrue(is_project_name("c_no"))
+        self.assertFalse(is_project_name("0"))
+        self.assertFalse(is_project_name("0a"))
+        self.assertFalse(is_project_name("-abc"))
+        self.assertFalse(is_project_name("_d0"))
+        self.assertFalse(is_project_name("/abc"))
+        self.assertFalse(is_project_name("@abc"))
 
     def test_projectstorage(self):
         if not isfile(expanduser("~/.rtfd.cfg")):
