@@ -62,10 +62,6 @@ const rtfd = {
         document.getElementsByTagName('head')[0].appendChild(script);
         script.onload = typeof cb === "function" ? cb : function () {};
     },
-    //Add a html code to the body
-    addHtml: function (html) {
-        document.body.innerHTML = html + document.body.innerHTML;
-    },
     //Initiate an ajax request to get the initialization code of the document
     init: function () {
         var that = this;
@@ -117,7 +113,7 @@ const rtfd = {
                     }
                     that.addCSS('tipped.css');
                     that.addJS('tipped.js', function () {
-                        that.addHtml(base_str);
+                        $('body').append(base_str);
                         Tipped.create('#rtfd-header', {
                             title: `Version: ${branch}` + (branch === "latest" ? (" -> " + res.data.latest) : ""),
                             inline: 'rtfd-body',
