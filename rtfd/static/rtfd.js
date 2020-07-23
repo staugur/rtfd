@@ -127,15 +127,13 @@ const rtfd = {
                             position: 'left',
                             maxWidth: 250,
                         });
+                        $(window).scroll(function () {
+                            Tipped.hide('#rtfd-header');
+                        });
                     });
                 }
             }
         });
     }
-}
-$(function () {
-    rtfd.init();
-    $(window).scroll(function() {
-        Tipped.hide('#rtfd-header');
-    });
-});
+};
+rtfd.init();

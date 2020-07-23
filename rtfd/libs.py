@@ -240,7 +240,7 @@ server {
     server_name {{ domain_name }};
     charset utf-8;
     root {{ docs_dir }}/{{ name }}/;
-    index index.html;
+    index index.html master.html;
     set $home /{{ default_language }}/latest;
     error_page 403 =404 /404.html;
     {%- if ssl -%}
@@ -262,7 +262,7 @@ server {
     server_name {{ domain_name }};
     charset utf-8;
     root {{ docs_dir }}/{{ name }}/{{ default_language }}/latest/;
-    index index.html;
+    index index.html master.html;
     {%- if ssl -%}
         {{ ssl_cfg }}
     {%- endif %}
@@ -285,7 +285,7 @@ server {
     ssl_ciphers TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-128-GCM-SHA256:TLS13-AES-128-CCM-8-SHA256:TLS13-AES-128-CCM-SHA256:EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
     ssl_prefer_server_ciphers on;
     {%- if ssl_hsts_maxage|int > 0 %}
-    add_header Strict-Transport-Security "max-age=%s; preload";
+    add_header Strict-Transport-Security "max-age={{ ssl_hsts_maxage }}; preload";
     {%- endif %}'''
         #: 全局默认的域名
         default_dn = "%s.%s" % (name, self._cfg_handler.nginx.dn)
