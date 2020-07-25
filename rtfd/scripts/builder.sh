@@ -184,9 +184,9 @@ EOF
     #: 后续处理：依照${project_ini}更新项目信息
     if [ -f $project_ini ]; then
         rtfd project -a update -ur $project_ini $project_name
-        return $?
+        code=$?
     fi
-    #: 执行构建成功后的钩子命令：
+    #: 执行构建成功后的钩子命令
     local after_hook=$(_getDocsConf $project_name after_hook)
     if [ ! -z "$after_hook" ]; then
         _debugp "Trigger after_hook: ${after_hook}"
