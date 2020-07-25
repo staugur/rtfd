@@ -386,7 +386,9 @@ class RTFD_BUILDER(object):
             #: 响应信息
             status = "failing"
             usedtime = -1
+            _namelog = Logger(name, self._cfg_file).getLogger
             for i in run_cmd_stream(*cmd):
+                _namelog.debug(i)
                 if "Build Successfully" in i:
                     status = "passing"
                     try:

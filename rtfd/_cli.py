@@ -120,7 +120,6 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 @click.option('--single/--no-single', default=False, help=u'是否开启单一版本功能', show_default=True)
 @click.option('--sourcedir', '-s',  type=str, default='docs', help=u'实际文档文件所在目录，目录路径是项目的相对位置', show_default=True)
 @click.option('--languages', '-l',  type=str, default='en', help=u'文档语言，支持多种，以英文逗号分隔', show_default=True)
-@click.option('--default-language', '-dl', type=str, default='en', help=u'文档默认展示的语言，若默认语言不在languages内，则重置为languages中第一语言', show_default=True)
 @click.option('--version', '-v',  type=int, default=2, help=u'Python版本，目前仅支持2、3两个值，对应版本由配置文件定义', show_default=True)
 @click.option('--requirements', '-r',  type=str, default='', help=u'需要安装的依赖包文件（文件路径是项目的相对位置），支持多个，以英文逗号分隔')
 @click.option('--install/--no-install', default=False, help=u'是否需要安装项目，如果值为true，则会在项目目录执行"pip install ."', show_default=True)
@@ -136,7 +135,7 @@ def init(basedir, loglevel, server_url, server_static_url, favicon_url, unallowe
 @click.option('--update-rule', '-ur', help=u'当action为update时会解析此项，要求是JSON格式，指定要更新的配置内容！')
 @click.option('--config', '-c', type=click.Path(exists=True), default=DEFAULT_CFG, help=u'rtfd的配置文件', show_default=True)
 @click.argument('name')
-def project(action, url, latest, single, sourcedir, languages, default_language, version, requirements, install, index, show_nav, webhook_secret, custom_domain, ssl, ssl_crt, ssl_key, ssl_hsts_maxage, builder, update_rule, config, name):
+def project(action, url, latest, single, sourcedir, languages, version, requirements, install, index, show_nav, webhook_secret, custom_domain, ssl, ssl_crt, ssl_key, ssl_hsts_maxage, builder, update_rule, config, name):
     """文档项目管理"""
     from .libs import ProjectManager
     from .config import CfgHandler
@@ -168,8 +167,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
         if not c_res["status"]:
             return echo(c_res["msg"], fg='red')
         url = url[:-4] if url.endswith(".git") else url
-        if default_language not in languages.split(","):
-            default_language = languages.split(",")[0]
+        default_language = languages.split(",")[0]
         if not index:
             _cfg = CfgHandler(config)
             index = _cfg.py.get("index", default="https://pypi.org/simple")
@@ -217,6 +215,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
                     update_rule["sourcedir"] = sourcedir
                 if languages and languages != data.get("languages"):
                     update_rule["languages"] = languages
+                    update_rule["default_language"] = languages.split(",")[0]
                 if builder and builder != data.get("builder"):
                     update_rule["builder"] = builder
             try:
@@ -228,7 +227,7 @@ def project(action, url, latest, single, sourcedir, languages, default_language,
                 requirements = py.get("requirements")
                 install = py.get("install")
                 index = py.get("index")
-                if version and version in (2, 3) and version != data.get("version"):
+                if version and int(version) in (2, 3) and version != data.get("version"):
                     update_rule["version"] = version
                 if requirements and requirements != data.get("requirements"):
                     update_rule["requirements"] = requirements
