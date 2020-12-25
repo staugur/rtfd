@@ -64,12 +64,7 @@ func initConfig() {
 		return
 	}
 	if cfgFile == "" {
-		fmt.Println("Invalid config value")
+		fmt.Println("invalid config value")
 		os.Exit(127)
-	} else {
-		if _, err := os.Stat(cfgFile); os.IsNotExist(err) {
-			fmt.Println("config file does not exist")
-			os.Exit(128)
-		}
 	}
 }
