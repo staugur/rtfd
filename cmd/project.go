@@ -7,10 +7,10 @@ import (
 // projectCmd represents the project command
 var projectCmd = &cobra.Command{
 	Use:   "project",
-    Short: "文档项目管理",
+	Short: "文档项目管理",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-        cmd.Help()
+		cmd.Help()
 	},
 }
 

@@ -11,6 +11,7 @@ help:
 	@echo "  make gotool - Run go tool 'fmt' and 'vet'"
 	@echo "  make build  - Compile go code and generate binary file"
 	@echo "  make dev    - Run dev server"
+	@echo "  make test   - Run go test"
 
 gotool:
 	go fmt ./
@@ -25,3 +26,6 @@ docker:
 dev:
 	@echo Starting service...
 	@go run ./
+
+test:
+	@go test

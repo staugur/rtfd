@@ -3,9 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
+	"tcw.im/ufc"
 )
 
 var (
@@ -19,6 +21,7 @@ var (
 	built string
 
 	showVer bool
+	newInit bool
 )
 
 var rootCmd = &cobra.Command{
@@ -28,6 +31,23 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if showVer {
 			fmt.Printf("v%s commit/%s built/%s\n", version, commitID, built)
+		} else if newInit {
+			//新增rtfd配置文件
+			if !ufc.IsFile(cfgFile) {
+				dir, _ := os.Getwd()
+				tpl := filepath.Join(dir, "assets", "rtfd.cfg")
+				if !ufc.IsFile(tpl) {
+					fmt.Printf("%s not found\n", tpl)
+					os.Exit(128)
+				}
+				_, err := ufc.FileCopy(cfgFile, tpl)
+				if err != nil {
+					fmt.Println("Failed to generate configuration file")
+					os.Exit(129)
+				}
+			} else {
+				fmt.Printf("The rtfd config file(%s) already exists\n", cfgFile)
+			}
 		} else {
 			cmd.Help()
 		}
@@ -57,14 +77,18 @@ func init() {
 	rootCmd.Flags().BoolVarP(
 		&showVer, "version", "v", false, "显示版本与构建信息",
 	)
+	rootCmd.Flags().BoolVarP(
+		&newInit, "init", "", false, "初始化rtfd配置文件",
+	)
 }
 
 func initConfig() {
-	if showVer {
+	if showVer || newInit {
 		return
 	}
-	if cfgFile == "" {
-		fmt.Println("invalid config value")
+
+	if cfgFile == "" || !ufc.IsFile(cfgFile) {
+		fmt.Printf("No valid configuration file: %s\n", cfgFile)
 		os.Exit(127)
 	}
 }
