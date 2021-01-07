@@ -86,9 +86,12 @@ func initConfig() {
 	if showVer || newInit {
 		return
 	}
-
+	// 除 -h/help 和根命令 -v/--init 选项外，其他子命令均需配置文件存在
 	if cfgFile == "" || !ufc.IsFile(cfgFile) {
-		fmt.Printf("No valid configuration file: %s\n", cfgFile)
+		fmt.Printf(
+			"No valid configuration file: %s\n"+
+				"Please use `rtfd --init` to initialize it.\n", cfgFile,
+		)
 		os.Exit(127)
 	}
 }

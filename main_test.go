@@ -7,7 +7,7 @@ import (
 )
 
 func TestDefaultConf(t *testing.T) {
-	cfg, err := ini.Load("rtfd.cfg")
+	cfg, err := ini.Load("assets/rtfd.cfg")
 	if err != nil {
 		t.Fatalf("Fail to read file: %v", err)
 	}

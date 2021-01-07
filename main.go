@@ -1,7 +1,7 @@
 package main
 
 import (
-	"tcw.im/rtfd/cmd"
+	"rtfd/cmd"
 )
 
 func main() {
