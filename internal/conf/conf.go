@@ -8,12 +8,12 @@ import (
 
 // Config 封装程序操作ini配置文件的方法
 type Config struct {
-	Path string
+	path string
 	obj  *ini.File
 }
 
-// NewConfig 初始化Config结构体
-func NewConfig(cfg string) (c *Config, err error) {
+// New 初始化Config结构体
+func New(cfg string) (c *Config, err error) {
 	obj, err := ini.Load(cfg)
 	if err != nil {
 		return

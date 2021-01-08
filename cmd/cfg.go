@@ -19,7 +19,7 @@ var cfgCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		isJSON, _ := cmd.Flags().GetBool("json")
 
-		c, err := conf.NewConfig(cfgFile)
+		c, err := conf.New(cfgFile)
 		if err != nil {
 			fmt.Println(err)
 			return

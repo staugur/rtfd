@@ -120,6 +120,6 @@ func GitServiceProvider(rawurl string) (gsp string, err error) {
 	case strings.HasPrefix(git, "gitee.com"):
 		return "Gitee", nil
 	default:
-		return "Unknown", nil
+		return "N/A", nil
 	}
 }
