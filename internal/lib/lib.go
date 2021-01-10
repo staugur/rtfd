@@ -4,7 +4,6 @@ package lib
 
 import (
 	"errors"
-	"time"
 
 	"rtfd/internal/conf"
 
@@ -39,13 +38,6 @@ type (
 	// URL 包含协议头的地址
 	URL = string
 )
-
-// ProjectManager 项目管理器
-type ProjectManager struct {
-	path Path
-	cfg  *conf.Config
-	db   *nutsdb.DB
-}
 
 // Options 每个文档项目的配置项
 type Options struct {
@@ -87,13 +79,11 @@ type Options struct {
 	builder BuilderType
 }
 
-// BuilderResult 构建结果
-type BuilderResult struct {
-	// status 构建结果 passing表示true 其他表示false
-	status   bool
-	sender   string
-	btime    time.Time
-	usedtime uint
+// ProjectManager 项目管理器
+type ProjectManager struct {
+	path Path
+	cfg  *conf.Config
+	db   *nutsdb.DB
 }
 
 // New 新建项目管理器示例，path是rtfd配置文件
