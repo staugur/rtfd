@@ -3,6 +3,9 @@
 package conf
 
 import (
+	"strings"
+
+	homedir "github.com/mitchellh/go-homedir"
 	"gopkg.in/ini.v1"
 )
 
@@ -13,17 +16,30 @@ type Config struct {
 }
 
 // New 初始化Config结构体
-func New(cfg string) (c *Config, err error) {
-	obj, err := ini.Load(cfg)
+func New(configPath string) (cfg *Config, err error) {
+	if strings.HasPrefix(configPath, "~") {
+		configPath, err = homedir.Expand(configPath)
+		if err != nil {
+			return
+		}
+	}
+	obj, err := ini.Load(configPath)
 	if err != nil {
 		return
 	}
-	c = &Config{cfg, obj}
-	return
+	return &Config{configPath, obj}, nil
+}
+
+func changeDefaultSection(section string) string {
+	if strings.ToLower(section) == "default" {
+		return ini.DEFAULT_SECTION
+	}
+	return section
 }
 
 // SecHash 获取ini文件某个分区下所有经过解析的键值对
 func (c Config) SecHash(section string) (data map[string]string) {
+	section = changeDefaultSection(section)
 	data = make(map[string]string)
 	for _, k := range c.obj.Section(section).KeyStrings() {
 		data[k] = c.obj.Section(section).Key(k).String()
@@ -33,7 +49,24 @@ func (c Config) SecHash(section string) (data map[string]string) {
 
 // GetKey 获取分区下某个键的值
 func (c Config) GetKey(section, key string) string {
+	section = changeDefaultSection(section)
 	return c.obj.Section(section).Key(key).String()
+}
+
+// BaseDir 获取base_dir
+func (c Config) BaseDir() string {
+	dir := c.GetKey("default", "base_dir")
+	if dir == "" {
+		panic("base_dir is empty")
+	}
+	if strings.HasPrefix(dir, "~") {
+		dir, err := homedir.Expand(dir)
+		if err != nil {
+			panic(err)
+		}
+		return dir
+	}
+	return dir
 }
 
 // AllHash 获取ini文件所有分区的经过解析的键值对

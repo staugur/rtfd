@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"rtfd/internal/conf"
 	"rtfd/internal/lib"
-	"rtfd/internal/util"
 )
 
 // Sender 发起构建来源类型
@@ -41,14 +41,21 @@ type Builder struct {
 
 // New 新建构建器实例
 func New(path string) (b *Builder, err error) {
+	cfg, err := conf.New(path)
+	if err != nil {
+		return
+	}
 	pm, err := lib.New(path)
 	if err != nil {
 		return
 	}
-	baseDir := pm.cfg.GetKey("default", "base_dir")
+
+	baseDir := cfg.BaseDir()
 	sh := filepath.Join(baseDir, "assets", "script", "builder.sh")
 	return &Builder{path, sh, pm}, nil
 }
+
+/*
 
 func (b *Builder) build(name, branch string, sender Sender) {
 	if !b.has(name) {
@@ -65,7 +72,6 @@ func (b *Builder) build(name, branch string, sender Sender) {
 
 	util.RunCmdStream("bash", b.sh, "-n", name, "-u", data["url"], "-b", branch, "-c", b.path)
 
-	/*
 		    for i in run_cmd_stream(*cmd):
 		    if "Build Successfully" in i:
 		        status = "passing"
@@ -82,6 +88,6 @@ func (b *Builder) build(name, branch string, sender Sender) {
 		    usedtime=usedtime,
 		)}
 		self._cpm.update(name, **_build_info)
-	*/
 
 }
+*/

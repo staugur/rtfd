@@ -96,9 +96,8 @@ func New(path string) (pm *ProjectManager, err error) {
 		return
 	}
 
-	baseDir := cfg.GetKey("default", "base_dir")
 	opt := nutsdb.DefaultOptions
-	opt.Dir = baseDir
+	opt.Dir =  cfg.BaseDir()
 	db, err := nutsdb.Open(opt)
 	if err != nil {
 		return

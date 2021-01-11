@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"testing"
+
+	"rtfd/internal/db"
 
 	"gopkg.in/ini.v1"
 )
@@ -53,4 +56,31 @@ func TestDefaultConf(t *testing.T) {
 	if err != nil {
 		t.Fatal("invalid api.port")
 	}
+}
+
+func TestDB(t *testing.T) {
+	db, err := db.New("~/.rtfd.cfg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(db.DBDir)
+
+	name := "test"
+	k1 := []byte("hash")
+	v1 := []byte("v1")
+	err = db.Set(name, k1, v1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_v1, err := db.Get(name, k1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(_v1)
+	if string(v1) != _v1 {
+		t.Fatal("value not equal")
+	}
+
+	defer db.Close()
+
 }

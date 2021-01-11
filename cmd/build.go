@@ -18,8 +18,9 @@ var buildCmd = &cobra.Command{
 		if err != nil {
 			fmt.Println(err)
 			return
-		}
-		b.build()
+        }
+        fmt.Println(b)
+		//b.build()
 	},
 }
 
