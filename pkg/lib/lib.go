@@ -4,8 +4,11 @@ package lib
 
 import (
 	"errors"
+	"reflect"
+	"strings"
 
-	"rtfd/internal/conf"
+	"rtfd/pkg/conf"
+	"rtfd/pkg/util"
 
 	"github.com/xujiajun/nutsdb"
 	"tcw.im/ufc"
@@ -42,41 +45,47 @@ type (
 // Options 每个文档项目的配置项
 type Options struct {
 	// 项目在数据库中唯一标识名
-	name string
+	Name string
 	// git地址，可以是包含用户名密码的私有仓库
-	url URL
+	URL URL
 	// 默认显示的分支
-	latest string
+	Latest string
 	// 使用的python版本，2或3
-	version PyVer
+	Version PyVer
 	// 是否单一版本
-	single bool
+	Single bool
 	// 文档源文件路径
-	sourcedir Path
+	SourceDir Path
 	// 文档语言，以半角逗号分隔多种语言
-	languages string
+	Lang string
 	// 依赖包文件
-	requirements Path
+	Requirement Path
 	// 是否安装项目
-	install bool
+	Install bool
 	// pypi仓库
-	index URL
+	Index URL
 	// 是否显示导航
-	nav bool
+	ShowNav bool
+	// 隐藏git
+	HideGit bool
 	// webhook secret
-	secret string
+	Secret string
 	// 默认域名
-	defaultDomain string
+	DefaultDomain string
 	// 自定义域名
-	customDomain string
+	CustomDomain string
 	// 自定义域名开启HTTPS
-	ssl bool
+	SSL bool
 	// ssl公钥
-	sslPublic Path
+	SSLPublic Path
 	// ssl私钥
-	sslPrivate Path
+	SSLPrivate Path
 	// Sphinx构建器，支持html、dirhtml、singlehtml
-	builder BuilderType
+	Builder BuilderType
+	// git服务提供商
+	GSP string
+	// 是否为公开仓库
+	IsPublic bool
 }
 
 // ProjectManager 项目管理器
@@ -97,7 +106,7 @@ func New(path string) (pm *ProjectManager, err error) {
 	}
 
 	opt := nutsdb.DefaultOptions
-	opt.Dir =  cfg.BaseDir()
+	opt.Dir = cfg.BaseDir()
 	db, err := nutsdb.Open(opt)
 	if err != nil {
 		return
@@ -107,16 +116,51 @@ func New(path string) (pm *ProjectManager, err error) {
 }
 
 // NewOption 创建一个通用的默认选项
-func (pm *ProjectManager) NewOption(name, url string) (opt Options, err error) {
+func (pm *ProjectManager) NewOption(name, url, domain string) (opt Options, err error) {
+	if domain != "" && !util.IsDomain(domain) {
+		err = errors.New("invalid custom domain")
+		return
+	}
+	// check has custom domain
+
+	isPublic := false
+	typ, err := util.CheckGitURL(url)
+	if err != nil {
+		return
+	}
+	if typ == "public" {
+		isPublic = true
+	}
+
+	if strings.HasSuffix(url, ".git") {
+		url = strings.TrimRight(url, ".git")
+	}
+	util.GitServiceProvider(url)
+
 	dn := pm.cfg.GetKey("nginx", "dn")
 	if dn == "" {
-		return opt, errors.New("invalid nginx dn")
+		err = errors.New("invalid nginx dn")
+		return
 	}
 	return Options{
-		name: name, url: url, latest: "master", version: PY3,
-		sourcedir: "docs", languages: "en", nav: true,
-		defaultDomain: name + "." + dn, builder: "html",
+		Name: name, URL: url, Latest: "master", Version: PY3,
+		SourceDir: "docs", Lang: "en", ShowNav: true, HideGit: false,
+		DefaultDomain: name + "." + dn, Builder: "html", IsPublic: isPublic,
 	}, nil
+}
+
+// SetOption 按照 Options 参数更新key
+func (pm *ProjectManager) SetOption(opt *Options, key string, value interface{}) {
+	p := reflect.ValueOf(&opt)
+	f := p.Elem().FieldByName(key)
+	switch key {
+	case "Single", "Install", "ShowNav", "HideGit", "SSL", "IsPublic":
+		f.SetBool(value.(bool))
+	case "Version":
+		f.SetUint(value.(uint64))
+	default:
+		f.SetString(value.(string))
+	}
 }
 
 // Create 新建一个文档项目

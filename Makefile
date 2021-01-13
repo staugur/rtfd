@@ -28,4 +28,4 @@ dev:
 	@go run ./
 
 test:
-	@go test
+	@go test -v -count=1 ./...

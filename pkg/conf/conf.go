@@ -53,6 +53,15 @@ func (c Config) GetKey(section, key string) string {
 	return c.obj.Section(section).Key(key).String()
 }
 
+// MustKey 获取分区下某个键的值，可设置默认值
+func (c Config) MustKey(section, key, defaults string) string {
+	v := c.GetKey(section, key)
+	if v == "" {
+		v = defaults
+	}
+	return v
+}
+
 // BaseDir 获取base_dir
 func (c Config) BaseDir() string {
 	dir := c.GetKey("default", "base_dir")

@@ -71,9 +71,9 @@ func GetNow() string {
 	return time.Now().Format("2006-01-02 15:04:05")
 }
 
-// CheckGitURL 检查url是否为支持的git地址
-// 当无error时，返回public或private表示公共、私有仓库
-// 当有error时，返回错误提示
+// CheckGitURL 检查url是否为支持的git地址。
+// 当无error时，返回public或private表示公共、私有仓库；
+// 当有error时，返回错误提示。
 func CheckGitURL(rawurl string) (string, error) {
 	if rawurl != "" && (strings.HasPrefix(rawurl, "http://") || strings.HasPrefix(rawurl, "https://")) {
 		u, err := url.Parse(rawurl)

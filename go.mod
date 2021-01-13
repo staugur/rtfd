@@ -8,5 +8,5 @@ require (
 	github.com/xujiajun/nutsdb v0.5.0
 	golang.org/x/sys v0.0.0-20210105210732-16f7687f5001 // indirect
 	gopkg.in/ini.v1 v1.62.0
-	tcw.im/ufc v0.0.0-20210107095927-ffe7a91d19b5
+	tcw.im/ufc v0.0.0-20210113070237-af695fe84942
 )

@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"rtfd/internal/conf"
-	"rtfd/internal/lib"
+	"rtfd/pkg/conf"
+	"rtfd/pkg/lib"
 )
 
 // Sender 发起构建来源类型
