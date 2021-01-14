@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"rtfd/pkg/conf"
+	"tcw.im/rtfd/pkg/conf"
 
 	"github.com/spf13/cobra"
 )

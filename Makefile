@@ -4,7 +4,7 @@ BINARY=rtfd
 CommitID=$(shell git log --pretty=format:"%h" -1)
 Built=$(shell date -u "+%Y-%m-%dT%H:%M:%SZ")
 Version=$(shell cat VERSION)
-LDFLAGS=-ldflags "-s -w -X rtfd/cmd.commitID=${CommitID} -X rtfd/cmd.built=${Built} -X rtfd/cmd.version=${Version}"
+LDFLAGS=-ldflags "-s -w -X tcw.im/rtfd/cmd.commitID=${CommitID} -X tcw.im/rtfd/cmd.built=${Built} -X tcw.im/rtfd/cmd.version=${Version}"
 
 help:
 	@echo "  make clean  - Remove binaries and vim swap files"
@@ -18,6 +18,7 @@ gotool:
 	go vet ./
 
 build:
+	go generate
 	go build ${LDFLAGS} -o $(BINARY) && chmod +x $(BINARY)
 
 docker:

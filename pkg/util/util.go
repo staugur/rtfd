@@ -5,23 +5,20 @@ package util
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 	"time"
-
-	"tcw.im/ufc"
 )
 
 var (
 	namePat = regexp.MustCompile(`^[a-zA-Z][0-9a-zA-Z\_\-]{1,100}$`)
-	dnPat   = regexp.MustCompile(
-		`^(?=^.{3,255}$)[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$`,
-	)
-	ipPat = regexp.MustCompile(
-		`^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`,
+	dnPat   = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}(\.[a-zA-Z0-9][a-zA-Z0-9-]{0,62})*(\.[a-zA-Z][a-zA-Z0-9]{0,10}){1}$`)
+	ipPat   = regexp.MustCompile(
+		`^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$`,
 	)
 )
 
@@ -55,12 +52,21 @@ func RunCmdStream(name string, args ...string) {
 	}
 }
 
-// IsDomain 判断是否为合法域名
+// IsIP 检测IPv4、IPv6
+func IsIP(str string) bool {
+	return net.ParseIP(str) != nil
+}
+
+// IsDomain 判断是否为合法DNS域名
 func IsDomain(v string) bool {
-	if !ufc.IsTrue(v) {
+	if v == "" || len(strings.Replace(v, ".", "", -1)) > 255 {
 		return false
 	}
-	if dnPat.MatchString(v) && !ipPat.MatchString(v) {
+	dots := strings.Count(v, ".")
+	if dots < 1 {
+		return false
+	}
+	if !IsIP(v) && dnPat.MatchString(v) {
 		return true
 	}
 	return false
@@ -82,10 +88,13 @@ func CheckGitURL(rawurl string) (string, error) {
 		}
 		if u.Host == "github.com" || u.Host == "gitee.com" {
 			if u.User.Username() != "" {
-				if _, has := u.User.Password(); has == true {
+				if passwd, has := u.User.Password(); has == true {
+					if passwd == "" {
+						return "", errors.New("empty password")
+					}
 					return "private", nil
 				}
-				return "", errors.New("The warehouse has set up users but no password")
+				return "", errors.New("the warehouse has set up users but no password")
 			}
 			return "public", nil
 		}
@@ -96,12 +105,9 @@ func CheckGitURL(rawurl string) (string, error) {
 
 // PublicGitURL 获取可公开的git地址（如果是私有仓库则会去掉用户名密码）
 func PublicGitURL(rawurl string) (puburl string, err error) {
-	_type, err := CheckGitURL(rawurl)
+	_, err = CheckGitURL(rawurl)
 	if err != nil {
 		return "", err
-	}
-	if _type == "public" {
-		return rawurl, nil
 	}
 	u, _ := url.Parse(rawurl)
 	return strings.Replace(u.String(), u.User.String()+"@", "", 1), nil

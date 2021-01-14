@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"rtfd/pkg/build"
+	"tcw.im/rtfd/pkg/build"
 
 	"github.com/spf13/cobra"
 )

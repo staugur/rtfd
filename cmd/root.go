@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/rakyll/statik/fs"
 	"github.com/spf13/cobra"
 	"tcw.im/ufc"
 )
@@ -34,15 +35,14 @@ var rootCmd = &cobra.Command{
 		} else if newInit {
 			//新增rtfd配置文件
 			if !ufc.IsFile(cfgFile) {
-				dir, _ := os.Getwd()
-				tpl := filepath.Join(dir, "assets", "rtfd.cfg")
-				if !ufc.IsFile(tpl) {
-					fmt.Printf("%s not found\n", tpl)
+				tpl, err := rtfdConfigTPL()
+				if err != nil {
+					fmt.Printf("unable to read configuration template")
 					os.Exit(128)
 				}
-				_, err := ufc.FileCopy(cfgFile, tpl)
+				err = ioutil.WriteFile(cfgFile, tpl, 0644)
 				if err != nil {
-					fmt.Println("Failed to generate configuration file")
+					fmt.Println("failed to generate configuration file")
 					os.Exit(129)
 				}
 			} else {
@@ -94,4 +94,23 @@ func initConfig() {
 		)
 		os.Exit(127)
 	}
+}
+
+func rtfdConfigTPL() (content []byte, err error) {
+	statikFS, err := fs.New()
+	if err != nil {
+		return
+	}
+
+	r, err := statikFS.Open("/rtfd.cfg")
+	if err != nil {
+		return
+	}
+	defer r.Close()
+	content, err = ioutil.ReadAll(r)
+	if err != nil {
+		return
+	}
+
+	return content, nil
 }

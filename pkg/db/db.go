@@ -7,9 +7,9 @@
 package db
 
 import (
-	"log"
-	"path/filepath"
-	"rtfd/pkg/conf"
+    "path/filepath"
+    
+	"tcw.im/rtfd/pkg/conf"
 
 	"github.com/xujiajun/nutsdb"
 )
@@ -42,11 +42,12 @@ func New(path string) (db *DB, err error) {
 }
 
 // Close 关闭连接
-func (db *DB) Close() {
+func (db *DB) Close() error {
 	err := db.obj.Close()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	return nil
 }
 
 // Set 添加数据

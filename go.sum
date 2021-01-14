@@ -139,6 +139,8 @@ github.com/prometheus/common v0.4.0/go.mod h1:TNfzLD0ON7rHzMJeJkieUDPYmFC7Snx/y8
 github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
 github.com/prometheus/procfs v0.0.0-20190507164030-5867b95ac084/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
+github.com/rakyll/statik v0.1.7 h1:OF3QCZUuyPxuGEP7B4ypUa7sB/iHtqOTDYZXGM8KOdQ=
+github.com/rakyll/statik v0.1.7/go.mod h1:AlZONWzMtEnMs7W4e/1LURLiI49pIMmp6V9Unghqrcc=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
@@ -239,7 +241,6 @@ golang.org/x/sys v0.0.0-20190412213103-97732733099d/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20190502145724-3ef323f4f1fd/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190507160741-ecd444e8653b/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190606165138-5da285871e9c/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
-golang.org/x/sys v0.0.0-20190624142023-c5567b49c5d0 h1:HyfiK1WMnHj5FXFXatD+Qs1A/xC2Run6RzeW1SyHxpc=
 golang.org/x/sys v0.0.0-20190624142023-c5567b49c5d0/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210105210732-16f7687f5001 h1:/dSxr6gT0FNI1MO5WLJo8mTmItROeOKTkDn+7OwWBos=
 golang.org/x/sys v0.0.0-20210105210732-16f7687f5001/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
@@ -304,15 +305,5 @@ honnef.co/go/tools v0.0.0-20190106161140-3f1c8253044a/go.mod h1:rf3lG4BRIbNafJWh
 honnef.co/go/tools v0.0.0-20190418001031-e561f6794a2a/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 honnef.co/go/tools v0.0.1-2019.2.3/go.mod h1:a3bituU0lyd329TUQxRnasdCoJDkEUEAqEt0JzvZhAg=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
-tcw.im/ufc v0.0.0-20210105034552-1080e47792ec h1:mI/9tQPdHn4XycZIoq7xIbgriAct/QjBxOtWDmsiK+A=
-tcw.im/ufc v0.0.0-20210105034552-1080e47792ec/go.mod h1:kRpCBVlwThAoUs0pyr57vAxB4NcZ7ydHK5U+P593HoA=
-tcw.im/ufc v0.0.0-20210105064345-369b6e33465c h1:D2F78FnFr0HvJb8s5IoExRRn5Ot630nmSr9xGvtUzWA=
-tcw.im/ufc v0.0.0-20210105064345-369b6e33465c/go.mod h1:kRpCBVlwThAoUs0pyr57vAxB4NcZ7ydHK5U+P593HoA=
-tcw.im/ufc v0.0.0-20210106093619-32b2eb0cd2ed h1:l7BIHslrYx1HH9Yx7OvGgXH53qegPvkvqhewus09z8k=
-tcw.im/ufc v0.0.0-20210106093619-32b2eb0cd2ed/go.mod h1:kRpCBVlwThAoUs0pyr57vAxB4NcZ7ydHK5U+P593HoA=
-tcw.im/ufc v0.0.0-20210107060128-e65ddc04717e h1:85ETNlxLuqUieq/HQY6i+fxPEn2xgvTUlrxEY6pkpgM=
-tcw.im/ufc v0.0.0-20210107060128-e65ddc04717e/go.mod h1:kRpCBVlwThAoUs0pyr57vAxB4NcZ7ydHK5U+P593HoA=
-tcw.im/ufc v0.0.0-20210107095927-ffe7a91d19b5 h1:JbfghrDROuoNfE8bVc7jHAqhJTPvtEI28y/cIxa102E=
-tcw.im/ufc v0.0.0-20210107095927-ffe7a91d19b5/go.mod h1:kRpCBVlwThAoUs0pyr57vAxB4NcZ7ydHK5U+P593HoA=
 tcw.im/ufc v0.0.0-20210113070237-af695fe84942 h1:rdIVPc/55mHVREkhDKTLTkzBi1pEablp/8pHtmimS1k=
 tcw.im/ufc v0.0.0-20210113070237-af695fe84942/go.mod h1:kRpCBVlwThAoUs0pyr57vAxB4NcZ7ydHK5U+P593HoA=

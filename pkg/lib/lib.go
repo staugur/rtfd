@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"strings"
 
-	"rtfd/pkg/conf"
-	"rtfd/pkg/util"
+	"tcw.im/rtfd/pkg/conf"
+	"tcw.im/rtfd/pkg/util"
 
 	"github.com/xujiajun/nutsdb"
 	"tcw.im/ufc"
