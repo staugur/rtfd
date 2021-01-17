@@ -8,9 +8,10 @@ import (
 	"strings"
 
 	"tcw.im/rtfd/pkg/conf"
+	"tcw.im/rtfd/pkg/db"
 	"tcw.im/rtfd/pkg/util"
+	"tcw.im/rtfd/vars"
 
-	"github.com/xujiajun/nutsdb"
 	"tcw.im/ufc"
 )
 
@@ -92,7 +93,11 @@ type Options struct {
 type ProjectManager struct {
 	path Path
 	cfg  *conf.Config
-	db   *nutsdb.DB
+	db   *db.DB
+}
+
+func s2b(s string) []byte {
+	return []byte(s)
 }
 
 // New 新建项目管理器示例，path是rtfd配置文件
@@ -105,29 +110,60 @@ func New(path string) (pm *ProjectManager, err error) {
 		return
 	}
 
-	opt := nutsdb.DefaultOptions
-	opt.Dir = cfg.BaseDir()
-	db, err := nutsdb.Open(opt)
+	conn, err := db.New(path)
 	if err != nil {
 		return
 	}
 
-	return &ProjectManager{path, cfg, db}, nil
+	return &ProjectManager{path, cfg, conn}, nil
 }
 
-// NewOption 创建一个通用的默认选项
-func (pm *ProjectManager) NewOption(name, url, domain string) (opt Options, err error) {
-	if domain != "" && !util.IsDomain(domain) {
-		err = errors.New("invalid custom domain")
+// Close 关闭DB连接
+func (pm *ProjectManager) Close() error {
+	err := pm.db.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// HasName 是否存在名为 name 的文档项目
+func (pm *ProjectManager) HasName(name string) bool {
+	return pm.db.SIsMember(vars.GBName, vars.GBPK, s2b(name))
+}
+
+// HasCustomDomain 判断是否已有自定义域名
+func (pm *ProjectManager) HasCustomDomain(domain string) bool {
+	return pm.db.SIsMember(vars.GBName, vars.GBDK, s2b(domain))
+}
+
+// GetName 查询名为 name 的文档项目数据
+func (pm *ProjectManager) GetName(name string) (value []byte, err error) {
+	value, err = pm.db.Get(name, vars.BCK)
+	if err != nil {
 		return
 	}
-	// check has custom domain
+	return value, nil
+}
 
-	isPublic := false
+// GenerateOption 创建一个通用的默认选项（不作参数的系统级别检测）
+func (pm *ProjectManager) GenerateOption(name, url, domain string) (opt Options, err error) {
+	name = strings.ToLower(name)
+	if !util.IsProjectName(name) {
+		err = errors.New("invalid name")
+		return
+	}
+
 	typ, err := util.CheckGitURL(url)
 	if err != nil {
 		return
 	}
+	if domain != "" && !util.IsDomain(domain) {
+		err = errors.New("invalid custom domain")
+		return
+	}
+
+	isPublic := false
 	if typ == "public" {
 		isPublic = true
 	}
@@ -135,7 +171,10 @@ func (pm *ProjectManager) NewOption(name, url, domain string) (opt Options, err 
 	if strings.HasSuffix(url, ".git") {
 		url = strings.TrimRight(url, ".git")
 	}
-	util.GitServiceProvider(url)
+	gsp, err := util.GitServiceProvider(url)
+	if err != nil {
+		return
+	}
 
 	dn := pm.cfg.GetKey("nginx", "dn")
 	if dn == "" {
@@ -143,9 +182,10 @@ func (pm *ProjectManager) NewOption(name, url, domain string) (opt Options, err 
 		return
 	}
 	return Options{
-		Name: name, URL: url, Latest: "master", Version: PY3,
+		Name: name, URL: url, Latest: "master", Version: PY3, GSP: gsp,
 		SourceDir: "docs", Lang: "en", ShowNav: true, HideGit: false,
 		DefaultDomain: name + "." + dn, Builder: "html", IsPublic: isPublic,
+		CustomDomain: domain,
 	}, nil
 }
 
@@ -164,6 +204,18 @@ func (pm *ProjectManager) SetOption(opt *Options, key string, value interface{})
 }
 
 // Create 新建一个文档项目
-func (pm *ProjectManager) Create(name string, opt Options) {
-	//
+func (pm *ProjectManager) Create(name string, opt Options) error {
+	name = strings.ToLower(name)
+	//unallows := pm.cfg.GetKey(vars.DFT, "unallowed_name")
+
+	if pm.HasName(name) {
+		return errors.New("this project name already exists")
+	}
+	domain := opt.CustomDomain
+	if domain != "" && pm.HasCustomDomain(domain) {
+		return errors.New("this domain name already exists")
+	}
+
+	return nil
+
 }

@@ -2,13 +2,15 @@
 
 使用 桶 的概念表示项目，每个文档项目都是一个桶，
 项目的数据放到 桶 下的各个不同数据类型的key中。
+
+全局数据放到 global 桶中，存储概述性数据。
 */
 
 package db
 
 import (
-    "path/filepath"
-    
+	"path/filepath"
+
 	"tcw.im/rtfd/pkg/conf"
 
 	"github.com/xujiajun/nutsdb"
