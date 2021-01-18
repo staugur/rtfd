@@ -19,7 +19,7 @@ gotool:
 
 build:
 	go generate
-	go build ${LDFLAGS} -o $(BINARY) && chmod +x $(BINARY)
+	go build ${LDFLAGS} -o bin/$(BINARY) && chmod +x bin/$(BINARY)
 
 docker:
 	docker build -t staugur/rtfd .
@@ -29,4 +29,4 @@ dev:
 	@go run ./
 
 test:
-	@go test -v -count=1 ./...
+	@go test -count=1 ./...

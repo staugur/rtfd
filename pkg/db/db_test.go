@@ -65,6 +65,15 @@ func TestDB(t *testing.T) {
 		t.Fatal("Unmarshal options error")
 	}
 
+	no := db.SIsMember(name, []byte("projects"), []byte("x"))
+	if no == true {
+		t.Fatal("x not in projects")
+	}
+	no = db.SIsMember(name, []byte("projects"), []byte("xxx"))
+	if no == true {
+		t.Fatal("xxx not in projects")
+	}
+
 	// list
 	k2 := []byte("list")
 	v2 := []byte("v2")
@@ -134,6 +143,109 @@ func TestDB(t *testing.T) {
 	v3data, _ = db.SMembers(name, k3)
 	if len(v3data) != (v3len - 1) {
 		t.Fatal("srem error")
+	}
+
+}
+
+func TestTransaction(t *testing.T) {
+	db, err := New("~/.rtfd.cfg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	name := "pipeline"
+
+	k0 := []byte("test")
+	v0 := []byte("v0")
+
+	k1 := []byte("hash")
+	v1 := []byte("v1")
+
+	k2 := []byte("list")
+	v2 := []byte("v2")
+
+	k3 := []byte("set")
+	v3 := []byte("v3")
+
+	k4 := []byte("deleted")
+	v4 := []byte("v4")
+
+	// 添加数据，测试管道删除操作
+	err = db.Set(name, k0, v0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = db.SAdd(name, k4, v4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 管道开始事务
+	tc, err := db.Pipeline()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = tc.Delete(name, k0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = tc.Set(name, k1, v1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = tc.RPush(name, k2, v2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = tc.SAdd(name, k3, v3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = tc.SRem(name, k4, v4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 结束管道，执行命令
+	err = tc.Execute()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 测试 k0被删除  k4删除v4 k1值为v1 k2长度大于0 v3在k3中
+	if db.Has(name, k0) != false {
+		t.Fatal("key should be not found for k0")
+	}
+	if db.SIsMember(name, k4, v4) != false {
+		t.Fatal("item should be not found in k4")
+	}
+
+	if db.Has(name, k1) != true {
+		t.Fatal("key should be found for k1")
+	}
+	_v1, err := db.Get(name, k1)
+	if string(_v1) != string(v1) {
+		t.Fatal("pipe set fail")
+	}
+	num, _ := db.LSize(name, k2)
+	if num <= 0 {
+		t.Fatal("k2 should has values")
+	}
+
+	if db.SHasKey(name, k3) == false {
+		t.Fatal("k3 should in bucket")
+	}
+	if db.SIsMember(name, k3, v3) != true {
+		t.Fatal("v3 should in k3")
+	}
+	size, _ := db.SCard(name, k3)
+	if size != 1 {
+		t.Fatal("k3 length should be equal 1")
 	}
 
 }

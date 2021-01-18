@@ -3,6 +3,7 @@
 package lib
 
 import (
+	"encoding/json"
 	"errors"
 	"reflect"
 	"strings"
@@ -147,7 +148,7 @@ func (pm *ProjectManager) GetName(name string) (value []byte, err error) {
 }
 
 // GenerateOption 创建一个通用的默认选项（不作参数的系统级别检测）
-func (pm *ProjectManager) GenerateOption(name, url, domain string) (opt Options, err error) {
+func (pm *ProjectManager) GenerateOption(name, url string) (opt Options, err error) {
 	name = strings.ToLower(name)
 	if !util.IsProjectName(name) {
 		err = errors.New("invalid name")
@@ -156,10 +157,6 @@ func (pm *ProjectManager) GenerateOption(name, url, domain string) (opt Options,
 
 	typ, err := util.CheckGitURL(url)
 	if err != nil {
-		return
-	}
-	if domain != "" && !util.IsDomain(domain) {
-		err = errors.New("invalid custom domain")
 		return
 	}
 
@@ -185,13 +182,12 @@ func (pm *ProjectManager) GenerateOption(name, url, domain string) (opt Options,
 		Name: name, URL: url, Latest: "master", Version: PY3, GSP: gsp,
 		SourceDir: "docs", Lang: "en", ShowNav: true, HideGit: false,
 		DefaultDomain: name + "." + dn, Builder: "html", IsPublic: isPublic,
-		CustomDomain: domain,
 	}, nil
 }
 
 // SetOption 按照 Options 参数更新key
 func (pm *ProjectManager) SetOption(opt *Options, key string, value interface{}) {
-	p := reflect.ValueOf(&opt)
+	p := reflect.ValueOf(opt)
 	f := p.Elem().FieldByName(key)
 	switch key {
 	case "Single", "Install", "ShowNav", "HideGit", "SSL", "IsPublic":
@@ -206,16 +202,44 @@ func (pm *ProjectManager) SetOption(opt *Options, key string, value interface{})
 // Create 新建一个文档项目
 func (pm *ProjectManager) Create(name string, opt Options) error {
 	name = strings.ToLower(name)
-	//unallows := pm.cfg.GetKey(vars.DFT, "unallowed_name")
-
+	unallow := pm.cfg.GetKey(vars.DFT, "unallowed_name")
+	if ufc.StrInSlice(name, strings.Split(unallow, ",")) {
+		return errors.New("not allowed name")
+	}
 	if pm.HasName(name) {
 		return errors.New("this project name already exists")
 	}
 	domain := opt.CustomDomain
-	if domain != "" && pm.HasCustomDomain(domain) {
-		return errors.New("this domain name already exists")
+	if domain != "" {
+		if !util.IsDomain(domain) {
+			return errors.New("invalid custom domain")
+		}
+		if pm.HasCustomDomain(domain) {
+			return errors.New("this domain name already exists")
+		}
+	}
+
+	val, err := json.Marshal(opt)
+	if err != nil {
+		return err
+	}
+	// 使管道批量事务提交
+	tc, err := pm.db.Pipeline()
+	if err != nil {
+		return err
+	}
+
+	// 新增文档项目成功，以下分别是：添加到全局项目集合中、写入配置、添加到全局自定义域名键中
+	tc.SAdd(vars.GBName, vars.GBPK, s2b(name))
+	tc.Set(name, vars.BCK, val)
+	if domain != "" {
+		tc.SAdd(vars.GBName, vars.GBDK, s2b(domain))
+	}
+
+	err = tc.Execute()
+	if err != nil {
+		return err
 	}
 
 	return nil
-
 }

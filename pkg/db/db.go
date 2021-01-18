@@ -54,9 +54,14 @@ func (db *DB) Close() error {
 
 // Set 添加数据
 func (db *DB) Set(name Bucket, key, value []byte) error {
+	return db.ExpireSet(name, key, value, 0)
+}
+
+// ExpireSet 添加数据（使用过期时间）
+func (db *DB) ExpireSet(name Bucket, key, value []byte, ttl uint32) error {
 	if err := db.obj.Update(
 		func(tx *nutsdb.Tx) error {
-			if err := tx.Put(name, key, value, 0); err != nil {
+			if err := tx.Put(name, key, value, ttl); err != nil {
 				return err
 			}
 			return nil
@@ -80,6 +85,15 @@ func (db *DB) Get(name Bucket, key []byte) (value []byte, err error) {
 		return
 	}
 	return value, nil
+}
+
+// Has 判断 桶 中是否有Key（特指k/v类型）
+func (db *DB) Has(name Bucket, key []byte) bool {
+	_, err := db.Get(name, key)
+	if err == nil {
+		return true
+	}
+	return false
 }
 
 // Delete 删除Key（并不能删除其他数据类型）
@@ -186,10 +200,10 @@ func (db *DB) SAdd(name Bucket, key []byte, members ...[]byte) error {
 }
 
 // SRem 在指定bucket里面移除指定的key集合中移除指定的一个或者多个元素。
-func (db *DB) SRem(name Bucket, key []byte, member []byte) error {
+func (db *DB) SRem(name Bucket, key []byte, members ...[]byte) error {
 	if err := db.obj.Update(
 		func(tx *nutsdb.Tx) error {
-			if err := tx.SRem(name, key, member); err != nil {
+			if err := tx.SRem(name, key, members...); err != nil {
 				return err
 			}
 			return nil
@@ -263,4 +277,68 @@ func (db *DB) SCard(name Bucket, key []byte) (length int, err error) {
 		return
 	}
 	return length, nil
+}
+
+// Pipeline 开启事务并执行命令
+func (db *DB) Pipeline() (t *TranCommand, err error) {
+	// 开启事务
+	tx, err := db.obj.Begin(true)
+	if err != nil {
+		return
+	}
+	return &TranCommand{tx}, nil
+}
+
+// TranCommand 表示事务管道
+type TranCommand struct {
+	tx *nutsdb.Tx
+}
+
+// AutoRollback 管道执行发生错误时自动回滚事务
+func (t *TranCommand) AutoRollback(err error) error {
+	if err != nil {
+		// 回滚事务
+		t.tx.Rollback()
+		return err
+	}
+	return nil
+}
+
+// Set 管道中的 Set
+func (t *TranCommand) Set(name Bucket, key, value []byte) error {
+	return t.ExpireSet(name, key, value, 0)
+}
+
+// ExpireSet 管道中的 ExpireSet
+func (t *TranCommand) ExpireSet(name Bucket, key, value []byte, ttl uint32) error {
+	return t.AutoRollback(t.tx.Put(name, key, value, ttl))
+}
+
+// Delete 管道中的 Delete
+func (t *TranCommand) Delete(name Bucket, key []byte) error {
+	return t.AutoRollback(t.tx.Delete(name, key))
+}
+
+// RPush 管道中的 RPush
+func (t *TranCommand) RPush(name Bucket, key []byte, items ...[]byte) error {
+	return t.AutoRollback(t.tx.RPush(name, key, items...))
+}
+
+// SAdd 管道中的 SAdd
+func (t *TranCommand) SAdd(name Bucket, key []byte, members ...[]byte) error {
+	return t.AutoRollback(t.tx.SAdd(name, key, members...))
+}
+
+// SRem 管道中的 SRem
+func (t *TranCommand) SRem(name Bucket, key []byte, members ...[]byte) error {
+	return t.AutoRollback(t.tx.SRem(name, key, members...))
+}
+
+// Execute 执行提交事务
+func (t *TranCommand) Execute() error {
+	if err := t.tx.Commit(); err != nil {
+		t.tx.Rollback()
+		return err
+	}
+	return nil
 }

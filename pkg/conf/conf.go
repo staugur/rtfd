@@ -5,6 +5,8 @@ package conf
 import (
 	"strings"
 
+	"tcw.im/rtfd/vars"
+
 	homedir "github.com/mitchellh/go-homedir"
 	"gopkg.in/ini.v1"
 )
@@ -31,7 +33,7 @@ func New(configPath string) (cfg *Config, err error) {
 }
 
 func changeDefaultSection(section string) string {
-	if strings.ToLower(section) == "default" {
+	if strings.ToLower(section) == vars.DFT {
 		return ini.DEFAULT_SECTION
 	}
 	return section
@@ -64,7 +66,7 @@ func (c Config) MustKey(section, key, defaults string) string {
 
 // BaseDir 获取base_dir
 func (c Config) BaseDir() string {
-	dir := c.GetKey("default", "base_dir")
+	dir := c.GetKey(vars.DFT, "base_dir")
 	if dir == "" {
 		panic("base_dir is empty")
 	}
