@@ -193,7 +193,7 @@ func (pm *ProjectManager) SetOption(opt *Options, key string, value interface{})
 	case "Single", "Install", "ShowNav", "HideGit", "SSL", "IsPublic":
 		f.SetBool(value.(bool))
 	case "Version":
-		f.SetUint(value.(uint64))
+		f.SetUint(uint64(value.(uint8)))
 	default:
 		f.SetString(value.(string))
 	}
@@ -217,6 +217,12 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 		if pm.HasCustomDomain(domain) {
 			return errors.New("this domain name already exists")
 		}
+	}
+	if opt.SSLPublic != "" && opt.SSLPrivate != "" {
+		if !ufc.IsFile(opt.SSLPublic) || !ufc.IsFile(opt.SSLPrivate) {
+			return errors.New("not found ssl file")
+		}
+		opt.SSL = true
 	}
 
 	val, err := json.Marshal(opt)

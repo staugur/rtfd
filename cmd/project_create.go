@@ -17,6 +17,10 @@ var createCmd = &cobra.Command{
 		flagset := cmd.Flags()
 
 		name := cmd.Flag("name").Value.String()
+		if name == "" {
+			fmt.Println("empty name")
+			os.Exit(1)
+		}
 		url := cmd.Flag("url").Value.String()
 		latest := cmd.Flag("latest").Value.String()
 		single, err := flagset.GetBool("single")
@@ -57,11 +61,8 @@ var createCmd = &cobra.Command{
 		}
 		defer pm.Close()
 
-		fmt.Println(pm.HasName(name))
-
-        // ?
-		if name == "" || pm.HasName(name) == true {
-			fmt.Println("invalid name")
+		if pm.HasName(name) == true {
+			fmt.Println("the name already exists")
 			os.Exit(128)
 		}
 
@@ -70,7 +71,36 @@ var createCmd = &cobra.Command{
 			fmt.Println(err)
 			os.Exit(129)
 		}
+
+		optBind := make(map[string]interface{})
+		optBind["Latest"] = latest
+		optBind["Version"] = pyver
+		optBind["Single"] = single
+		optBind["SourceDir"] = source
+		optBind["Lang"] = lang
+		optBind["Requirement"] = req
+		optBind["Install"] = install
+		optBind["Index"] = index
+		optBind["ShowNav"] = nav
+		optBind["Secret"] = secret
+		optBind["CustomDomain"] = domain
+		optBind["SSLPublic"] = sslcrt
+		optBind["SSLPrivate"] = sslkey
+		optBind["Builder"] = builder
+		fmt.Printf("%v\n", optBind)
+
+		for k, v := range optBind {
+			pm.SetOption(&opt, k, v)
+		}
+
 		fmt.Println(opt)
+		err = pm.Create(name, opt)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(130)
+		}
+		fmt.Println("created")
+		os.Exit(0)
 
 	},
 }
@@ -84,7 +114,7 @@ func init() {
 	createCmd.Flags().BoolP("single", "", false, "是否为单一版本")
 	createCmd.Flags().StringP("sourcedir", "s", "docs", "实际文档文件所在目录，目录路径是项目的相对位置")
 	createCmd.Flags().StringP("lang", "l", "en", "文档语言，支持多种，以英文逗号分隔")
-	createCmd.Flags().Uint8P("version", "v", 2, "Python版本，2或3")
+	createCmd.Flags().Uint8P("version", "v", 3, "Python版本，2或3")
 	createCmd.Flags().StringP("requirement", "r", "", "需要安装的依赖包文件（文件路径是项目的相对位置），支持多个，以英文逗号分隔")
 	createCmd.Flags().BoolP("install", "", false, "是否需要安装项目")
 	createCmd.Flags().StringP("index", "i", "", "指定pip安装时的pypi源")
