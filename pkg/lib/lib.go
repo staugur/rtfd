@@ -5,6 +5,10 @@ package lib
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -76,17 +80,17 @@ type Options struct {
 	DefaultDomain string
 	// 自定义域名
 	CustomDomain string
-	// 自定义域名开启HTTPS
+	// 自定义域名开启HTTPS（非手动）
 	SSL bool
-	// ssl公钥
+	// 自定义域名的ssl公钥
 	SSLPublic Path
-	// ssl私钥
+	// 自定义域名的ssl私钥
 	SSLPrivate Path
 	// Sphinx构建器，支持html、dirhtml、singlehtml
 	Builder BuilderType
 	// git服务提供商
 	GSP string
-	// 是否为公开仓库
+	// 是否为公开仓库（type）
 	IsPublic bool
 }
 
@@ -130,6 +134,7 @@ func (pm *ProjectManager) Close() error {
 
 // HasName 是否存在名为 name 的文档项目
 func (pm *ProjectManager) HasName(name string) bool {
+	name = strings.ToLower(name)
 	return pm.db.SIsMember(vars.GBName, vars.GBPK, s2b(name))
 }
 
@@ -138,13 +143,54 @@ func (pm *ProjectManager) HasCustomDomain(domain string) bool {
 	return pm.db.SIsMember(vars.GBName, vars.GBDK, s2b(domain))
 }
 
-// GetName 查询名为 name 的文档项目数据
-func (pm *ProjectManager) GetName(name string) (value []byte, err error) {
+// GetSourceName 查询名为 name 的文档项目数据存储原数据（不经过解析）
+func (pm *ProjectManager) GetSourceName(name string) (value []byte, err error) {
+	name = strings.ToLower(name)
 	value, err = pm.db.Get(name, vars.BCK)
 	if err != nil {
 		return
 	}
 	return value, nil
+}
+
+// GetName 查询名为 name 的文档项目数据（解析后）
+func (pm *ProjectManager) GetName(name string) (opt Options, err error) {
+	value, err := pm.GetSourceName(name)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(value, &opt)
+	if err != nil {
+		return
+	}
+	return opt, nil
+}
+
+// ListFull 获取所有项目及其配置选项
+func (pm *ProjectManager) ListFull() (members []Options, err error) {
+	list, err := pm.db.SMembers(vars.GBName, vars.GBPK)
+	if err != nil {
+		return
+	}
+	members = make([]Options, len(list))
+	for i, b := range list {
+		val, e := pm.GetName(string(b))
+		if e != nil {
+			err = e
+			return
+		}
+		members[i] = val
+	}
+	return members, nil
+}
+
+// List 获取所有项目
+func (pm *ProjectManager) List() (members [][]byte, err error) {
+	members, err = pm.db.SMembers(vars.GBName, vars.GBPK)
+	if err != nil {
+		return
+	}
+	return members, nil
 }
 
 // GenerateOption 创建一个通用的默认选项（不作参数的系统级别检测）
@@ -199,15 +245,19 @@ func (pm *ProjectManager) SetOption(opt *Options, key string, value interface{})
 	}
 }
 
-// Create 新建一个文档项目
+// Create 新建一个文档项目（唯一入口，必须通过GenerateOption方法生成选项）
 func (pm *ProjectManager) Create(name string, opt Options) error {
 	name = strings.ToLower(name)
 	unallow := pm.cfg.GetKey(vars.DFT, "unallowed_name")
-	if ufc.StrInSlice(name, strings.Split(unallow, ",")) {
+	if name == "www" || ufc.StrInSlice(name, strings.Split(unallow, ",")) {
 		return errors.New("not allowed name")
 	}
 	if pm.HasName(name) {
 		return errors.New("this project name already exists")
+	}
+	//校验必选项
+	if opt.URL == "" || opt.DefaultDomain == "" || opt.Latest == "" || opt.Lang == "" || opt.Builder == "" || (opt.Version != 2 && opt.Version != 3) || opt.SourceDir == "" {
+		return errors.New("required fields are missing")
 	}
 	domain := opt.CustomDomain
 	if domain != "" {
@@ -217,35 +267,119 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 		if pm.HasCustomDomain(domain) {
 			return errors.New("this domain name already exists")
 		}
+		domain = strings.ToLower(domain)
+		opt.CustomDomain = domain
 	}
 	if opt.SSLPublic != "" && opt.SSLPrivate != "" {
 		if !ufc.IsFile(opt.SSLPublic) || !ufc.IsFile(opt.SSLPrivate) {
 			return errors.New("not found ssl file")
 		}
 		opt.SSL = true
+	} else {
+		opt.SSL = false
 	}
 
 	val, err := json.Marshal(opt)
 	if err != nil {
 		return err
 	}
-	// 使管道批量事务提交
+
+	// 使用管道批量事务提交
 	tc, err := pm.db.Pipeline()
 	if err != nil {
 		return err
 	}
-
 	// 新增文档项目成功，以下分别是：添加到全局项目集合中、写入配置、添加到全局自定义域名键中
 	tc.SAdd(vars.GBName, vars.GBPK, s2b(name))
-	tc.Set(name, vars.BCK, val)
+	tc.Set(name, vars.BCK, val) //配置写入的是JSON格式
 	if domain != "" {
 		tc.SAdd(vars.GBName, vars.GBDK, s2b(domain))
 	}
-
 	err = tc.Execute()
 	if err != nil {
 		return err
 	}
 
+	// 生成nginx配置
+	err = pm.renderNginx(name)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pm *ProjectManager) renderNginx(name string) error {
+	name = strings.ToLower(name)
+	opt, err := pm.GetName(name)
+	if err != nil {
+		return err
+	}
+	if opt.Lang == "" {
+		return errors.New("empty language cannot render nginx")
+	}
+	basedir := pm.cfg.BaseDir()
+	DocsDir := filepath.Join(basedir, "docs")
+	NginxDir := filepath.Join(basedir, "nginx")
+	if !ufc.IsDir(DocsDir) {
+		err := ufc.CreateDir(DocsDir)
+		if err != nil {
+			return err
+		}
+	}
+	if !ufc.IsDir(NginxDir) {
+		err := ufc.CreateDir(NginxDir)
+		if err != nil {
+			return err
+		}
+	}
+	// 渲染默认域名的nginx配置
+	dftLang := strings.Split(opt.Lang, ",")[0]
+	dftNgxFile := filepath.Join(NginxDir, fmt.Sprintf("%s.conf", name))
+	cstNgxFile := filepath.Join(NginxDir, fmt.Sprintf("%s.ext.conf", name))
+	dftSSLCrt := pm.cfg.GetKey("nginx", "ssl_crt")
+	dftSSLKey := pm.cfg.GetKey("nginx", "ssl_key")
+	ngxopt := &nginxOptions{
+		Name: name, Lang: dftLang, Domain: opt.DefaultDomain, DocsDir: DocsDir,
+		Single: opt.Single, SSLCrt: dftSSLCrt, SSLKey: dftSSLKey,
+	}
+	dftConf, err := ngxopt.render()
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(dftNgxFile, []byte(dftConf), 0644)
+	if err != nil {
+		return err
+	}
+
+	// 渲染自定义域名的nginx配置
+	if util.IsDomain(opt.CustomDomain) {
+		ngxopt.Domain = opt.CustomDomain
+		ngxopt.SSLCrt = opt.SSLPublic
+		ngxopt.SSLKey = opt.SSLPrivate
+		cstConf, err := ngxopt.render()
+		if err != nil {
+			return err
+		}
+		err = ioutil.WriteFile(cstNgxFile, []byte(cstConf), 0644)
+		if err != nil {
+			return err
+		}
+	} else {
+		if ufc.IsFile(cstNgxFile) {
+			os.Remove(cstNgxFile)
+		}
+	}
+
+	err = pm.reloadNginx()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pm *ProjectManager) reloadNginx() error {
+    fmt.Println("nginx reload successfully")
+    cmd := pm.cfg.GetKey("nginx", "exec")
+    sudo := ufc.IsTrue(pm.cfg.GetKey("nginx", "sudo"))
 	return nil
 }

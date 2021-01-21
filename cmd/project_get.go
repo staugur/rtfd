@@ -26,7 +26,7 @@ var getCmd = &cobra.Command{
 			os.Exit(128)
 		}
 		defer pm.Close()
-		val, err := pm.GetName(name)
+		val, err := pm.GetSourceName(name)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(129)

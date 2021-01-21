@@ -64,7 +64,20 @@ func (c Config) MustKey(section, key, defaults string) string {
 	return v
 }
 
-// BaseDir 获取base_dir
+// AllHash 获取ini文件所有分区的经过解析的键值对
+func (c Config) AllHash() (data map[string]map[string]string) {
+	data = make(map[string]map[string]string)
+	for _, s := range c.obj.SectionStrings() {
+		hash := make(map[string]string)
+		for _, k := range c.obj.Section(s).KeyStrings() {
+			hash[k] = c.obj.Section(s).Key(k).String()
+		}
+		data[s] = hash
+	}
+	return
+}
+
+// BaseDir 获取base_dir（专项方法）
 func (c Config) BaseDir() string {
 	dir := c.GetKey(vars.DFT, "base_dir")
 	if dir == "" {
@@ -78,17 +91,4 @@ func (c Config) BaseDir() string {
 		return dir
 	}
 	return dir
-}
-
-// AllHash 获取ini文件所有分区的经过解析的键值对
-func (c Config) AllHash() (data map[string]map[string]string) {
-	data = make(map[string]map[string]string)
-	for _, s := range c.obj.SectionStrings() {
-		hash := make(map[string]string)
-		for _, k := range c.obj.Section(s).KeyStrings() {
-			hash[k] = c.obj.Section(s).Key(k).String()
-		}
-		data[s] = hash
-	}
-	return
 }

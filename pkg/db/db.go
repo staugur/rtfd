@@ -33,7 +33,7 @@ func New(path string) (db *DB, err error) {
 	if err != nil {
 		return
 	}
-	DBDir := filepath.Join(cfg.BaseDir(), "db")
+	DBDir := filepath.Join(cfg.BaseDir(), ".db")
 	opt := nutsdb.DefaultOptions
 	opt.Dir = DBDir
 	connect, err := nutsdb.Open(opt)

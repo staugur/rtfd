@@ -9,7 +9,7 @@ import (
 // apiCmd represents the api command
 var apiCmd = &cobra.Command{
 	Use:   "api",
-	Short: "以开发模式运行API",
+	Short: "运行API服务",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("api called")
 	},

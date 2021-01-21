@@ -15,9 +15,6 @@ func TestConf(t *testing.T) {
     gn = global
     [project]
     latest = master
-    
-    [sphinx]
-    dir = docs
     `)
 	f := filepath.Join(os.TempDir(), "_rtfd_conf_test.ini")
 	err := ioutil.WriteFile(f, data, 0644)
@@ -37,6 +34,23 @@ func TestConf(t *testing.T) {
 
 	if reflect.DeepEqual(ds, cfg.SecHash("default")) != true {
 		t.Fatal("SecHash default error")
+	}
+
+	hash := make(map[string]map[string]string)
+	hash["DEFAULT"] = ds
+	project := make(map[string]string)
+	project["latest"] = "master"
+	hash["project"] = project
+	if reflect.DeepEqual(hash, cfg.AllHash()) != true {
+		t.Fatal("all hash error")
+	}
+
+	if cfg.GetKey("project", "latest") != "master" {
+		t.Fatal("get key error")
+	}
+
+	if cfg.MustKey("project", "non", "dft") != "dft" {
+		t.Fatal("must get key error")
 	}
 
 }
