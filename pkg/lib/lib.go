@@ -378,8 +378,36 @@ func (pm *ProjectManager) renderNginx(name string) error {
 }
 
 func (pm *ProjectManager) reloadNginx() error {
-    fmt.Println("nginx reload successfully")
-    cmd := pm.cfg.GetKey("nginx", "exec")
-    sudo := ufc.IsTrue(pm.cfg.GetKey("nginx", "sudo"))
+	cmd := pm.cfg.GetKey("nginx", "exec")
+	sudo := ufc.IsTrue(pm.cfg.GetKey("nginx", "sudo"))
+	var (
+		name       string
+		testArgs   []string
+		reloadArgs []string
+	)
+	if sudo == true {
+		name = "sudo"
+		testArgs = []string{cmd, "-t"}
+		reloadArgs = []string{cmd, "-s", "reload"}
+	} else {
+		name = cmd
+		testArgs = []string{"-t"}
+		reloadArgs = []string{"-s", "reload"}
+	}
+
+	exitCode, _, err := util.RunCmd(name, testArgs...)
+	if err != nil {
+		return err
+	}
+	if exitCode != 0 {
+		return errors.New("nginx test configuration failed")
+	}
+	exitCode, _, err = util.RunCmd(name, reloadArgs...)
+	if err != nil {
+		return err
+	}
+	if exitCode != 0 {
+		return errors.New("nginx reload configuration failed")
+	}
 	return nil
 }

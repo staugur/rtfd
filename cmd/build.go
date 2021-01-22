@@ -12,20 +12,22 @@ import (
 var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "构建文档",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("build called")
+		name := args[0]
+		branch := cmd.Flag("branch").Value.String()
+
 		b, err := build.New(cfgFile)
 		if err != nil {
 			fmt.Println(err)
 			return
-        }
-        fmt.Println(b)
-		//b.build()
+		}
+
+		b.Build(name, branch, "cli")
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(buildCmd)
-	buildCmd.Flags().StringP("name", "n", "", "名称")
 	buildCmd.Flags().StringP("branch", "b", "", "分支")
 }

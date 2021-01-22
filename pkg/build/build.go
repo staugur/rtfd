@@ -1,11 +1,19 @@
 package build
 
 import (
+	"bufio"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
 	"tcw.im/rtfd/pkg/conf"
 	"tcw.im/rtfd/pkg/lib"
+
+	"github.com/rakyll/statik/fs"
 )
 
 // Sender 发起构建来源类型
@@ -50,44 +58,71 @@ func New(path string) (b *Builder, err error) {
 		return
 	}
 
-	baseDir := cfg.BaseDir()
-	sh := filepath.Join(baseDir, "assets", "script", "builder.sh")
+	sh, err := genBuilderScript(cfg.BaseDir())
+	if err != nil {
+		return
+	}
 	return &Builder{path, sh, pm}, nil
 }
 
-/*
-
-func (b *Builder) build(name, branch string, sender Sender) {
-	if !b.has(name) {
-		return "Did not find this project " + name
+// Build 构建文档
+func (b *Builder) Build(name, branch string, sender Sender) error {
+	if !b.pm.HasName(name) {
+		return errors.New("not found name")
 	}
-	data := b.get(name)
-	if branch == "latest" {
-		branch = data["latest"]
+	data, err := b.pm.GetName(name)
+	if err != nil {
+		return err
+	}
+	if branch == "" {
+		branch = data.Latest
+	}
+	args := []string{b.sh, "-n", name, "-u", data.URL, "-b", branch, "-c", b.path}
+	//status := "failing"
+	//usedtime := -1
+	if sender == "cli" {
+		cmder := exec.Command("bash", args...)
+		stdout, err := cmder.StdoutPipe()
+		if err != nil {
+			return err
+		}
+		cmder.Start()
+
+		buf := bufio.NewReader(stdout) // not in a loop
+		for {
+			line, _, _ := buf.ReadLine()
+			fmt.Println(string(line))
+		}
 	}
 
-	// 响应信息
-	status := "failing"
-	usedtime := -1
-
-	util.RunCmdStream("bash", b.sh, "-n", name, "-u", data["url"], "-b", branch, "-c", b.path)
-
-		    for i in run_cmd_stream(*cmd):
-		    if "Build Successfully" in i:
-		        status = "passing"
-		        try:
-		            usedtime = int(i.split(" ")[2])
-		        except (ValueError, TypeError):
-		            pass
-		    yield i
-		#: 更新构建信息
-		_build_info = {"_build_%s" % branch: dict(
-		    btime=get_now(),
-		    status=status,
-		    sender=sender,
-		    usedtime=usedtime,
-		)}
-		self._cpm.update(name, **_build_info)
-
+	return nil
 }
-*/
+
+func genBuilderScript(dir string) (sh string, err error) {
+	if dir == "" {
+		dir = os.TempDir()
+	}
+	sh = filepath.Join(dir, ".rtfd-builder.sh")
+
+	statikFS, err := fs.New()
+	if err != nil {
+		return
+	}
+
+	r, err := statikFS.Open("/builder.sh")
+	if err != nil {
+		return
+	}
+	defer r.Close()
+	content, err := ioutil.ReadAll(r)
+	if err != nil {
+		return
+	}
+
+	err = ioutil.WriteFile(sh, content, 0644)
+	if err != nil {
+		return
+	}
+
+	return sh, nil
+}
