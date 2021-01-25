@@ -1,41 +1,20 @@
 package build
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"time"
+	"strconv"
+	"strings"
 
 	"tcw.im/rtfd/pkg/conf"
 	"tcw.im/rtfd/pkg/lib"
+	"tcw.im/rtfd/pkg/util"
 
 	"github.com/rakyll/statik/fs"
 )
-
-// Sender 发起构建来源类型
-type Sender string
-
-const (
-	// APISender 从API接口发起构建
-	APISender Sender = "api"
-	// CLISender 从命令行发起构建
-	CLISender Sender = "cli"
-	// WebhookSender 从git webhook发起自动构建
-	WebhookSender Sender = "webhook"
-)
-
-// Result 构建结果
-type Result struct {
-	// status 构建结果 passing表示true 其他表示false
-	status   bool
-	sender   string
-	btime    time.Time
-	usedtime uint
-}
 
 // Builder 构建器
 type Builder struct {
@@ -66,7 +45,7 @@ func New(path string) (b *Builder, err error) {
 }
 
 // Build 构建文档
-func (b *Builder) Build(name, branch string, sender Sender) error {
+func (b *Builder) Build(name, branch string, sender lib.Sender) error {
 	if !b.pm.HasName(name) {
 		return errors.New("not found name")
 	}
@@ -78,23 +57,29 @@ func (b *Builder) Build(name, branch string, sender Sender) error {
 		branch = data.Latest
 	}
 	args := []string{b.sh, "-n", name, "-u", data.URL, "-b", branch, "-c", b.path}
-	//status := "failing"
-	//usedtime := -1
+	status := false
+	usedtime := -1
 	if sender == "cli" {
-		cmder := exec.Command("bash", args...)
-		stdout, err := cmder.StdoutPipe()
-		if err != nil {
-			return err
-		}
-		cmder.Start()
-
-		buf := bufio.NewReader(stdout) // not in a loop
-		for {
-			line, _, _ := buf.ReadLine()
-			fmt.Println(string(line))
-		}
+		util.RunCmdStream("bash", args, func(line string) {
+			fmt.Printf(line)
+			if strings.HasPrefix(line, "Build Successfully") {
+				status = true
+				stime := strings.Split(line, " ")[2]
+				itime, _ := strconv.Atoi(stime)
+				if itime > 0 {
+					usedtime = itime
+				}
+			}
+		})
 	}
-
+	rst := lib.Result{
+		Status: status, Sender: sender, Usedtime: usedtime,
+		Btime: util.GetNow(), Branch: branch,
+	}
+	err = b.pm.BuildRecord(name, branch, rst)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -29,5 +29,5 @@ var buildCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(buildCmd)
-	buildCmd.Flags().StringP("branch", "b", "", "分支")
+	buildCmd.Flags().StringP("branch", "b", "", "分支或标签")
 }

@@ -30,14 +30,14 @@ var listCmd = &cobra.Command{
 		}
 		defer pm.Close()
 
-		list, err := pm.List()
+		list, err := pm.ListProject()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(128)
 		}
 		members := make([]interface{}, len(list))
 		if verbose == true {
-			list, err := pm.ListFull()
+			list, err := pm.ListFullProject()
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(128)

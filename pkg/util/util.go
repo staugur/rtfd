@@ -3,6 +3,7 @@
 package util
 
 import (
+	"bufio"
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
@@ -44,15 +45,34 @@ func RunCmd(name string, args ...string) (exitCode int, out string, err error) {
 }
 
 // RunCmdStream 在控制台实时输出命令返回信息
-func RunCmdStream(name string, args ...string) {
+func RunCmdStream(name string, args []string, f func(line string)) error {
 	cmd := exec.Command(name, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
+
+	//显示运行的命令
+	fmt.Println(cmd.Args)
+
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		fmt.Println("cmd.Output: ", err)
-		return
+		return err
 	}
+
+	if err = cmd.Start(); err != nil {
+		return err
+	}
+
+	//从管道中实时循环读取输出流中的一行内容
+	reader := bufio.NewReader(stdout)
+	for {
+		line, err2 := reader.ReadString('\n')
+		if err2 != nil || io.EOF == err2 {
+			break
+		}
+		if f != nil {
+			f(line)
+		}
+	}
+
+	return cmd.Wait()
 }
 
 // IsIP 检测IPv4、IPv6

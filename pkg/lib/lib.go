@@ -25,6 +25,8 @@ type (
 	PyVer uint8
 	// BuilderType 构建器类型
 	BuilderType string
+	// Sender 发起构建来源类型
+	Sender string
 )
 
 const (
@@ -39,6 +41,13 @@ const (
 	DirHTMLBuilder BuilderType = "dirhtml"
 	// SingleHTMLBuilder 单页HTML构建器
 	SingleHTMLBuilder BuilderType = "singlehtml"
+
+	// APISender 从API接口发起构建
+	APISender Sender = "api"
+	// CLISender 从命令行发起构建
+	CLISender Sender = "cli"
+	// WebhookSender 从git webhook发起自动构建
+	WebhookSender Sender = "webhook"
 )
 
 type (
@@ -92,6 +101,25 @@ type Options struct {
 	GSP string
 	// 是否为公开仓库（type）
 	IsPublic bool
+}
+
+// Result 构建结果
+type Result struct {
+	// 触发构建的分支或标签
+	Branch string
+	// 构建结果 passing表示true 其他表示false
+	Status bool
+	Sender Sender
+	// 构建完成时间（结束时）
+	Btime string
+	// 构建总花费时间（单位秒）
+	Usedtime int
+}
+
+// OptionsWithResult 嵌套了 Options 和 Result 两种结构
+type OptionsWithResult struct {
+	Options
+	Builder []Result
 }
 
 // ProjectManager 项目管理器
@@ -166,9 +194,45 @@ func (pm *ProjectManager) GetName(name string) (opt Options, err error) {
 	return opt, nil
 }
 
-// ListFull 获取所有项目及其配置选项
-func (pm *ProjectManager) ListFull() (members []Options, err error) {
-	list, err := pm.db.SMembers(vars.GBName, vars.GBPK)
+// GetNameWithBuilder 获取文档项目配置及其构建集详细数据
+func (pm *ProjectManager) GetNameWithBuilder(name string) (ropt OptionsWithResult, err error) {
+	opt, err := pm.GetName(name)
+	if err != nil {
+		return
+	}
+	members, err := pm.ListFullBuilder(name)
+	if err != nil {
+		return
+	}
+	return OptionsWithResult{Options: opt, Builder: members}, nil
+}
+
+// GetNameOption 获取文档项目某项配置值
+func (pm *ProjectManager) GetNameOption(name, key string) (val string, err error) {
+	opt, err := pm.GetName(name)
+	if err != nil {
+		return
+	}
+	p := reflect.ValueOf(&opt)
+	f := p.Elem().FieldByName(key)
+
+	switch key {
+	case "Single", "Install", "ShowNav", "HideGit", "SSL", "IsPublic":
+		if f.Bool() {
+			return "true", nil
+		} else {
+			return "false", nil
+		}
+	case "Version":
+		return fmt.Sprint(f.Uint()), nil
+	default:
+		return f.String(), nil
+	}
+}
+
+// ListFullProject 获取所有项目及其配置选项
+func (pm *ProjectManager) ListFullProject() (members []Options, err error) {
+	list, err := pm.ListProject()
 	if err != nil {
 		return
 	}
@@ -184,11 +248,36 @@ func (pm *ProjectManager) ListFull() (members []Options, err error) {
 	return members, nil
 }
 
-// List 获取所有项目
-func (pm *ProjectManager) List() (members [][]byte, err error) {
-	members, err = pm.db.SMembers(vars.GBName, vars.GBPK)
+// ListProject 获取所有项目
+func (pm *ProjectManager) ListProject() (members [][]byte, err error) {
+	return pm.db.SMembers(vars.GBName, vars.GBPK)
+}
+
+// ListBuilder 获取所有构建集
+func (pm *ProjectManager) ListBuilder(name string) (members [][]byte, err error) {
+	return pm.db.SMembers(name, vars.BRLK)
+}
+
+// ListFullBuilder 获取构建集及其详情
+func (pm *ProjectManager) ListFullBuilder(name string) (members []Result, err error) {
+	list, err := pm.ListBuilder(name)
 	if err != nil {
 		return
+	}
+	members = make([]Result, len(list))
+	for i, b := range list {
+		val, e := pm.db.Get(vars.BRK(name), b)
+		if e != nil {
+			err = e
+			return
+		}
+		var rst Result
+		e = json.Unmarshal(val, &rst)
+		if e != nil {
+			err = e
+			return
+		}
+		members[i] = rst
 	}
 	return members, nil
 }
@@ -408,6 +497,29 @@ func (pm *ProjectManager) reloadNginx() error {
 	}
 	if exitCode != 0 {
 		return errors.New("nginx reload configuration failed")
+	}
+	return nil
+}
+
+// BuildRecord 记录构建结果
+func (pm *ProjectManager) BuildRecord(name string, branchOrTag string, result interface{}) error {
+	// 使用管道批量事务提交
+	tc, err := pm.db.Pipeline()
+	if err != nil {
+		return err
+	}
+	// 新增文档项目成功，以下分别是：添加到构建索引中和构建结果记录中
+	bot := s2b(branchOrTag)
+	rst, err := json.Marshal(result)
+	if err != nil {
+		return err
+	}
+	tc.SAdd(name, vars.BRLK, bot)
+	tc.Set(vars.BRK(name), bot, rst)
+
+	err = tc.Execute()
+	if err != nil {
+		return err
 	}
 	return nil
 }
