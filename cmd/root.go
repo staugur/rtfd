@@ -21,8 +21,9 @@ var (
 	// built is UTC time when building
 	built string
 
-	showVer bool
-	newInit bool
+	showVersion bool
+	showVerbose bool
+	newInit     bool
 )
 
 var rootCmd = &cobra.Command{
@@ -30,8 +31,10 @@ var rootCmd = &cobra.Command{
 	Short: "Build, read your exclusive and fuck docs.",
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
-		if showVer {
+		if showVerbose {
 			fmt.Printf("v%s commit/%s built/%s\n", version, commitID, built)
+		} else if showVersion {
+			fmt.Println(version)
 		} else if newInit {
 			//新增rtfd配置文件
 			if !ufc.IsFile(cfgFile) {
@@ -71,11 +74,15 @@ func init() {
 		os.Exit(1)
 	}
 
+	rootCmd.Flags().SortFlags = false
 	rootCmd.PersistentFlags().StringVarP(
 		&cfgFile, "config", "c", cfg, "rtfd配置文件",
 	)
 	rootCmd.Flags().BoolVarP(
-		&showVer, "version", "v", false, "显示版本与构建信息",
+		&showVersion, "version", "v", false, "显示版本",
+	)
+	rootCmd.Flags().BoolVarP(
+		&showVerbose, "info", "i", false, "显示版本与构建信息",
 	)
 	rootCmd.Flags().BoolVarP(
 		&newInit, "init", "", false, "初始化rtfd配置文件",
@@ -83,7 +90,7 @@ func init() {
 }
 
 func initConfig() {
-	if showVer || newInit {
+	if showVersion || showVerbose || newInit {
 		return
 	}
 	// 除 -h/help 和根命令 -v/--init 选项外，其他子命令均需配置文件存在

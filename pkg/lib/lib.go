@@ -226,7 +226,10 @@ func (pm *ProjectManager) GetNameOption(name, key string) (val string, err error
 	case "Version":
 		return fmt.Sprint(f.Uint()), nil
 	default:
-		return f.String(), nil
+		if f.IsValid() {
+			return f.String(), nil
+		}
+		return "", nil
 	}
 }
 
