@@ -49,12 +49,11 @@ var apiCmd = &cobra.Command{
 			port = uint(pi)
 		}
 
-		api.Start(host, port)
+		api.Start(host, port, cfgFile)
 	},
 }
 
 func init() {
-	apiCmd.Flags().SortFlags = false
 	rootCmd.AddCommand(apiCmd)
 	apiCmd.Flags().StringP("host", "", "", "Api监听地址")
 	apiCmd.Flags().UintP("port", "", 0, "Api监听端口")

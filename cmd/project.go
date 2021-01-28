@@ -8,7 +8,8 @@ import (
 var projectCmd = &cobra.Command{
 	Use:   "project",
 	Short: "文档项目管理",
-	Args:  cobra.MinimumNArgs(1),
+    Args:  cobra.MinimumNArgs(1),
+    Aliases: []string{"p"},
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},

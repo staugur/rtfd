@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"tcw.im/rtfd/pkg/build"
+	"tcw.im/rtfd/vars"
 
 	"github.com/spf13/cobra"
 )
@@ -23,7 +24,7 @@ var buildCmd = &cobra.Command{
 			return
 		}
 
-		b.Build(name, branch, "cli")
+		b.Build(name, branch, vars.CLISender)
 	},
 }
 

@@ -12,6 +12,7 @@ import (
 	"tcw.im/rtfd/pkg/conf"
 	"tcw.im/rtfd/pkg/lib"
 	"tcw.im/rtfd/pkg/util"
+	"tcw.im/rtfd/vars"
 
 	"github.com/rakyll/statik/fs"
 )
@@ -45,7 +46,7 @@ func New(path string) (b *Builder, err error) {
 }
 
 // Build 构建文档
-func (b *Builder) Build(name, branch string, sender lib.Sender) error {
+func (b *Builder) Build(name, branch string, sender vars.Sender) error {
 	if !b.pm.HasName(name) {
 		return errors.New("not found name")
 	}
@@ -59,7 +60,7 @@ func (b *Builder) Build(name, branch string, sender lib.Sender) error {
 	args := []string{b.sh, "-n", name, "-u", data.URL, "-b", branch, "-c", b.path}
 	status := false
 	usedtime := -1
-	if sender == "cli" {
+	if sender == "cli" || sender == "api" {
 		util.RunCmdStream("bash", args, func(line string) {
 			fmt.Printf(line)
 			if strings.HasPrefix(line, "Build Successfully") {

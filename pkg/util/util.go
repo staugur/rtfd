@@ -155,6 +155,9 @@ func GitServiceProvider(rawurl string) (gsp string, err error) {
 
 // MD5 检测字符串MD5值
 func MD5(text string) string {
+	if text == "" {
+		return ""
+	}
 	h := md5.New()
 	h.Write([]byte(text))
 	return hex.EncodeToString(h.Sum(nil))

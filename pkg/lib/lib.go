@@ -17,6 +17,7 @@ import (
 	"tcw.im/rtfd/pkg/util"
 	"tcw.im/rtfd/vars"
 
+	homedir "github.com/mitchellh/go-homedir"
 	"tcw.im/ufc"
 )
 
@@ -25,8 +26,6 @@ type (
 	PyVer uint8
 	// BuilderType 构建器类型
 	BuilderType string
-	// Sender 发起构建来源类型
-	Sender string
 )
 
 const (
@@ -41,13 +40,6 @@ const (
 	DirHTMLBuilder BuilderType = "dirhtml"
 	// SingleHTMLBuilder 单页HTML构建器
 	SingleHTMLBuilder BuilderType = "singlehtml"
-
-	// APISender 从API接口发起构建
-	APISender Sender = "api"
-	// CLISender 从命令行发起构建
-	CLISender Sender = "cli"
-	// WebhookSender 从git webhook发起自动构建
-	WebhookSender Sender = "webhook"
 )
 
 type (
@@ -109,7 +101,7 @@ type Result struct {
 	Branch string
 	// 构建结果 passing表示true 其他表示false
 	Status bool
-	Sender Sender
+	Sender vars.Sender
 	// 构建完成时间（结束时）
 	Btime string
 	// 构建总花费时间（单位秒）
@@ -135,6 +127,12 @@ func s2b(s string) []byte {
 
 // New 新建项目管理器示例，path是rtfd配置文件
 func New(path string) (pm *ProjectManager, err error) {
+	if strings.HasPrefix(path, "~") {
+		path, err = homedir.Expand(path)
+		if err != nil {
+			return
+		}
+	}
 	if !ufc.IsFile(path) {
 		return nil, errors.New("not found config path")
 	}
@@ -149,6 +147,16 @@ func New(path string) (pm *ProjectManager, err error) {
 	}
 
 	return &ProjectManager{path, cfg, conn}, nil
+}
+
+// CFG 即config实例
+func (pm *ProjectManager) CFG() *conf.Config {
+	return pm.cfg
+}
+
+// DB 即db实例
+func (pm *ProjectManager) DB() *db.DB {
+	return pm.db
 }
 
 // Close 关闭DB连接
@@ -209,6 +217,7 @@ func (pm *ProjectManager) GetNameWithBuilder(name string) (ropt OptionsWithResul
 
 // GetNameOption 获取文档项目某项配置值
 func (pm *ProjectManager) GetNameOption(name, key string) (val string, err error) {
+	key = strings.Title(key)
 	opt, err := pm.GetName(name)
 	if err != nil {
 		return
