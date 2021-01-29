@@ -1,5 +1,4 @@
 // 对项目管理的封装（操作内嵌数据库）
-
 package lib
 
 import (
@@ -229,9 +228,8 @@ func (pm *ProjectManager) GetNameOption(name, key string) (val string, err error
 	case "Single", "Install", "ShowNav", "HideGit", "SSL", "IsPublic":
 		if f.Bool() {
 			return "true", nil
-		} else {
-			return "false", nil
 		}
+		return "false", nil
 	case "Version":
 		return fmt.Sprint(f.Uint()), nil
 	default:

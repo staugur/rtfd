@@ -4,10 +4,11 @@ package util
 
 import (
 	"bufio"
+	"crypto/hmac"
 	"crypto/md5"
+	"crypto/sha1"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/url"
@@ -47,9 +48,6 @@ func RunCmd(name string, args ...string) (exitCode int, out string, err error) {
 // RunCmdStream 在控制台实时输出命令返回信息
 func RunCmdStream(name string, args []string, f func(line string)) error {
 	cmd := exec.Command(name, args...)
-
-	//显示运行的命令
-	fmt.Println(cmd.Args)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -177,4 +175,18 @@ func MD5File(filePath string) (MD5 string, err error) {
 	}
 	hashInBytes := hash.Sum(nil)[:16]
 	return hex.EncodeToString(hashInBytes), nil
+}
+
+// HMACSha1 以hmac加盐方式检测字符串sha1值
+func HMACSha1(key, text string) string {
+	mac := hmac.New(sha1.New, []byte(key))
+	mac.Write([]byte(text))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// HMACSha1Byte 同 HMACSha1
+func HMACSha1Byte(key, text []byte) string {
+	mac := hmac.New(sha1.New, key)
+	mac.Write(text)
+	return hex.EncodeToString(mac.Sum(nil))
 }

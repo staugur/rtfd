@@ -60,7 +60,7 @@ func (b *Builder) Build(name, branch string, sender vars.Sender) error {
 	args := []string{b.sh, "-n", name, "-u", data.URL, "-b", branch, "-c", b.path}
 	status := false
 	usedtime := -1
-	if sender == "cli" || sender == "api" {
+	if sender == vars.CLISender || sender == vars.APISender || sender == vars.WebhookSender {
 		util.RunCmdStream("bash", args, func(line string) {
 			fmt.Printf(line)
 			if strings.HasPrefix(line, "Build Successfully") {

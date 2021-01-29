@@ -37,13 +37,21 @@ func TestUtil(t *testing.T) {
 	}
 	md5f.Write([]byte(md5k))
 	md5f.Close()
-
 	md5fv, err := MD5File(md5f.Name())
 	if err != nil {
 		t.Fatal("md5file raise error")
 	}
 	if md5v != md5fv {
 		t.Fatal("md5file result error")
+	}
+
+	hs1k := "hello world!"
+	hs1v := "9bf0f4bf184c31eea044ee583ef35aa9532337e6"
+	if HMACSha1("abc", hs1k) != hs1v {
+		t.Fatal("hmac sha1 fail")
+	}
+	if HMACSha1Byte([]byte("abc"), []byte(hs1k)) != hs1v {
+		t.Fatal("hmac-byte sha1 fail")
 	}
 }
 
