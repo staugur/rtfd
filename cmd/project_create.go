@@ -105,7 +105,7 @@ var createCmd = &cobra.Command{
 func init() {
 	createCmd.Flags().SortFlags = false
 	projectCmd.AddCommand(createCmd)
-	createCmd.Flags().StringP("url", "", "", "文档项目的git仓库地址，如果是私有仓库，请在url协议后携带编码后的 username:password")
+	createCmd.Flags().StringP("url", "u", "", "文档项目的git仓库地址，如果是私有仓库，请在url协议后携带编码后的 username:password")
 	createCmd.Flags().StringP("latest", "", "master", "latest所指向的分支")
 	createCmd.Flags().BoolP("single", "", false, "是否为单一版本")
 	createCmd.Flags().StringP("sourcedir", "s", "docs", "实际文档文件所在目录，目录路径是项目的相对位置")

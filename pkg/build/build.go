@@ -47,7 +47,7 @@ func New(path string) (b *Builder, err error) {
 // Build 构建文档
 func (b *Builder) Build(name, branch string, sender vars.Sender) error {
 	if !b.pm.HasName(name) {
-		return errors.New("not found name")
+		return errors.New("not found project")
 	}
 	data, err := b.pm.GetName(name)
 	if err != nil {

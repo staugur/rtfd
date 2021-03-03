@@ -221,7 +221,7 @@ func (pm *ProjectManager) GenerateOption(name, url string) (opt Options, err err
 	}
 
 	if strings.HasSuffix(url, ".git") {
-		url = strings.TrimRight(url, ".git")
+		url = strings.TrimSuffix(url, ".git")
 	}
 	gsp, err := util.GitServiceProvider(url)
 	if err != nil {

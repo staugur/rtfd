@@ -7,7 +7,7 @@
 #License:     BSD 3-Clause
 #Copyright:   (c) 2019 by staugur.
 
-rtfd_cmd="/mnt/e/git/rtfd/bin/rtfd"
+rtfd_cmd="rtfd"
 rtfd_cfg="$HOME/.rtfd.cfg"
 
 checkExitParam() {
@@ -68,7 +68,6 @@ _debugp() {
 }
 
 _envManager() {
-    _debugp "envManager: $@ $#"
     #: 切换到项目中，创建虚拟环境并构建文档
     local project_name=$1
     local branch=$2
@@ -120,7 +119,6 @@ _envManager() {
     local py_requirements=${py_requirements:=$(_getDocsConf $project_name Requirement)}
     local py_install_project=${py_install_project:=$(_getDocsConf $project_name Install false)}
     local py_index=${py_index:=$(_getDocsConf $project_name Index $default_index)}
-    _debugp "$project_latest $sphinx_sourcedir $sphinx_languages $sphinx_builder $py_version $py_requirements $py_install_project $py_index"
     if [[ "${sphinx_sourcedir:0:1}" == "/" || "${sphinx_sourcedir:0:2}" == ".." ]]; then
         echo "In rtfd.ini, sourcedir cannot start with / or .."
         exit 1
@@ -138,8 +136,6 @@ _envManager() {
     esac
     local vd="venv-${py_version}"
     local venv="${py_path} -m virtualenv -p ${py_path}"
-    pwd
-    echo $venv $vd
     #: 创建虚拟环境
     if [ ! -d $vd ]; then
         $venv $vd
@@ -151,8 +147,6 @@ _envManager() {
     #: 安装依赖
     local venv_py=$(_joinPath $project_runtime_dir ${vd}/bin/python)
     local venv_pip_install="${venv_py} -m pip install -i ${py_index}"
-    echo "$py_index $default_index"
-    echo "install sphinx: ${venv_pip_install}"
     $venv_pip_install --upgrade sphinx
     checkExitRetcode
     for req in ${py_requirements//,/ }; do
@@ -197,7 +191,7 @@ EOF
     deactivate
     #: 后续处理：依照${project_ini}更新项目信息
     if [ -f $project_ini ]; then
-        $rtfd_cmd project -a update -ur $project_ini $project_name
+        $rtfd_cmd project update -f $project_ini $project_name
         return $?
     fi
     #: 执行构建成功后的钩子命令：
@@ -210,7 +204,6 @@ EOF
 }
 
 _codeManager() {
-    _debugp "codeManager: $@"
     #: 克隆指定分支代码并切换项目中
     local project_name=$1
     local project_git=$2
@@ -303,14 +296,11 @@ main() {
     test -d $base_dir
     checkExitRetcode
 
-    pwd
-
     local docs_dir=$(_joinPath $base_dir docs)
     local runtimes_dir=$(_joinPath $base_dir runtimes)
     [ -d $docs_dir ] || mkdir -p $docs_dir
     [ -d $runtimes_dir ] || mkdir -p $runtimes_dir
     local runtimes_dir=$(mktemp -d -p $runtimes_dir)
-    echo "base: $base_dir docs: $docs_dir runtime $runtimes_dir"
 
     _codeManager $project_name $project_git $branch $runtimes_dir
     checkExitRetcode

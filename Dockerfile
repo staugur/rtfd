@@ -1,5 +1,5 @@
 # -- build dependencies with alpine & go1.16+ --
-FROM golang:alpine AS builder
+FROM golang:1.16.0-alpine3.13 AS builder
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
@@ -22,4 +22,5 @@ WORKDIR /rtfd
 
 EXPOSE 5000
 
-ENTRYPOINT ["rtfd", "api", "-c", "/rtfd/.rtfd.cfg"]
+# volume bind /rtfd.cfg
+ENTRYPOINT ["rtfd", "api", "-c", "/rtfd.cfg"]

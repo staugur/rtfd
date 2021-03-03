@@ -24,7 +24,10 @@ var buildCmd = &cobra.Command{
 			return
 		}
 
-		b.Build(name, branch, vars.CLISender)
+		err = b.Build(name, branch, vars.CLISender)
+		if err != nil {
+			fmt.Println(err)
+		}
 	},
 }
 

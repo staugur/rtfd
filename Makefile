@@ -19,7 +19,7 @@ gotool:
 	go vet ./
 
 build:
-	go build ${LDFLAGS} -o bin/$(BINARY) && chmod +x bin/$(BINARY)
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ${LDFLAGS} -o bin/$(BINARY) && chmod +x bin/$(BINARY)
 
 docker:
 	docker build -t staugur/rtfd .

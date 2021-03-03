@@ -76,7 +76,7 @@ func (u *updateHook) url(value interface{}) error {
 	}
 
 	if strings.HasSuffix(rawurl, ".git") {
-		rawurl = strings.TrimRight(rawurl, ".git")
+		rawurl = strings.TrimSuffix(rawurl, ".git")
 	}
 	gsp, err := util.GitServiceProvider(rawurl)
 	if err != nil {

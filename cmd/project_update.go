@@ -152,8 +152,12 @@ var updateCmd = &cobra.Command{
 			os.Exit(128)
 		}
 		fmt.Println("updated")
-		fmt.Printf("成功：%+v\n", strings.Join(ok, ", "))
-		fmt.Printf("失败：%+v\n", strings.Join(fail, ", "))
+		if len(ok) > 0 {
+			fmt.Printf("成功：%+v\n", strings.Join(ok, ", "))
+		}
+		if len(fail) > 0 {
+			fmt.Printf("失败：%+v\n", strings.Join(fail, ", "))
+		}
 	},
 }
 
