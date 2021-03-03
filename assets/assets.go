@@ -13,3 +13,7 @@ var RtfdJS []byte
 //BuiderSH 构建脚本内容
 //go:embed builder.sh
 var BuiderSH []byte
+
+// AppVersion 程序版本号
+//go:embed VERSION
+var AppVersion string

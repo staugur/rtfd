@@ -15,8 +15,7 @@ import (
 var (
 	// a global config file of rtfd, default is ~/.rtfd.cfg
 	cfgFile string
-	// rtfd version when building
-	version string
+
 	// commitID is git commit hash when building
 	commitID string
 	// built is UTC time when building
@@ -33,9 +32,9 @@ var rootCmd = &cobra.Command{
 	Long:  "",
 	Run: func(cmd *cobra.Command, args []string) {
 		if showVerbose {
-			fmt.Printf("v%s commit/%s built/%s\n", version, commitID, built)
+			fmt.Printf("v%s commit/%s built/%s\n", assets.AppVersion, commitID, built)
 		} else if showVersion {
-			fmt.Println(version)
+			fmt.Println(assets.AppVersion)
 		} else if newInit {
 			//新增rtfd配置文件
 			if !ufc.IsFile(cfgFile) {

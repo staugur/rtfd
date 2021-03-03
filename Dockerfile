@@ -11,7 +11,7 @@ WORKDIR /build
 COPY . .
 
 RUN go env -w GOPROXY=https://goproxy.cn,direct && \
-	go build -ldflags "-s -w -X tcw.im/rtfd/cmd.built=$(date -u '+%Y-%m-%dT%H:%M:%SZ') -X tcw.im/rtfd/cmd.version=$(cat VERSION)" -o bin/rtfd && chmod +x bin/rtfd
+	go build -ldflags "-s -w -X tcw.im/rtfd/cmd.built=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" -o bin/rtfd && chmod +x bin/rtfd
 
 # run application with a small image
 FROM scratch
