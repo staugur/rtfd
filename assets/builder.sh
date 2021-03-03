@@ -3,7 +3,7 @@
 #Version:     0.3
 #Description: 最终调用的核心脚本，此脚本只负责构建，会在docs的项目下，生成不同语言和不同版本的文档
 #CreateTime:  2019-08-05
-#ModifyTime:  2021-02-12
+#ModifyTime:  2021-03-03
 #License:     BSD 3-Clause
 #Copyright:   (c) 2019 by staugur.
 
@@ -287,7 +287,7 @@ main() {
     #: 设置默认配置
     local branch=${branch:=master}
     local base_dir=$(_getRtfdConf default base_dir)
-    _debugp "$project_name  $project_git $branch $base_dir"
+    _debugp "$project_name $project_git $branch $base_dir"
 
     #: 校验参数
     checkExitParam project_name $project_name
