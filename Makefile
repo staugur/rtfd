@@ -1,33 +1,31 @@
-.PHONY: clean
+.PHONY: help
+
+BINARY=rtfd
+CommitID=$(shell git log --pretty=format:"%h" -1)
+Built=$(shell date -u "+%Y-%m-%dT%H:%M:%SZ")
+Version=$(shell cat VERSION)
+LDFLAGS=-ldflags "-s -w -X tcw.im/rtfd/cmd.commitID=${CommitID} -X tcw.im/rtfd/cmd.built=${Built} -X tcw.im/rtfd/cmd.version=${Version}"
 
 help:
-	@echo "  clean           remove unwanted stuff"
-	@echo "  dev             make a development package"
-	@echo "  test            run the tests"
-	@echo "  publish-test    package and upload a release to test.pypi.org"
-	@echo "  publish-release package and upload a release to pypi.org"
+	@echo "  make clean  - Remove binaries and vim swap files"
+	@echo "  make gotool - Run go tool 'fmt' and 'vet'"
+	@echo "  make build  - Compile go code and generate binary file"
+	@echo "  make dev    - Run dev server"
+	@echo "  make test   - Run go test"
 
-clean:
-	find . -name '*.pyc' -exec rm -f {} +
-	find . -name '*.pyo' -exec rm -f {} +
-	find . -name '*~' -exec rm -f {} +
-	find . -name '.DS_Store' -exec rm -f {} +
-	find . -name '__pycache__' -exec rm -rf {} +
-	find . -name '.coverage' -exec rm -rf {} +
-	rm -rf build dist *.egg-info +
+gotool:
+	go fmt ./
+	go vet ./
+
+build:
+	go build ${LDFLAGS} -o bin/$(BINARY) && chmod +x bin/$(BINARY)
+
+docker:
+	docker build -t staugur/rtfd .
 
 dev:
-	pip install .
-	$(MAKE) clean
+	@echo Starting service...
+	@go run ./
 
 test:
-	python setup.py test
-	$(MAKE) clean
-
-publish-test:
-	python setup.py publish --test
-	$(MAKE) clean
-
-publish-release:
-	python setup.py publish --release
-	$(MAKE) clean
+	@go test -count=1 ./...
