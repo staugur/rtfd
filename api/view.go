@@ -64,8 +64,8 @@ func apiDesc(c echo.Context) error {
 	data["icon"] = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4lc7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMwBHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrzdQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII="
 	data["public"] = opt.IsPublic
 	data["gsp"] = opt.GSP
-	versions := make(map[string][]string)
 	basedir := pm.CFG().BaseDir()
+	versions := make(map[string][]string)
 	for _, lang := range strings.Split(opt.Lang, ",") {
 		langDir := filepath.Join(basedir, "docs", name, lang)
 		if ufc.IsDir(langDir) {

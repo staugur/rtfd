@@ -39,9 +39,17 @@ func Start(host string, port uint, cfg string) {
 	}))
 
 	g.GET("/:name/desc", apiDesc)
+	g.GET("/desc/:name", apiDesc)
+
 	g.GET("/:name/badge", apiBadge)
+	g.GET("/badge/:name", apiBadge)
+
 	g.POST("/:name/build", apiBuild)
+	g.POST("/build/:name", apiBuild)
+
 	g.POST("/:name/webhook", webhookBuild)
+	g.POST("/webhook/:name", webhookBuild)
+
 	g.Match([]string{"HEAD", "GET"}, "/assets/rtfd.js", func(c echo.Context) error {
 		return c.Blob(200, "application/javascript", assets.RtfdJS)
 	})
