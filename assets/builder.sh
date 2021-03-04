@@ -187,18 +187,18 @@ EOF
         ln -nsf $(_joinPath ${project_docs_lang_dir} ${project_latest}) $(_joinPath ${project_docs_lang_dir} latest)
         checkExitRetcode
     done
+    #: 执行构建成功后的钩子命令：
+    local after_hook=$(_getDocsConf $project_name AfterHook)
+    if [ ! -z "$after_hook" ]; then
+        _debugp "Trigger after_hook: ${after_hook}"
+        ($after_hook) && _debugp "after_hook ok" || _debugp "after_hook fail"
+    fi
     #: 退出虚拟环境
     deactivate
     #: 后续处理：依照${project_ini}更新项目信息
     if [ -f $project_ini ]; then
         $rtfd_cmd project update -f $project_ini $project_name
         return $?
-    fi
-    #: 执行构建成功后的钩子命令：
-    local after_hook=$(_getDocsConf $project_name AfterHook)
-    if [ ! -z "$after_hook" ]; then
-        _debugp "Trigger after_hook: ${after_hook}"
-        ($after_hook) && _debugp "after_hook ok" || _debugp "after_hook fail"
     fi
     return 0
 }

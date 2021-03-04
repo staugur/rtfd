@@ -1,7 +1,7 @@
 # -- build dependencies with alpine & go1.16+ --
 FROM golang:1.16.0-alpine3.13 AS builder
 
-LABEL MAINTAINER="staugur <me@tcw.im>"
+LABEL MAINTAINER="me@tcw.im"
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \

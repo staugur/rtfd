@@ -265,7 +265,7 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 		return errors.New("this project name already exists")
 	}
 	//校验必选项
-	if opt.URL == "" || opt.DefaultDomain == "" || opt.Latest == "" || opt.Lang == "" || opt.Builder == "" || (opt.Version != 2 && opt.Version != 3) || opt.SourceDir == "" {
+	if opt.URL == "" || opt.DefaultDomain == "" || opt.Latest == "" || opt.Lang == "" || opt.Builder == "" || (opt.Version != PY2 && opt.Version != PY3) || opt.SourceDir == "" {
 		return errors.New("required fields are missing")
 	}
 	domain := opt.CustomDomain

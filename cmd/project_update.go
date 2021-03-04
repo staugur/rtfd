@@ -22,9 +22,9 @@ var updateDesc = `更新文档项目配置
     latest：     latest所指向的分支
     version：    构建文档所用的Python版本，2或3（int）
     single：     是否单一版本（bool）
-    source：     文档源文件路径
+    source：     文档源文件所在目录
     lang：       文档语言
-    requirement：依赖包需求文件
+    requirement：依赖包需求文件，支持多个，以逗号分隔
     install：    是否安装项目（bool）
     index：      pypi源
     builder：    sphinx构建器
