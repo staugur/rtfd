@@ -1,8 +1,10 @@
 [Unit]
 Description=rtfd: Build, read your exclusive and fuck docs.
+Documentation=https://docs.saintic.com/rtfd/
 After=network.target
 
 [Service]
+Type=simple
 ExecStart=rtfd api
 
 [Install]

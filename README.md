@@ -43,19 +43,6 @@ rtfd -v
     rtfd -v
     ```
 
-### **使用docker安装**
-
-`docker pull staugur/rtfd`
-
-或下载源码自行构建
-
-```bash
-git clone https://github.com/staugur/rtfd && cd rtfd
-docker build -t staugur/rtfd .
-```
-
-ps：此方式主要是用来运行 API 服务
-
 使用
 ------
 
