@@ -366,8 +366,7 @@ func (pm *ProjectManager) GetNameOption(name, key string) (val string, err error
 			return "", errors.New("invalid meta key")
 		}
 		field := strings.ToLower(ks[1])
-		val, _ = opt.Meta[field]
-		return
+		return opt.GetMeta(field), nil
 	}
 
 	p := reflect.ValueOf(&opt)
@@ -663,4 +662,19 @@ func (pm *ProjectManager) Update(name string, rule map[string]interface{}) (ok [
 		}
 	}
 	return
+}
+
+// GetMeta 专门读取 Options 结构体 Meta 字段的值
+func (opt Options) GetMeta(key string) string {
+	val, _ := opt.Meta[key]
+	return val
+}
+
+// MustMeta 专门读取 Options 结构体 Meta 字段的值，可设置默认值
+func (opt Options) MustMeta(key, defaultValue string) string {
+	val, _ := opt.Meta[key]
+	if val == "" {
+		return defaultValue
+	}
+	return val
 }

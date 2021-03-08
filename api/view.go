@@ -190,6 +190,11 @@ func webhookBuild(c echo.Context) error {
 		return errors.New("unsupported git service provider")
 	}
 
+	sep := opt.MustMeta("_sep", "|")
+	if ufc.StrInSlice(branch, strings.Split(opt.GetMeta("excluded_branch"), sep)) {
+		return c.JSON(200, resb{res{false, "excluded branch"}, branch})
+	}
+
 	go b.Build(name, branch, vars.WebhookSender)
 	return c.JSON(201, resb{res{Success: true}, branch})
 }
