@@ -189,7 +189,7 @@ var _rtfd_script = document.getElementsByTagName('script')[
                         var path_rst = other_path
                             ? other_path.replace('.html', '.rst')
                             : 'index.rst'
-                        console.debug(
+                        console.info(
                             name,
                             lang,
                             branch,

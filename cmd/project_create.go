@@ -115,7 +115,7 @@ func init() {
 	createCmd.Flags().BoolP("install", "", false, "是否需要安装项目")
 	createCmd.Flags().StringP("index", "i", "", "指定pip安装时的pypi源")
 	createCmd.Flags().StringP("builder", "b", "html", "Sphinx构建器，可选html、dirhtml、singlehtml")
-	createCmd.Flags().StringP("secret", "", "", "Webhook密钥")
+	createCmd.Flags().StringP("secret", "", "", "Api/Webhook密钥")
 	createCmd.Flags().StringP("domain", "", "", "自定义域名")
 	createCmd.Flags().StringP("sslcrt", "", "", "自定义域名的SSL证书公钥")
 	createCmd.Flags().StringP("sslkey", "", "", "自定义域名的SSL证书私钥")

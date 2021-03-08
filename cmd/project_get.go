@@ -57,6 +57,7 @@ var getCmd = &cobra.Command{
 			data, _ = json.Marshal(bs)
 		} else {
 			if key != "" {
+				// rtfd p get {Name}:{Option}
 				val, err := pm.GetNameOption(name, key)
 				if err != nil {
 					fmt.Println(err)

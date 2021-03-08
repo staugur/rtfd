@@ -144,11 +144,9 @@ _envManager() {
     #: 激活虚拟环境
     source ${vd}/bin/activate
     checkExitRetcode
-    #: 安装依赖
+    #: 安装依赖（必须自行将sphinx写入依赖包文件）
     local venv_py=$(_joinPath $project_runtime_dir ${vd}/bin/python)
     local venv_pip_install="${venv_py} -m pip install -i ${py_index}"
-    $venv_pip_install --upgrade sphinx
-    checkExitRetcode
     for req in ${py_requirements//,/ }; do
         $venv_pip_install -r $req
         checkExitRetcode
@@ -198,7 +196,6 @@ EOF
     #: 后续处理：依照${project_ini}更新项目信息
     if [ -f $project_ini ]; then
         $rtfd_cmd project update -f $project_ini $project_name
-        return $?
     fi
     return 0
 }
@@ -206,9 +203,9 @@ EOF
 _codeManager() {
     #: 克隆指定分支代码并切换项目中
     local project_name=$1
-    local project_git=$2
-    local branch=$3
-    local runtime_dir=$4
+    local branch=$2
+    local runtime_dir=$3
+    local project_git=$(_getDocsConf $project_name URL)
     checkExitParam _codeManager_project_name $project_name
     checkExitParam _codeManager_project_git $project_git
     checkExitParam _codeManager_branch $branch
@@ -230,7 +227,6 @@ Options:
 
     -h, --help    The help information
     -n, --name    The docs project name
-    -u, --url     The docs project git url
     -b, --branch  The docs project branch, default is master.
     -c, --config  The config file, default is ${HOME}/.rtfd.cfg
 "
@@ -248,11 +244,6 @@ main() {
         -n | --name)
             local project_name="${2,,}"
             checkExitParam project_name $project_name
-            shift
-            ;;
-        -u | --url)
-            local project_git="$2"
-            checkExitParam project_git $project_git
             shift
             ;;
         -b | --branch)
@@ -287,12 +278,15 @@ main() {
     #: 设置默认配置
     local branch=${branch:=master}
     local base_dir=$(_getRtfdConf default base_dir)
-    _debugp "$project_name $project_git $branch $base_dir"
-
+    _debugp "$project_name $branch $base_dir"
     #: 校验参数
+    checkExitParam base_dir $base_dir
     checkExitParam project_name $project_name
-    checkExitParam project_git $project_git
     checkExitParam branch $branch
+    if [[ ${#base_dir} -lt 2 || "${base_dir:0:1}" != "/" ]]; then
+        echo "invalid base_dir"
+        exit 1
+    fi
     test -d $base_dir
     checkExitRetcode
 
@@ -302,7 +296,7 @@ main() {
     [ -d $runtimes_dir ] || mkdir -p $runtimes_dir
     local runtimes_dir=$(mktemp -d -p $runtimes_dir)
 
-    _codeManager $project_name $project_git $branch $runtimes_dir
+    _codeManager $project_name $branch $runtimes_dir
     checkExitRetcode
 
     local project_docs_dir=$(_joinPath $docs_dir $project_name)

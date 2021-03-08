@@ -56,7 +56,7 @@ func (b *Builder) Build(name, branch string, sender vars.Sender) error {
 	if branch == "" {
 		branch = data.Latest
 	}
-	args := []string{b.sh, "-n", name, "-u", data.URL, "-b", branch, "-c", b.path}
+	args := []string{b.sh, "-n", name, "-b", branch, "-c", b.path}
 	status := false
 	usedtime := -1
 	util.RunCmdStream("bash", args, func(line string) {

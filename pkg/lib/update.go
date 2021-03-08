@@ -2,6 +2,7 @@ package lib
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -56,6 +57,8 @@ func (u *updateHook) handle(field string) (fn func(value interface{}) error, err
 		fn = u.afterHook
 	case "ssl":
 		fn = u.ssl
+	case "meta":
+		fn = u.meta
 	default:
 		err = errors.New("invalid field")
 	}
@@ -255,5 +258,26 @@ func (u *updateHook) ssl(value interface{}) error {
 	u.opt.SSLPublic = pub
 	u.opt.SSLPrivate = pri
 	u.render = true
+	return nil
+}
+
+func (u *updateHook) meta(value interface{}) error {
+	// value format key=value, update only one at a time
+	v := value.(string)
+	meta := u.opt.Meta
+	if meta == nil {
+		meta = make(map[string]string)
+	}
+	ms := strings.Split(v, "=")
+	if len(ms) != 2 {
+		return fmt.Errorf("invalid meta field: %s", v)
+	}
+	key := strings.ToLower(ms[0])
+	val := ms[1]
+	if key == "" || val == "" {
+		return fmt.Errorf("invalid meta field: %s", v)
+	}
+	meta[key] = val
+	u.opt.Meta = meta
 	return nil
 }

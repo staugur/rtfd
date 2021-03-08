@@ -96,6 +96,8 @@ type Options struct {
 	BeforeHook string
 	// 构建成功后的钩子命令
 	AfterHook string
+	// 额外配置数据，格式是 field:value,field:value
+	Meta map[string]string
 }
 
 // Result 构建结果
@@ -357,9 +359,19 @@ func (pm *ProjectManager) GetNameOption(name, key string) (val string, err error
 	if err != nil {
 		return
 	}
+
+	if strings.HasPrefix(key, "Meta") {
+		ks := strings.Split(key, "@")
+		if len(ks) < 2 {
+			return "", errors.New("invalid meta key")
+		}
+		field := strings.ToLower(ks[1])
+		val, _ = opt.Meta[field]
+		return
+	}
+
 	p := reflect.ValueOf(&opt)
 	f := p.Elem().FieldByName(key)
-
 	switch key {
 	case "Single", "Install", "ShowNav", "HideGit", "SSL", "IsPublic":
 		if f.Bool() {

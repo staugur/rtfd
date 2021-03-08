@@ -30,12 +30,13 @@ var updateDesc = `更新文档项目配置
     builder：    sphinx构建器
     shownav：    是否显示导航（bool）
     hidegit：    导航中是否隐藏git信息（bool）
-    secret：     webhook密钥
+    secret：     api/webhook密钥
     domain：     自定义域名
     sslcrt：     自定义域名开启HTTPS时的证书公钥
     sslpri：     自定义域名开启HTTPS时的证书私钥
     before：     构建前的钩子命令
     after：      执行构建成功后的钩子命令
+    meta：       额外配置数据，每次仅能更新一条，格式是 key=value（key不区分大小写）
 
     可一次更新一个或多个字段，格式是 -> Field:Value,Field:Value,...,Field:Value
     分隔符可用 sep 选项设置，更新成功或失败的字段均会打印。
