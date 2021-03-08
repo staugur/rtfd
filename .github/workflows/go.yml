@@ -6,6 +6,13 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+
     steps:
     - uses: actions/checkout@v2
 
@@ -16,3 +23,5 @@ jobs:
 
     - name: Test
       run: go test -v -count=1 ./...
+      env:
+        redis_url: redis://localhost
