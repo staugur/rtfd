@@ -3,7 +3,7 @@
 #Version:     0.3
 #Description: 最终调用的核心脚本，此脚本只负责构建，会在docs的项目下，生成不同语言和不同版本的文档
 #CreateTime:  2019-08-05
-#ModifyTime:  2021-03-03
+#ModifyTime:  2021-03-09
 #License:     BSD 3-Clause
 #Copyright:   (c) 2019 by staugur.
 
@@ -99,7 +99,8 @@ _envManager() {
 
     cd ${project_runtime_dir}
     checkExitRetcode
-    #: 尝试读取项目的文档配置文件
+
+    #: 尝试读取项目仓库根目录下的文档配置文件
     project_ini=".rtfd.ini"
     if [ -f $project_ini ]; then
         local project_latest=$(_getRtfdConf $project_ini project latest)

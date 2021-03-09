@@ -189,13 +189,8 @@ var _rtfd_script = document.getElementsByTagName('script')[
                         var path_rst = other_path
                             ? other_path.replace('.html', '.rst')
                             : 'index.rst'
-                        console.info(
-                            name,
-                            lang,
-                            branch,
-                            'other is:' + other_path,
-                            'rst is:' + path_rst
-                        )
+
+                        // console.debug(name, lang, branch, 'other is:' + other_path, 'rst is:' + path_rst)
                         var langs_str = res.data.lang
                             .map(function (_lang) {
                                 var active = _lang === lang ? 'active' : ''

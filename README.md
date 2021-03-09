@@ -3,9 +3,9 @@ rtfd
 
 Build, read your exclusive and fuck docs.
 
-[![Go test](https://github.com/staugur/rtfd/actions/workflows/go.yml/badge.svg)](https://github.com/staugur/rtfd/actions/workflows/go.yml)
-[![Documentation Status](https://open.saintic.com/rtfd/saintic-docs/badge)](https://docs.saintic.com/rtfd/)
 [![Go Reference](https://pkg.go.dev/badge/tcw.im/rtfd.svg)](https://pkg.go.dev/tcw.im/rtfd)
+[![Documentation Status](https://open.saintic.com/rtfd/saintic-docs/badge)](https://docs.saintic.com/rtfd/)
+[![Go test](https://github.com/staugur/rtfd/actions/workflows/go.yml/badge.svg)](https://github.com/staugur/rtfd/actions/workflows/go.yml)
 
 安装
 -------
@@ -15,7 +15,7 @@ rtfd 仅支持 linux 操作系统
 ### **使用编译好的可执行程序**
 
 ```bash
-version=1.1.0
+version=1.1.1
 wget -c https://github.com/staugur/rtfd/releases/download/v${version}/rtfd.${version}-linux-amd64.tar.gz
 tar zxf rtfd.${version}-linux-amd64.tar.gz
 mv rtfd ~/bin/
@@ -29,6 +29,7 @@ rtfd -v
 2. 编译安装（以下两种方式）
 
     2.1 下载源码编译：
+
     ```bash
     git clone https://github.com/staugur/rtfd && cd rtfd
     make build
@@ -37,8 +38,9 @@ rtfd -v
     ```
 
     2.2 使用`go get`命令：
+
     ```bash
-    go get -u tcw.im/rtfd      # 可使用 @tag 安装正式版本
+    go get -u tcw.im/rtfd      # 可使用 @tag 安装某个正式版本，如 @v1.1.0
     mv ~/go/bih/rtfd ~/bin/
     rtfd -v
     ```

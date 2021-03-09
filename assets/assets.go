@@ -1,6 +1,6 @@
 package assets
 
-import _ "embed"
+import _ "embed" // embed static file
 
 //RtfdCFG 配置文件示例内容
 //go:embed rtfd.cfg
@@ -14,6 +14,6 @@ var RtfdJS []byte
 //go:embed builder.sh
 var BuiderSH []byte
 
-// AppVersion 程序版本号
+//AppVersion 程序版本号
 //go:embed VERSION
 var AppVersion string
