@@ -5,14 +5,12 @@ package util
 import (
 	"bufio"
 	"crypto/hmac"
-	"crypto/md5"
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
 	"io"
 	"net"
 	"net/url"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -148,32 +146,6 @@ func GitServiceProvider(rawurl string) (gsp string, err error) {
 	default:
 		return "N/A", nil
 	}
-}
-
-// MD5 检测字符串MD5值
-func MD5(text string) string {
-	if text == "" {
-		return ""
-	}
-	h := md5.New()
-	h.Write([]byte(text))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-//MD5File 检测文件MD5值
-func MD5File(filePath string) (MD5 string, err error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return
-	}
-	defer file.Close()
-
-	hash := md5.New()
-	if _, err = io.Copy(hash, file); err != nil {
-		return
-	}
-	hashInBytes := hash.Sum(nil)[:16]
-	return hex.EncodeToString(hashInBytes), nil
 }
 
 // HMACSha1 以hmac加盐方式检测字符串sha1值

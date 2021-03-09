@@ -1,7 +1,6 @@
 package util
 
 import (
-	"io/ioutil"
 	"strings"
 	"testing"
 )
@@ -24,25 +23,6 @@ func TestUtil(t *testing.T) {
 	_, _, err := RunCmd("ls")
 	if err != nil {
 		t.Fatal("run cmd error")
-	}
-
-	md5k := "hello world!"
-	md5v := "fc3ff98e8c6a0d3087d515c0473f8677"
-	if MD5(md5k) != md5v {
-		t.Fatal("md5 fail")
-	}
-	md5f, err := ioutil.TempFile("", "rtfd-md5-test.txt")
-	if err != nil {
-		t.Fatal("tempfile error")
-	}
-	md5f.Write([]byte(md5k))
-	md5f.Close()
-	md5fv, err := MD5File(md5f.Name())
-	if err != nil {
-		t.Fatal("md5file raise error")
-	}
-	if md5v != md5fv {
-		t.Fatal("md5file result error")
 	}
 
 	hs1k := "hello world!"

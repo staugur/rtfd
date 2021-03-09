@@ -64,7 +64,7 @@ type Options struct {
 	SourceDir Path
 	// 文档语言，以半角逗号分隔多种语言
 	Lang string
-	// 依赖包文件
+	// 依赖包文件，以半角逗号分隔多个文件
 	Requirement Path
 	// 是否安装项目
 	Install bool
@@ -80,7 +80,7 @@ type Options struct {
 	DefaultDomain string
 	// 自定义域名
 	CustomDomain string
-	// 自定义域名开启HTTPS（非手动）
+	// 自定义域名开启HTTPS（自动填充）
 	SSL bool
 	// 自定义域名的ssl公钥
 	SSLPublic Path
@@ -88,15 +88,15 @@ type Options struct {
 	SSLPrivate Path
 	// Sphinx构建器，支持html、dirhtml、singlehtml
 	Builder BuilderType
-	// git服务提供商
+	// git服务提供商（自动填充）
 	GSP string
-	// 是否为公开仓库（type）
+	// 是否为公开仓库（原type，自动填充）
 	IsPublic bool
 	// 构建前的钩子命令
 	BeforeHook string
 	// 构建成功后的钩子命令
 	AfterHook string
-	// 额外配置数据，格式是 field:value,field:value
+	// 额外配置数据
 	Meta map[string]string
 }
 
@@ -148,6 +148,40 @@ func BCK(projectName string) string {
 func BRK(projectName string) string {
 	projectName = strings.ToLower(projectName)
 	return "builder:" + projectName
+}
+
+// OptionKeyMap 转换 Options 结构体字段名大小写
+func OptionKeyMap(key string) string {
+	switch strings.ToLower(key) {
+	case "url":
+		return "URL"
+	case "sourcedir":
+		return "SourceDir"
+	case "shownav":
+		return "ShowNav"
+	case "hidegit":
+		return "HideGit"
+	case "defaultdomain":
+		return "DefaultDomain"
+	case "customdomain":
+		return "CustomDomain"
+	case "ssl":
+		return "SSL"
+	case "sslpublic":
+		return "SSLPublic"
+	case "sslprivate":
+		return "SSLPrivate"
+	case "gsp":
+		return "GSP"
+	case "ispublic":
+		return "IsPublic"
+	case "beforehook":
+		return "BeforeHook"
+	case "afterhook":
+		return "AfterHook"
+	default:
+		return strings.Title(strings.ToLower(key))
+	}
 }
 
 // New 新建项目管理器示例，path是rtfd配置文件
@@ -238,7 +272,7 @@ func (pm *ProjectManager) GenerateOption(name, url string) (opt Options, err err
 	return Options{
 		Name: name, URL: url, Latest: "master", Version: PY3, GSP: gsp,
 		SourceDir: "docs", Lang: "en", ShowNav: true, HideGit: false,
-		DefaultDomain: name + "." + dn, Builder: "html", IsPublic: isPublic,
+		DefaultDomain: name + "." + dn, Builder: HTMLBuilder, IsPublic: isPublic,
 	}, nil
 }
 
@@ -267,7 +301,9 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 		return errors.New("this project name already exists")
 	}
 	//校验必选项
-	if opt.URL == "" || opt.DefaultDomain == "" || opt.Latest == "" || opt.Lang == "" || opt.Builder == "" || (opt.Version != PY2 && opt.Version != PY3) || opt.SourceDir == "" {
+	if opt.URL == "" || opt.DefaultDomain == "" || opt.Latest == "" || opt.Lang == "" ||
+		(opt.Builder != HTMLBuilder && opt.Builder != DirHTMLBuilder && opt.Builder != SingleHTMLBuilder) ||
+		(opt.Version != PY2 && opt.Version != PY3) || opt.SourceDir == "" {
 		return errors.New("required fields are missing")
 	}
 	domain := opt.CustomDomain
@@ -354,7 +390,8 @@ func (pm *ProjectManager) GetNameWithBuilder(name string) (ropt OptionsWithResul
 
 // GetNameOption 获取文档项目某项配置值
 func (pm *ProjectManager) GetNameOption(name, key string) (val string, err error) {
-	key = strings.Title(key)
+	key = OptionKeyMap(key)
+
 	opt, err := pm.GetName(name)
 	if err != nil {
 		return
@@ -547,11 +584,8 @@ func (pm *ProjectManager) reloadNginx() error {
 		return errors.New("nginx test configuration failed")
 	}
 	exitCode, _, err = util.RunCmd(name, reloadArgs...)
-	if err != nil {
-		return err
-	}
-	if exitCode != 0 {
-		return errors.New("nginx reload configuration failed")
+	if exitCode != 0 || err != nil {
+		return errors.New("nginx reload service failed")
 	}
 	return nil
 }

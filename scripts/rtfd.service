@@ -4,6 +4,8 @@ Documentation=https://docs.saintic.com/rtfd/
 After=network.target
 
 [Service]
+# If you start as a normal user, please fill in User
+# User=
 Type=simple
 ExecStart=rtfd api
 

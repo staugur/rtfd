@@ -70,6 +70,9 @@ func apiDesc(c echo.Context) error {
 	data["public"] = opt.IsPublic
 	data["gsp"] = opt.GSP
 	basedir := pm.CFG().BaseDir()
+	if basedir == "" || !ufc.IsDir(basedir) {
+		return c.JSON(200, res{Message: "invalid data directory"})
+	}
 	versions := make(map[string][]string)
 	for _, lang := range strings.Split(opt.Lang, ",") {
 		langDir := filepath.Join(basedir, "docs", name, lang)

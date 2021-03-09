@@ -8,6 +8,7 @@ import (
 	"tcw.im/rtfd/pkg/util"
 
 	"github.com/labstack/echo/v4"
+	"tcw.im/ufc"
 )
 
 func getArg(c echo.Context, key string) string {
@@ -29,7 +30,7 @@ func checkSecret(c echo.Context) (bool, error) {
 		return true, nil
 	}
 	sign := c.Request().Header.Get("X-Rtfd-Sign")
-	return sign == util.MD5(opt.Secret), nil
+	return sign == ufc.MD5(opt.Secret), nil
 }
 
 func checkGitHubWebhook(c echo.Context, opt lib.Options, Body []byte) error {
