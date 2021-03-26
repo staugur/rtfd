@@ -97,6 +97,20 @@ func (gh *GHApp) setAccessToken() error {
 	return nil
 }
 
-func (gh *GHApp) Dispatch(action string) error {
+func (gh *GHApp) InitSetup(w Webhook) error {
 	return nil
+}
+
+func (gh *GHApp) Remove(w Webhook) error {
+	return nil
+}
+
+func (w Webhook) Dispatch(gh *GHApp) (err error) {
+	switch w.Action {
+	case "created":
+		err = gh.InitSetup(w)
+	case "deleted":
+		err = gh.Remove(w)
+	}
+	return
 }

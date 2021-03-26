@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"tcw.im/rtfd/pkg/app"
@@ -247,10 +248,35 @@ func ghApp(c echo.Context) error {
 	for k, v := range H {
 		fmt.Printf("%s=%s\n", k, v[0])
 	}
+	event := H.Get("X-GitHub-Event")
+	hiti := H.Get("X-GitHub-Hook-Installation-Target-ID")
+	hitt := H.Get("X-GitHub-Hook-Installation-Target-Type")
+	// another is installation_repositories
+	if event != "installation" {
+		return errors.New("unsupported event")
+	}
+	if hitt != "integration" {
+		return errors.New("unsupported type")
+	}
+	hitiU, err := strconv.ParseUint(hiti, 10, 64)
+	if err != nil {
+		return err
+	}
 	var data app.Webhook
 	if err := c.Bind(&data); err != nil {
 		return err
 	}
-	fmt.Println(data)
-	return c.JSONBlob(200, []byte(`"ok"`))
+	if data.Installation.ID != hitiU {
+		return errors.New("invalid installation")
+	}
+	fmt.Printf("%+v\n", data)
+	gh, err := app.New(cfgFile, data.Installation.ID)
+	if err != nil {
+		return err
+	}
+	err = data.Dispatch(gh)
+	if err != nil {
+		return err
+	}
+	return c.JSON(200, res{Success: true})
 }
