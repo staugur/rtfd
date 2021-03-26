@@ -54,5 +54,7 @@ func Start(host string, port uint, cfg string) {
 		return c.Blob(200, "application/javascript", assets.RtfdJS)
 	})
 
+	g.POST("/github/app", ghApp)
+
 	e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", host, port)))
 }

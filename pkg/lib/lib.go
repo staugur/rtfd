@@ -1,4 +1,4 @@
-// 对项目管理的封装（操作内嵌数据库）
+// 对项目管理的封装（操作数据库）
 
 package lib
 
@@ -566,7 +566,7 @@ func (pm *ProjectManager) reloadNginx() error {
 		testArgs   []string
 		reloadArgs []string
 	)
-	if sudo == true {
+	if sudo {
 		name = "sudo"
 		testArgs = []string{cmd, "-t"}
 		reloadArgs = []string{cmd, "-s", "reload"}
@@ -700,13 +700,13 @@ func (pm *ProjectManager) Update(name string, rule map[string]interface{}) (ok [
 
 // GetMeta 专门读取 Options 结构体 Meta 字段的值
 func (opt Options) GetMeta(key string) string {
-	val, _ := opt.Meta[key]
+	val := opt.Meta[key]
 	return val
 }
 
 // MustMeta 专门读取 Options 结构体 Meta 字段的值，可设置默认值
 func (opt Options) MustMeta(key, defaultValue string) string {
-	val, _ := opt.Meta[key]
+	val := opt.Meta[key]
 	if val == "" {
 		return defaultValue
 	}

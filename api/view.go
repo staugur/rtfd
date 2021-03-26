@@ -3,10 +3,12 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 
+	"tcw.im/rtfd/pkg/app"
 	"tcw.im/rtfd/pkg/build"
 	"tcw.im/rtfd/pkg/util"
 	"tcw.im/rtfd/vars"
@@ -238,4 +240,17 @@ func apiBadge(c echo.Context) error {
 		}
 	}
 	return badgeRes(c, status)
+}
+
+func ghApp(c echo.Context) error {
+	H := c.Request().Header
+	for k, v := range H {
+		fmt.Printf("%s=%s\n", k, v[0])
+	}
+	var data app.Webhook
+	if err := c.Bind(&data); err != nil {
+		return err
+	}
+	fmt.Println(data)
+	return c.JSONBlob(200, []byte(`"ok"`))
 }
