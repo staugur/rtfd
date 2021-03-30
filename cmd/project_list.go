@@ -12,8 +12,9 @@ import (
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "列出所有文档项目信息",
+	Use:     "list",
+	Short:   "列出所有文档项目信息",
+	Aliases: []string{"l"},
 	Run: func(cmd *cobra.Command, args []string) {
 		flagset := cmd.Flags()
 		verbose, err := flagset.GetBool("verbose")
@@ -35,7 +36,7 @@ var listCmd = &cobra.Command{
 			os.Exit(128)
 		}
 		members := make([]interface{}, len(list))
-		if verbose == true {
+		if verbose {
 			list, err := pm.ListFullProject()
 			if err != nil {
 				fmt.Println(err)

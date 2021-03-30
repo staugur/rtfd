@@ -11,9 +11,10 @@ import (
 
 // createCmd represents the create command
 var createCmd = &cobra.Command{
-	Use:   "create",
-	Short: "创建文档项目",
-	Args:  cobra.ExactArgs(1),
+	Use:     "create",
+	Short:   "创建文档项目",
+	Args:    cobra.ExactArgs(1),
+	Aliases: []string{"c"},
 	Run: func(cmd *cobra.Command, args []string) {
 		flagset := cmd.Flags()
 
@@ -37,6 +38,11 @@ var createCmd = &cobra.Command{
 		source := cmd.Flag("sourcedir").Value.String()
 		lang := cmd.Flag("lang").Value.String()
 		pyver, err := flagset.GetUint8("version")
+		if err != nil {
+			fmt.Printf("invalid param(version): %v\n", pyver)
+			fmt.Println(err)
+			os.Exit(1)
+		}
 		req := cmd.Flag("requirement").Value.String()
 		install, err := flagset.GetBool("install")
 		if err != nil {

@@ -60,10 +60,11 @@ var updateDesc = `更新文档项目配置
 
 // updateCmd represents the update command
 var updateCmd = &cobra.Command{
-	Use:   "update",
-	Short: "更新文档项目配置",
-	Long:  updateDesc,
-	Args:  cobra.ExactArgs(1),
+	Use:     "update",
+	Short:   "更新文档项目配置",
+	Long:    updateDesc,
+	Args:    cobra.ExactArgs(1),
+	Aliases: []string{"u"},
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
 		if name == "" {

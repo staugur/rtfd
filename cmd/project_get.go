@@ -13,9 +13,10 @@ import (
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
-	Use:   "get",
-	Short: "显示文档项目信息",
-	Args:  cobra.ExactArgs(1),
+	Use:     "get",
+	Short:   "显示文档项目信息",
+	Args:    cobra.ExactArgs(1),
+	Aliases: []string{"g"},
 	Run: func(cmd *cobra.Command, args []string) {
 		flagset := cmd.Flags()
 

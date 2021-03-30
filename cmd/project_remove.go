@@ -11,9 +11,10 @@ import (
 
 // removeCmd represents the remove command
 var removeCmd = &cobra.Command{
-	Use:   "remove",
-	Short: "删除文档项目",
-	Args:  cobra.ExactArgs(1),
+	Use:     "remove",
+	Short:   "删除文档项目",
+	Args:    cobra.ExactArgs(1),
+	Aliases: []string{"r"},
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
 		if name == "" {
