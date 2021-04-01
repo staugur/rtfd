@@ -1,17 +1,18 @@
 package app
 
 import (
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
 )
 
-func request(method string, uri string, auth string) (text []byte, err error) {
+func requestBase(method, url, auth string, body io.Reader) (text []byte, err error) {
 	var client = &http.Client{Timeout: 10 * time.Second}
 
 	req, err := http.NewRequest(
-		strings.ToUpper(method), "https://api.github.com"+uri, nil,
+		strings.ToUpper(method), url, body,
 	)
 	if err != nil {
 		return
@@ -29,4 +30,12 @@ func request(method string, uri string, auth string) (text []byte, err error) {
 	}
 	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
+}
+
+func request(method, url, auth string) (text []byte, err error) {
+	return requestBase(method, url, auth, nil)
+}
+
+func now() int64 {
+	return time.Now().Unix()
 }

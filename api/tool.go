@@ -19,6 +19,18 @@ func getArg(c echo.Context, key string) string {
 	return val
 }
 
+func getBaseURL(c echo.Context) string {
+	p := c.Scheme()
+	r := c.Request()
+	h := r.Host
+	erase := ":80"
+	if p == "https" {
+		erase = ":443"
+	}
+	h = strings.ReplaceAll(h, erase, "")
+	return p + "://" + h
+}
+
 func checkSecret(c echo.Context) (bool, error) {
 	name := c.Param("name")
 	opt, err := pm.GetName(name)

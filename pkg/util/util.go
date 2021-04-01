@@ -15,14 +15,14 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"tcw.im/rtfd/vars"
 )
 
 var (
 	namePat = regexp.MustCompile(`^[a-zA-Z][0-9a-zA-Z\_\-]{1,100}$`)
 	dnPat   = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}(\.[a-zA-Z0-9][a-zA-Z0-9-]{0,62})*(\.[a-zA-Z][a-zA-Z0-9]{0,10}){1}$`)
-	ipPat   = regexp.MustCompile(
-		`^((25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(25[0-5]|2[0-4]\d|[01]?\d\d?)$`,
-	)
+	LLPat   = regexp.MustCompile(`[a-z\_][0-9a-z\_]{1,63}`)
 )
 
 // IsProjectName 判断name是否为合法名称
@@ -106,7 +106,7 @@ func CheckGitURL(rawurl string) (string, error) {
 		}
 		if u.Host == "github.com" || u.Host == "gitee.com" {
 			if u.User.Username() != "" {
-				if passwd, has := u.User.Password(); has == true {
+				if passwd, has := u.User.Password(); has {
 					if passwd == "" {
 						return "", errors.New("empty password")
 					}
@@ -123,8 +123,7 @@ func CheckGitURL(rawurl string) (string, error) {
 
 // PublicGitURL 获取可公开的git地址（如果是私有仓库则会去掉用户名密码）
 func PublicGitURL(rawurl string) (puburl string, err error) {
-	_, err = CheckGitURL(rawurl)
-	if err != nil {
+	if _, err = CheckGitURL(rawurl); err != nil {
 		return "", err
 	}
 	u, _ := url.Parse(rawurl)
@@ -140,12 +139,26 @@ func GitServiceProvider(rawurl string) (gsp string, err error) {
 	git := strings.ToLower(strings.Split(puburl, "//")[1])
 	switch {
 	case strings.HasPrefix(git, "github.com"):
-		return "GitHub", nil
+		return vars.GSPGitHub, nil
 	case strings.HasPrefix(git, "gitee.com"):
-		return "Gitee", nil
+		return vars.GSPGitee, nil
 	default:
-		return "N/A", nil
+		return vars.GSPNA, nil
 	}
+}
+
+// GitUserRepo 提取git地址中username、repo
+func GitUserRepo(rawurl string) (fullname string, err error) {
+	puburl, err := PublicGitURL(rawurl)
+	if err != nil {
+		return
+	}
+	u, err := url.Parse(puburl)
+	if err != nil {
+		return
+	}
+	fullname = strings.TrimSuffix(strings.TrimPrefix(u.Path, "/"), "/")
+	return strings.ToLower(fullname), nil
 }
 
 // HMACSha1 以hmac加盐方式检测字符串sha1值

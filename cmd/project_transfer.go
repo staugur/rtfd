@@ -111,6 +111,13 @@ var transferCmd = &cobra.Command{
 				os.Exit(128)
 			}
 
+			// override default option
+			dn := pm.CFG().GetKey("nginx", "dn")
+			if dn == "" {
+				panic("invalid nginx dn")
+			}
+			opt.DefaultDomain = name + "." + dn
+
 			err = pm.Create(name, opt)
 			if err != nil {
 				fmt.Println(err)

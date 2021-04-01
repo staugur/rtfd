@@ -34,7 +34,7 @@ func New(configPath string) (cfg *Config, err error) {
 
 func changeDefaultSection(section string) string {
 	if strings.ToLower(section) == vars.DFT {
-		return ini.DEFAULT_SECTION
+		return ini.DefaultSection
 	}
 	return section
 }
@@ -77,18 +77,23 @@ func (c Config) AllHash() (data map[string]map[string]string) {
 	return
 }
 
+// GetPath 封装 GetKey 结果，如果值以 ~ 开头，替换为家目录
+func (c Config) GetPath(section, key string) (string, error) {
+	v := c.GetKey(section, key)
+	if strings.HasPrefix(v, "~") {
+		return homedir.Expand(v)
+	}
+	return v, nil
+}
+
 // BaseDir 获取base_dir（专项方法）
 func (c Config) BaseDir() string {
-	dir := c.GetKey(vars.DFT, "base_dir")
+	dir, err := c.GetPath(vars.DFT, "base_dir")
+	if err != nil {
+		panic(err)
+	}
 	if dir == "" {
 		panic("base_dir is empty")
-	}
-	if strings.HasPrefix(dir, "~") {
-		dir, err := homedir.Expand(dir)
-		if err != nil {
-			panic(err)
-		}
-		return dir
 	}
 	return dir
 }

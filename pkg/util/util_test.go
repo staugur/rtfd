@@ -19,6 +19,12 @@ func TestUtil(t *testing.T) {
 			t.Fatalf("%s should not be ok\n", fail)
 		}
 	}
+	if LLPat.MatchString("a") != false || LLPat.MatchString("_") != false ||
+		LLPat.MatchString("aB") != false || LLPat.MatchString("0a") != false ||
+		LLPat.MatchString("Ab") != false || LLPat.MatchString("a_") != false ||
+		LLPat.MatchString("a0") != true || LLPat.MatchString("_b") != true {
+		t.Fatal("LLPat rule error")
+	}
 
 	_, _, err := RunCmd("ls")
 	if err != nil {

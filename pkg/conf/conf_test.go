@@ -26,7 +26,7 @@ func TestConf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if changeDefaultSection("DEFaULt") != ini.DEFAULT_SECTION {
+	if changeDefaultSection("DEFaULt") != ini.DefaultSection {
 		t.Fatal("changeDefaultSection fail")
 	}
 	ds := make(map[string]string)

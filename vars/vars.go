@@ -16,7 +16,13 @@ const (
 	WebhookSender Sender = "webhook"
 )
 
-var (
+const (
 	// DFT 默认值
 	DFT = "default"
+
+	GSPGitHub = "GitHub"
+	GSPGitee  = "Gitee"
+	GSPNA     = "N/A"
+
+	ResetEmpty = `\`
 )

@@ -32,6 +32,7 @@ func Start(host string, port uint, cfg string) {
 	}
 
 	e := echo.New()
+	e.HTTPErrorHandler = customHTTPErrorHandler
 	g := e.Group("/rtfd", middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
 		AllowHeaders: []string{"X-Rtfd-Sign"},

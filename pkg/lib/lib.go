@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -447,7 +446,7 @@ func (pm *ProjectManager) ListProject() (members []string, err error) {
 	return pm.db.SMembers(GBPK)
 }
 
-// ListBuilder 获取所有构建集（hash类型，key为branch/tag，value是OptionsWithResult）
+// ListBuilder 获取所有构建集
 func (pm *ProjectManager) ListBuilder(name string) (builders []Result, err error) {
 	hash, err := pm.db.HGetAll(BRK(name))
 	if err != nil {
@@ -469,8 +468,6 @@ func (pm *ProjectManager) ListBuilder(name string) (builders []Result, err error
 // GetBuilder 获取某个构建结果
 func (pm *ProjectManager) GetBuilder(name, branch string) (builder Result, err error) {
 	val, err := pm.db.HGet(BRK(name), branch)
-	log.Println(val)
-	log.Println(err)
 	if err != nil {
 		if err == redis.ErrNil {
 			err = errors.New("not found branch")
@@ -711,4 +708,44 @@ func (opt Options) MustMeta(key, defaultValue string) string {
 		return defaultValue
 	}
 	return val
+}
+
+// UpdateMeta 专门更新 Meta 字段 （如果key以下划线开头表示系统数据）
+func (opt *Options) UpdateMeta(key, val string) error {
+	if key == "" || val == "" {
+		return errors.New("invalid meta key or value")
+	}
+	if !util.LLPat.MatchString(key) {
+		return errors.New("illegal format key")
+	}
+	meta := opt.Meta
+	if meta == nil {
+		meta = make(map[string]string)
+	}
+	if val == vars.ResetEmpty {
+		val = ""
+	}
+	meta[key] = val
+	opt.Meta = meta
+	return nil
+}
+
+// Writeback 配置写入数据库
+func (opt Options) Writeback(pm *ProjectManager) error {
+	name := strings.ToLower(opt.Name)
+	if !pm.HasName(name) {
+		return errors.New("not found project")
+	}
+	val, err := json.Marshal(opt)
+	if err != nil {
+		return err
+	}
+	ok, err := pm.DB().Set(BCK(name), string(val))
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return errors.New("write fail")
+	}
+	return nil
 }

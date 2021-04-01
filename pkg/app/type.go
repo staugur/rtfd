@@ -38,3 +38,18 @@ type Sender struct {
 type AccessToken struct {
 	Token string `json:"token"`
 }
+
+type UserWebhook struct {
+	Type   string            `json:"type"`
+	ID     uint64            `json:"id"`
+	Name   string            `json:"name"`
+	Active bool              `json:"active"`
+	Events []string          `json:"events"`
+	Config UserWebhookConfig `json:"config"`
+}
+
+type UserWebhookConfig struct {
+	URL         string `json:"url"`
+	ContentType string `json:"content_type"`
+	Secret      string `json:"secret"`
+}

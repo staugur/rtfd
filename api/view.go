@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strconv"
@@ -34,6 +33,16 @@ type resp struct {
 type resd struct {
 	res
 	Data map[string]interface{} `json:"data"`
+}
+
+func customHTTPErrorHandler(err error, c echo.Context) {
+	code := 200
+	msg := err.Error()
+	if he, ok := err.(*echo.HTTPError); ok {
+		code = he.Code
+		msg = he.Message.(string)
+	}
+	c.JSON(code, res{false, msg})
 }
 
 func apiDesc(c echo.Context) error {
@@ -127,10 +136,10 @@ func webhookBuild(c echo.Context) error {
 	H := c.Request().Header
 	agent := H.Get("User-Agent")
 	if strings.HasPrefix(agent, "GitHub-Hookshot") {
-		gst = "github"
+		gst = vars.GSPGitHub
 		event = H.Get("X-GitHub-Event")
 	} else if agent == "git-oschina-hook" {
-		gst = "gitee"
+		gst = vars.GSPGitee
 		evt := H.Get("X-Gitee-Event")
 		ping := H.Get("X-Gitee-Ping")
 		if ufc.IsTrue(ping) {
@@ -144,13 +153,13 @@ func webhookBuild(c echo.Context) error {
 		return errors.New("unsupported provider")
 	}
 	if event == "" {
-		return errors.New("unsupported webhook event")
-	}
-	if !ufc.StrInSlice(event, []string{"ping", "push", "release"}) {
 		return errors.New("invalid event type")
 	}
 	if event == "ping" {
 		return c.JSON(200, resp{res{Success: true}, "pong"})
+	}
+	if !ufc.StrInSlice(event, []string{"ping", "push", "release"}) {
+		return errors.New("unsupported webhook event")
 	}
 
 	name := c.Param("name")
@@ -162,6 +171,9 @@ func webhookBuild(c echo.Context) error {
 
 	var body map[string]interface{}
 	RawBody, err := ioutil.ReadAll(c.Request().Body)
+	if err != nil {
+		return err
+	}
 	if err := json.Unmarshal(RawBody, &body); err != nil {
 		return err
 	}
@@ -170,7 +182,7 @@ func webhookBuild(c echo.Context) error {
 		return err
 	}
 
-	if gst == "github" {
+	if gst == vars.GSPGitHub {
 		if err := checkGitHubWebhook(c, opt, RawBody); err != nil {
 			return err
 		}
@@ -186,7 +198,7 @@ func webhookBuild(c echo.Context) error {
 				return errors.New("the action is ignored in the release event")
 			}
 		}
-	} else if gst == "gitee" {
+	} else if gst == vars.GSPGitee {
 		if err := checkGiteeWebhook(c, opt); err != nil {
 			return err
 		}
@@ -196,7 +208,10 @@ func webhookBuild(c echo.Context) error {
 		return errors.New("unsupported git service provider")
 	}
 
-	sep := opt.MustMeta("_sep", "|")
+	sep := opt.GetMeta("excluded_sep")
+	if sep == "" {
+		sep = opt.MustMeta("_sep", "|")
+	}
 	if ufc.StrInSlice(branch, strings.Split(opt.GetMeta("excluded_branch"), sep)) {
 		return c.JSON(200, resb{res{false, "excluded branch"}, branch})
 	}
@@ -245,14 +260,10 @@ func apiBadge(c echo.Context) error {
 
 func ghApp(c echo.Context) error {
 	H := c.Request().Header
-	for k, v := range H {
-		fmt.Printf("%s=%s\n", k, v[0])
-	}
-	event := H.Get("X-GitHub-Event")
+	evt := H.Get("X-GitHub-Event")
 	hiti := H.Get("X-GitHub-Hook-Installation-Target-ID")
 	hitt := H.Get("X-GitHub-Hook-Installation-Target-Type")
-	// another is installation_repositories
-	if event != "installation" {
+	if !ufc.StrInSlice(evt, []string{"installation", "installation_repositories"}) {
 		return errors.New("unsupported event")
 	}
 	if hitt != "integration" {
@@ -266,15 +277,16 @@ func ghApp(c echo.Context) error {
 	if err := c.Bind(&data); err != nil {
 		return err
 	}
-	if data.Installation.ID != hitiU {
-		return errors.New("invalid installation")
+	if hitiU != data.Installation.AppID {
+		return errors.New("not match installation app")
 	}
-	fmt.Printf("%+v\n", data)
+
 	gh, err := app.New(cfgFile, data.Installation.ID)
 	if err != nil {
 		return err
 	}
-	err = data.Dispatch(gh)
+	gh.BaseURL(getBaseURL(c))
+	err = gh.Dispatch(data)
 	if err != nil {
 		return err
 	}
