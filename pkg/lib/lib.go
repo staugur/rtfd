@@ -325,6 +325,13 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 		opt.SSL = false
 	}
 
+	// 生成nginx配置并重载
+	err := pm.renderNginx(opt)
+	if err != nil {
+		return err
+	}
+
+	// 基本数据生成完毕，写入数据库
 	val, err := json.Marshal(opt)
 	if err != nil {
 		return err
@@ -343,10 +350,16 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 		return err
 	}
 
-	// 生成nginx配置
-	err = pm.renderNginx(opt)
-	if err != nil {
-		return err
+	// 已创建项目后的处理，无所谓成功
+	// 创建 GHApp 实例，使用接口获取安装id再换取token
+	if opt.GSP == vars.GSPGitHub {
+		gh, err := NewGHApp(pm)
+		if err == nil {
+			err = gh.cliSetWebhook(&opt)
+			if err != nil {
+				fmt.Printf("failed to automatically create webhook: %s\n", err)
+			}
+		}
 	}
 	return nil
 }
@@ -485,7 +498,6 @@ func (pm *ProjectManager) GetBuilder(name, branch string) (builder Result, err e
 
 func (pm *ProjectManager) renderNginx(opt Options) error {
 	name := opt.Name
-
 	if opt.Lang == "" {
 		return errors.New("empty language cannot render nginx")
 	}
@@ -629,7 +641,21 @@ func (pm *ProjectManager) Remove(name string) error {
 	if ufc.IsFile(dftNgxFile) || ufc.IsFile(cstNgxFile) {
 		os.Remove(dftNgxFile)
 		os.Remove(cstNgxFile)
-		pm.reloadNginx()
+		err = pm.reloadNginx()
+		if err != nil {
+			fmt.Printf("failed to automatically remove webhook: %s\n", err)
+		}
+	}
+
+	// try remove webhook with github apps
+	if opt.GSP == vars.GSPGitHub {
+		gh, err := NewGHApp(pm)
+		if err == nil {
+			err = gh.cliRemoveWebhook(opt)
+			if err != nil {
+				fmt.Printf("remove webhook fail: %s\n", err)
+			}
+		}
 	}
 
 	tc := pm.db.Pipeline()

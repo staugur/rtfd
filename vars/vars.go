@@ -25,4 +25,8 @@ const (
 	GSPNA     = "N/A"
 
 	ResetEmpty = `\`
+
+	WebhookID = "_webhook_id"
+	InstallID = "_installation_id"
+	GitHubApi = "https://api.github.com"
 )

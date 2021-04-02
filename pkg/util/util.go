@@ -22,7 +22,7 @@ import (
 var (
 	namePat = regexp.MustCompile(`^[a-zA-Z][0-9a-zA-Z\_\-]{1,100}$`)
 	dnPat   = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}(\.[a-zA-Z0-9][a-zA-Z0-9-]{0,62})*(\.[a-zA-Z][a-zA-Z0-9]{0,10}){1}$`)
-	LLPat   = regexp.MustCompile(`[a-z\_][0-9a-z\_]{1,63}`)
+	LLPat   = regexp.MustCompile(`^[a-z\_][0-9a-z\_]{1,63}$`)
 )
 
 // IsProjectName 判断name是否为合法名称

@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"tcw.im/rtfd/pkg/app"
 	"tcw.im/rtfd/pkg/build"
+	"tcw.im/rtfd/pkg/lib"
 	"tcw.im/rtfd/pkg/util"
 	"tcw.im/rtfd/vars"
 
@@ -273,7 +273,7 @@ func ghApp(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	var data app.Webhook
+	var data lib.AppWebhook
 	if err := c.Bind(&data); err != nil {
 		return err
 	}
@@ -281,7 +281,7 @@ func ghApp(c echo.Context) error {
 		return errors.New("not match installation app")
 	}
 
-	gh, err := app.New(cfgFile, data.Installation.ID)
+	gh, err := lib.NewGHApp(pm)
 	if err != nil {
 		return err
 	}
