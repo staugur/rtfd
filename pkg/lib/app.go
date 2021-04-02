@@ -83,7 +83,7 @@ type GHApp struct {
 	pm *ProjectManager
 }
 
-func requestBase(method, url, auth string, body io.Reader) (text []byte, err error) {
+func request(method, url, auth string, body io.Reader) (text []byte, err error) {
 	var client = &http.Client{Timeout: 10 * time.Second}
 
 	req, err := http.NewRequest(
@@ -105,10 +105,6 @@ func requestBase(method, url, auth string, body io.Reader) (text []byte, err err
 	}
 	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
-}
-
-func request(method, url, auth string) (text []byte, err error) {
-	return requestBase(method, url, auth, nil)
 }
 
 func now() int64 {
@@ -139,7 +135,7 @@ func NewGHApp(pm *ProjectManager) (gh *GHApp, err error) {
 	if err != nil {
 		return
 	}
-	baseURL := cfg.GetKey(sec, "base_url")
+	baseURL := cfg.GetKey("api", "server_url")
 	gh = &GHApp{
 		AppId: appId, privateKey: pkey, pm: pm, baseURL: baseURL,
 	}
@@ -212,7 +208,7 @@ func (gh *GHApp) requestWithJWT(method, uri string) (text []byte, err error) {
 		err = errors.New("invalid jwt")
 		return
 	}
-	return request(method, gh.ghurl(uri), "Bearer "+gh.jwtoken)
+	return request(method, gh.ghurl(uri), "Bearer "+gh.jwtoken, nil)
 }
 
 func (gh *GHApp) requestWithToken(method, uri string) (text []byte, err error) {
@@ -220,7 +216,7 @@ func (gh *GHApp) requestWithToken(method, uri string) (text []byte, err error) {
 		err = errors.New("invalid access token")
 		return
 	}
-	return request(method, gh.ghurl(uri), "token "+gh.accessToken)
+	return request(method, gh.ghurl(uri), "token "+gh.accessToken, nil)
 }
 
 func (gh *GHApp) requestWithTokenBody(method, uri string, config UserWebhookConfig) (text []byte, err error) {
@@ -236,7 +232,7 @@ func (gh *GHApp) requestWithTokenBody(method, uri string, config UserWebhookConf
 		return
 	}
 	bodyReader := bytes.NewReader(bodyByte)
-	return requestBase(method, gh.ghurl(uri), "token "+gh.accessToken, bodyReader)
+	return request(method, gh.ghurl(uri), "token "+gh.accessToken, bodyReader)
 }
 
 func (gh *GHApp) genRoute(name string) []string {

@@ -6,7 +6,9 @@ After=network.target
 [Service]
 # If you start as a normal user, please fill in User
 # User=
+# Group=
 Type=simple
+# /usr/bin/rtfd api -c /home/<user>/.rtfd.cfg
 ExecStart=rtfd api
 
 [Install]

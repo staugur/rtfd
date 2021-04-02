@@ -273,6 +273,13 @@ func ghApp(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+
+	gh, err := lib.NewGHApp(pm)
+	if err != nil {
+		return err
+	}
+	gh.BaseURL(getBaseURL(c))
+
 	var data lib.AppWebhook
 	if err := c.Bind(&data); err != nil {
 		return err
@@ -281,11 +288,6 @@ func ghApp(c echo.Context) error {
 		return errors.New("not match installation app")
 	}
 
-	gh, err := lib.NewGHApp(pm)
-	if err != nil {
-		return err
-	}
-	gh.BaseURL(getBaseURL(c))
 	err = gh.Dispatch(data)
 	if err != nil {
 		return err

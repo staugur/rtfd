@@ -15,7 +15,7 @@ rtfd 仅支持 linux 操作系统
 ### **使用编译好的可执行程序**
 
 ```bash
-version=1.1.1
+version=1.2.0
 wget -c https://github.com/staugur/rtfd/releases/download/v${version}/rtfd.${version}-linux-amd64.tar.gz
 tar zxf rtfd.${version}-linux-amd64.tar.gz
 mv rtfd ~/bin/
