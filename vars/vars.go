@@ -29,4 +29,6 @@ const (
 	WebhookID = "_webhook_id"
 	InstallID = "_installation_id"
 	GitHubApi = "https://api.github.com"
+
+	PUFMD5 = "_update_file_md5"
 )

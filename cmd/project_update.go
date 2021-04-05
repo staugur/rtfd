@@ -7,6 +7,7 @@ import (
 
 	"tcw.im/rtfd/pkg/conf"
 	"tcw.im/rtfd/pkg/lib"
+	"tcw.im/rtfd/vars"
 
 	"github.com/spf13/cobra"
 	"tcw.im/ufc"
@@ -80,7 +81,16 @@ var updateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		pm, err := lib.New(cfgFile)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(127)
+		}
+
 		rule := make(map[string]interface{})
+		var isUpFile bool
+		var fileMD5 string
+		var opt lib.Options
 		if text != "" {
 			var ssl string
 			for _, kv := range strings.Split(text, ",") {
@@ -117,6 +127,24 @@ var updateCmd = &cobra.Command{
 				fmt.Println("not found file")
 				os.Exit(1)
 			}
+			//Check if it needs to be updated
+			opt, err = pm.GetName(name)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
+			md5O := opt.GetMeta(vars.PUFMD5)
+			if md5O != "" {
+				md5N, err := ufc.MD5File(file)
+				if err == nil {
+					if md5N == md5O {
+						fmt.Println("not updated")
+						return
+					}
+					isUpFile = true
+					fileMD5 = md5N
+				}
+			}
 			cfg, err := conf.New(file)
 			if err != nil {
 				fmt.Println(err)
@@ -144,16 +172,14 @@ var updateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		pm, err := lib.New(cfgFile)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(127)
-		}
-
 		ok, fail, err := pm.Update(name, rule)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(128)
+		}
+		if isUpFile {
+			opt.UpdateMeta(vars.PUFMD5, fileMD5)
+			opt.Writeback(pm)
 		}
 		fmt.Println("updated")
 		if len(ok) > 0 {
