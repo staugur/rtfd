@@ -326,7 +326,7 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 	}
 
 	// 生成nginx配置并重载
-	err := pm.renderNginx(opt)
+	err := pm.renderNginx(&opt)
 	if err != nil {
 		return err
 	}
@@ -496,7 +496,7 @@ func (pm *ProjectManager) GetBuilder(name, branch string) (builder Result, err e
 	return rst, nil
 }
 
-func (pm *ProjectManager) renderNginx(opt Options) error {
+func (pm *ProjectManager) renderNginx(opt *Options) error {
 	name := opt.Name
 	if opt.Lang == "" {
 		return errors.New("empty language cannot render nginx")
@@ -674,18 +674,14 @@ func (pm *ProjectManager) Remove(name string) error {
 }
 
 // Update 更新文档项目配置
-func (pm *ProjectManager) Update(name string, rule map[string]interface{}) (ok []string, fail []string, err error) {
-	name = strings.ToLower(name)
+func (pm *ProjectManager) Update(opt *Options, rule map[string]interface{}) (ok []string, fail []string, err error) {
+	name := opt.Name
 	if !pm.HasName(name) {
 		err = errors.New("not found project")
 		return
 	}
-	opt, err := pm.GetName(name)
-	if err != nil {
-		return
-	}
 
-	uh := &updateHook{pm: pm, opt: &opt}
+	uh := &updateHook{pm: pm, opt: opt}
 	for field, value := range rule {
 		if value == "" {
 			fail = append(fail, field)
