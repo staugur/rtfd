@@ -92,6 +92,7 @@ func TestList(t *testing.T) {
 	lv, err := c.LRange(k, 0, -1)
 	raise(t, err)
 	length, err := c.LLen(k)
+	raise(t, err)
 	if length != uint64(len(lv)) {
 		t.Fatal("list key number should be equal")
 	}
@@ -268,6 +269,7 @@ func TestTransaction(t *testing.T) {
 		t.Fatal("key should be found for k1")
 	}
 	_v1, err := c.Get(k1)
+	raise(t, err)
 	if _v1 != v1 {
 		t.Fatal("pipe set fail")
 	}
