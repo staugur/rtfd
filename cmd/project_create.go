@@ -93,6 +93,9 @@ var createCmd = &cobra.Command{
 		}
 
 		// 需要更新值的key
+		if latest == "" {
+			latest = pm.CFG().DefaultBranch()
+		}
 		optBind := make(map[string]interface{})
 		optBind["Latest"] = latest
 		optBind["Version"] = pyver
@@ -128,7 +131,7 @@ func init() {
 	createCmd.Flags().SortFlags = false
 	projectCmd.AddCommand(createCmd)
 	createCmd.Flags().StringP("url", "u", "", "文档项目的git仓库地址，如果是私有仓库，请在url协议后携带编码后的 username:password")
-	createCmd.Flags().StringP("latest", "", "master", "latest所指向的分支")
+	createCmd.Flags().StringP("latest", "", "", "latest所指向的分支，默认由配置文件指定（master）")
 	createCmd.Flags().BoolP("single", "", false, "是否为单一版本")
 	createCmd.Flags().StringP("sourcedir", "s", "docs", "实际文档文件所在目录，目录路径是项目的相对位置")
 	createCmd.Flags().StringP("lang", "l", "en", "文档语言，支持多种，以英文逗号分隔")

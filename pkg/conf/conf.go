@@ -113,3 +113,7 @@ func (c Config) BaseDir() string {
 	}
 	return dir
 }
+
+func (c Config) DefaultBranch() string {
+	return c.MustKey(vars.DFT, "default_branch", "master")
+}

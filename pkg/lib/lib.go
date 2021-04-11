@@ -285,8 +285,8 @@ func (pm *ProjectManager) GenerateOption(name, url string) (opt Options, err err
 		return
 	}
 	return Options{
-		Name: name, URL: url, Latest: "master", Version: PY3, GSP: gsp,
-		SourceDir: "docs", Lang: "en", ShowNav: true, HideGit: false,
+		Name: name, URL: url, Version: PY3, Latest: pm.cfg.DefaultBranch(),
+		SourceDir: "docs", Lang: "en", ShowNav: true, HideGit: false, GSP: gsp,
 		DefaultDomain: name + "." + dn, Builder: HTMLBuilder, IsPublic: isPublic,
 	}, nil
 }

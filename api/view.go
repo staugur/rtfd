@@ -89,6 +89,7 @@ func apiDesc(c echo.Context) error {
 	data["single"] = opt.Single
 	data["builder"] = opt.Builder
 	data["showNav"] = opt.ShowNav
+	data["defaultBranch"] = pm.CFG().DefaultBranch()
 	if opt.Builder != "html" {
 		data["hideGit"] = true
 	} else {
