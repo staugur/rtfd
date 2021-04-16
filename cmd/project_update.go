@@ -10,7 +10,7 @@ import (
 	"tcw.im/rtfd/vars"
 
 	"github.com/spf13/cobra"
-	"tcw.im/ufc"
+	"tcw.im/gtc"
 )
 
 var updateDesc = `更新文档项目配置
@@ -114,7 +114,7 @@ var updateCmd = &cobra.Command{
 				} else if field == "sslpri" {
 					ssl += "," + value
 				} else if field == "ssl" {
-					if ufc.IsFalse(value) {
+					if gtc.IsFalse(value) {
 						ssl = value
 					} else {
 						fmt.Println("invalid ssl")
@@ -128,14 +128,14 @@ var updateCmd = &cobra.Command{
 				rule["ssl"] = ssl
 			}
 		} else {
-			if !ufc.IsFile(file) {
+			if !gtc.IsFile(file) {
 				fmt.Println("not found file")
 				os.Exit(1)
 			}
 			//Check if it needs to be updated
 			md5 := opt.GetMeta(vars.PUFMD5)
 			isUpFile = true
-			fileMD5, _ = ufc.MD5File(file)
+			fileMD5, _ = gtc.MD5File(file)
 			if md5 != "" && fileMD5 != "" && fileMD5 == md5 {
 				fmt.Println("not updated")
 				return
@@ -146,17 +146,17 @@ var updateCmd = &cobra.Command{
 				os.Exit(1)
 			}
 			for k, v := range cfg.SecHash("project") {
-				if ufc.StrInSlice(k, []string{"latest"}) {
+				if gtc.StrInSlice(k, []string{"latest"}) {
 					rule[k] = v
 				}
 			}
 			for k, v := range cfg.SecHash("sphinx") {
-				if ufc.StrInSlice(k, []string{"sourcedir", "lang", "builder"}) {
+				if gtc.StrInSlice(k, []string{"sourcedir", "lang", "builder"}) {
 					rule[k] = v
 				}
 			}
 			for k, v := range cfg.SecHash("python") {
-				if ufc.StrInSlice(k, []string{"version", "requirement", "install", "index"}) {
+				if gtc.StrInSlice(k, []string{"version", "requirement", "install", "index"}) {
 					rule[k] = v
 				}
 			}

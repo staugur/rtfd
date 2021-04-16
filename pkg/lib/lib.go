@@ -13,13 +13,13 @@ import (
 	"strings"
 
 	"tcw.im/rtfd/pkg/conf"
-	"tcw.im/rtfd/pkg/db"
 	"tcw.im/rtfd/pkg/util"
 	"tcw.im/rtfd/vars"
 
 	"github.com/gomodule/redigo/redis"
 	homedir "github.com/mitchellh/go-homedir"
-	"tcw.im/ufc"
+	"tcw.im/gtc"
+	db "tcw.im/gtc/redigo"
 )
 
 type (
@@ -191,7 +191,7 @@ func New(path string) (pm *ProjectManager, err error) {
 			return
 		}
 	}
-	if !ufc.IsFile(path) {
+	if !gtc.IsFile(path) {
 		return nil, errors.New("not found config path")
 	}
 	cfg, err := conf.New(path)
@@ -293,7 +293,7 @@ func (pm *ProjectManager) SetOption(opt *Options, key string, value interface{})
 func (pm *ProjectManager) Create(name string, opt Options) error {
 	name = strings.ToLower(name)
 	unallow := pm.cfg.GetKey(vars.DFT, "unallowed_name")
-	if name == "www" || ufc.StrInSlice(name, strings.Split(unallow, ",")) {
+	if name == "www" || gtc.StrInSlice(name, strings.Split(unallow, ",")) {
 		return errors.New("not allowed name")
 	}
 	if pm.HasName(name) {
@@ -317,7 +317,7 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 		opt.CustomDomain = domain
 	}
 	if opt.SSLPublic != "" && opt.SSLPrivate != "" {
-		if !ufc.IsFile(opt.SSLPublic) || !ufc.IsFile(opt.SSLPrivate) {
+		if !gtc.IsFile(opt.SSLPublic) || !gtc.IsFile(opt.SSLPrivate) {
 			return errors.New("not found ssl file")
 		}
 		opt.SSL = true
@@ -504,20 +504,20 @@ func (pm *ProjectManager) renderNginx(opt *Options) error {
 	basedir := pm.cfg.BaseDir()
 	DocsDir := filepath.Join(basedir, "docs")
 	NginxDir := filepath.Join(basedir, "nginx")
-	if !ufc.IsDir(basedir) {
-		err := ufc.CreateDir(basedir)
+	if !gtc.IsDir(basedir) {
+		err := gtc.CreateDir(basedir)
 		if err != nil {
 			return err
 		}
 	}
-	if !ufc.IsDir(DocsDir) {
-		err := ufc.CreateDir(DocsDir)
+	if !gtc.IsDir(DocsDir) {
+		err := gtc.CreateDir(DocsDir)
 		if err != nil {
 			return err
 		}
 	}
-	if !ufc.IsDir(NginxDir) {
-		err := ufc.CreateDir(NginxDir)
+	if !gtc.IsDir(NginxDir) {
+		err := gtc.CreateDir(NginxDir)
 		if err != nil {
 			return err
 		}
@@ -555,7 +555,7 @@ func (pm *ProjectManager) renderNginx(opt *Options) error {
 			return err
 		}
 	} else {
-		if ufc.IsFile(cstNgxFile) {
+		if gtc.IsFile(cstNgxFile) {
 			os.Remove(cstNgxFile)
 		}
 	}
@@ -569,7 +569,7 @@ func (pm *ProjectManager) renderNginx(opt *Options) error {
 
 func (pm *ProjectManager) reloadNginx() error {
 	cmd := pm.cfg.GetKey("nginx", "exec")
-	sudo := ufc.IsTrue(pm.cfg.GetKey("nginx", "sudo"))
+	sudo := gtc.IsTrue(pm.cfg.GetKey("nginx", "sudo"))
 	var (
 		name       string
 		testArgs   []string
@@ -632,13 +632,13 @@ func (pm *ProjectManager) Remove(name string) error {
 	dftNgxFile := filepath.Join(NginxDir, fmt.Sprintf("%s.conf", name))
 	cstNgxFile := filepath.Join(NginxDir, fmt.Sprintf("%s.ext.conf", name))
 
-	if ufc.IsDir(DocsDir) {
+	if gtc.IsDir(DocsDir) {
 		err = os.RemoveAll(DocsDir)
 		if err != nil {
 			return err
 		}
 	}
-	if ufc.IsFile(dftNgxFile) || ufc.IsFile(cstNgxFile) {
+	if gtc.IsFile(dftNgxFile) || gtc.IsFile(cstNgxFile) {
 		os.Remove(dftNgxFile)
 		os.Remove(cstNgxFile)
 		err = pm.reloadNginx()

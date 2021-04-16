@@ -7,7 +7,7 @@ import (
 
 	"tcw.im/rtfd/pkg/util"
 
-	"tcw.im/ufc"
+	"tcw.im/gtc"
 )
 
 // 渲染nginx配置文件所需参数，前四项是必填项，后面选填，最后Now、SSL、SSLCFG会自动填充
@@ -34,7 +34,7 @@ func (opt *nginxOptions) render() (conf string, err error) {
 	if opt.Now == "" {
 		opt.Now = util.GetNow()
 	}
-	if ufc.IsFile(opt.SSLCrt) && ufc.IsFile(opt.SSLKey) {
+	if gtc.IsFile(opt.SSLCrt) && gtc.IsFile(opt.SSLKey) {
 		ssltpl, e := template.New("ssl").Parse(nginxSSLTPL())
 		if e != nil {
 			err = e

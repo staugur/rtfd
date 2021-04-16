@@ -19,7 +19,7 @@ import (
 	"tcw.im/rtfd/vars"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"tcw.im/ufc"
+	"tcw.im/gtc"
 )
 
 // GitHub App Post Webhook data
@@ -114,7 +114,7 @@ func now() int64 {
 func NewGHApp(pm *ProjectManager) (gh *GHApp, err error) {
 	cfg := pm.CFG()
 	sec := "ghapp"
-	if ufc.IsFalse(cfg.GetKey(sec, "enable")) {
+	if gtc.IsFalse(cfg.GetKey(sec, "enable")) {
 		err = errors.New("service is not enabled")
 		return
 	}
@@ -127,7 +127,7 @@ func NewGHApp(pm *ProjectManager) (gh *GHApp, err error) {
 		err = errors.New("invalid param")
 		return
 	}
-	if !ufc.IsFile(pkey) {
+	if !gtc.IsFile(pkey) {
 		err = errors.New("not found private key file")
 		return
 	}
@@ -261,7 +261,7 @@ func (gh *GHApp) setUserWebhook(opt *Options, fullname string) (err error) {
 	routes := gh.genRoute(opt.Name)
 	for _, uw := range uws {
 		uwu := uw.Config.URL
-		if ufc.StrInSlice(uwu, routes) {
+		if gtc.StrInSlice(uwu, routes) {
 			isAdd = false
 			opt.UpdateMeta(vars.WebhookID, fmt.Sprint(uw.ID))
 			err = opt.Writeback(gh.pm)
@@ -316,7 +316,7 @@ func (gh *GHApp) apiUpdateOption(i Installation, repos []Repository, isRemove bo
 		if err != nil {
 			continue
 		}
-		if !ufc.StrInSlice(fullname, willSetup) {
+		if !gtc.StrInSlice(fullname, willSetup) {
 			continue
 		}
 		if isRemove {

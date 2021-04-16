@@ -14,7 +14,7 @@ import (
 	"tcw.im/rtfd/vars"
 
 	"github.com/labstack/echo/v4"
-	"tcw.im/ufc"
+	"tcw.im/gtc"
 )
 
 type res struct {
@@ -82,13 +82,13 @@ func apiDesc(c echo.Context) error {
 	data["public"] = opt.IsPublic
 	data["gsp"] = opt.GSP
 	basedir := pm.CFG().BaseDir()
-	if basedir == "" || !ufc.IsDir(basedir) {
+	if basedir == "" || !gtc.IsDir(basedir) {
 		return c.JSON(200, res{Message: "invalid data directory"})
 	}
 	versions := make(map[string][]string)
 	for _, lang := range strings.Split(opt.Lang, ",") {
 		langDir := filepath.Join(basedir, "docs", name, lang)
-		if ufc.IsDir(langDir) {
+		if gtc.IsDir(langDir) {
 			ifs, err := ioutil.ReadDir(langDir)
 			if err != nil {
 				continue
@@ -142,7 +142,7 @@ func webhookBuild(c echo.Context) error {
 		gst = vars.GSPGitee
 		evt := H.Get("X-Gitee-Event")
 		ping := H.Get("X-Gitee-Ping")
-		if ufc.IsTrue(ping) {
+		if gtc.IsTrue(ping) {
 			event = "ping"
 		} else if evt == "Push Hook" {
 			event = "push"
@@ -158,7 +158,7 @@ func webhookBuild(c echo.Context) error {
 	if event == "ping" {
 		return c.JSON(200, resp{res{Success: true}, "pong"})
 	}
-	if !ufc.StrInSlice(event, []string{"ping", "push", "release"}) {
+	if !gtc.StrInSlice(event, []string{"ping", "push", "release"}) {
 		return errors.New("unsupported webhook event")
 	}
 
@@ -212,7 +212,7 @@ func webhookBuild(c echo.Context) error {
 	if sep == "" {
 		sep = opt.MustMeta("_sep", "|")
 	}
-	if ufc.StrInSlice(branch, strings.Split(opt.GetMeta("excluded_branch"), sep)) {
+	if gtc.StrInSlice(branch, strings.Split(opt.GetMeta("excluded_branch"), sep)) {
 		return c.JSON(200, resb{res{false, "excluded branch"}, branch})
 	}
 
@@ -263,7 +263,7 @@ func ghApp(c echo.Context) error {
 	evt := H.Get("X-GitHub-Event")
 	hiti := H.Get("X-GitHub-Hook-Installation-Target-ID")
 	hitt := H.Get("X-GitHub-Hook-Installation-Target-Type")
-	if !ufc.StrInSlice(evt, []string{"installation", "installation_repositories"}) {
+	if !gtc.StrInSlice(evt, []string{"installation", "installation_repositories"}) {
 		return errors.New("unsupported event")
 	}
 	if hitt != "integration" {

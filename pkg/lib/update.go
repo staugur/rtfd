@@ -10,7 +10,7 @@ import (
 
 	"tcw.im/rtfd/pkg/util"
 
-	"tcw.im/ufc"
+	"tcw.im/gtc"
 )
 
 // 更新文档项目配置结构体
@@ -128,7 +128,7 @@ func (u *updateHook) version(value interface{}) error {
 }
 
 func (u *updateHook) single(value interface{}) error {
-	u.opt.Single = ufc.IsTrue(value.(string))
+	u.opt.Single = gtc.IsTrue(value.(string))
 	u.render = true
 	return nil
 }
@@ -160,7 +160,7 @@ func (u *updateHook) requirement(value interface{}) error {
 }
 
 func (u *updateHook) install(value interface{}) error {
-	u.opt.Install = ufc.IsTrue(value.(string))
+	u.opt.Install = gtc.IsTrue(value.(string))
 	return nil
 }
 
@@ -170,12 +170,12 @@ func (u *updateHook) index(value interface{}) error {
 }
 
 func (u *updateHook) showNav(value interface{}) error {
-	u.opt.ShowNav = ufc.IsTrue(value.(string))
+	u.opt.ShowNav = gtc.IsTrue(value.(string))
 	return nil
 }
 
 func (u *updateHook) hideGit(value interface{}) error {
-	u.opt.HideGit = ufc.IsTrue(value.(string))
+	u.opt.HideGit = gtc.IsTrue(value.(string))
 	return nil
 }
 
@@ -188,7 +188,7 @@ func (u *updateHook) customDomain(value interface{}) error {
 	dn := strings.ToLower(value.(string))
 
 	// 清除自定义域名
-	if ufc.IsFalse(dn) {
+	if gtc.IsFalse(dn) {
 		odn := u.opt.CustomDomain
 		if u.pm.HasCustomDomain(odn) {
 			_, err := u.pm.db.SRem(GBDK, odn)
@@ -237,7 +237,7 @@ func (u *updateHook) ssl(value interface{}) error {
 	v := value.(string)
 
 	// 取消自定义域名SSL
-	if ufc.IsFalse(v) {
+	if gtc.IsFalse(v) {
 		u.opt.SSL = false
 		u.opt.SSLPublic = ""
 		u.opt.SSLPrivate = ""
@@ -251,7 +251,7 @@ func (u *updateHook) ssl(value interface{}) error {
 	}
 	pub := cert[0]
 	pri := cert[1]
-	if !ufc.IsFile(pub) || !ufc.IsFile(pri) {
+	if !gtc.IsFile(pub) || !gtc.IsFile(pri) {
 		return errors.New("not found ssl file")
 	}
 	u.opt.SSL = true

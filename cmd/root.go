@@ -9,7 +9,7 @@ import (
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"tcw.im/ufc"
+	"tcw.im/gtc"
 )
 
 var (
@@ -37,7 +37,7 @@ var rootCmd = &cobra.Command{
 			fmt.Println(assets.AppVersion)
 		} else if newInit {
 			//新增rtfd配置文件
-			if !ufc.IsFile(cfgFile) {
+			if !gtc.IsFile(cfgFile) {
 				err := ioutil.WriteFile(cfgFile, assets.RtfdCFG, 0644)
 				if err != nil {
 					fmt.Println("failed to generate configuration file")
@@ -89,7 +89,7 @@ func initConfig() {
 		return
 	}
 	// 除 -h/help 和根命令 -v/-i/--init 选项外，其他子命令均需配置文件存在
-	if cfgFile == "" || !ufc.IsFile(cfgFile) {
+	if cfgFile == "" || !gtc.IsFile(cfgFile) {
 		fmt.Printf(
 			"No valid configuration file: %s\n"+
 				"Please use `rtfd --init` to initialize it.\n", cfgFile,

@@ -14,5 +14,6 @@ require (
 	golang.org/x/sys v0.0.0-20210308170721-88b6017d0656 // indirect
 	golang.org/x/text v0.3.5 // indirect
 	gopkg.in/ini.v1 v1.62.0
-	tcw.im/ufc v0.2.1
+	tcw.im/gtc v1.0.0
+	tcw.im/gtc/redigo v0.4.0
 )
