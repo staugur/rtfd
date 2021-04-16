@@ -14,7 +14,7 @@ func TestDefaultConf(t *testing.T) {
 	cfg.BlockMode = false
 
 	// 默认分区
-	dftSec := cfg.Section(ini.DEFAULT_SECTION)
+	dftSec := cfg.Section(ini.DefaultSection)
 	if !dftSec.HasKey("base_dir") {
 		t.Fatal("no base_dir")
 	}

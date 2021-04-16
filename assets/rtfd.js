@@ -179,6 +179,7 @@ var _rtfd_script = document.getElementsByTagName('script')[
             dataType: 'json',
             success: function (res) {
                 if (res.success === true && res.data.showNav != false) {
+                    var dftBranch = res.data.defaultBranch
                     if (res.data.single === false) {
                         var lang = location.pathname.split('/')[1]
                         var branch = location.pathname.split('/')[2]
@@ -205,12 +206,12 @@ var _rtfd_script = document.getElementsByTagName('script')[
                             .join('')
                         var github_str = ''
                         if (
-                            branch === 'master' ||
+                            branch === dftBranch ||
                             (branch === 'latest' &&
-                                res.data.latest === 'master')
+                                res.data.latest === dftBranch)
                         ) {
-                            github_str += `<dd><a href=${res.data.url}/blob/master/${res.data.sourceDir}/${path_rst}>View</a></dd>`
-                            github_str += `<dd><a href=${res.data.url}/edit/master/${res.data.sourceDir}/${path_rst}>Edit</a></dd>`
+                            github_str += `<dd><a href=${res.data.url}/blob/${dftBranch}/${res.data.sourceDir}/${path_rst}>View</a></dd>`
+                            github_str += `<dd><a href=${res.data.url}/edit/${dftBranch}/${res.data.sourceDir}/${path_rst}>Edit</a></dd>`
                         } else {
                             //for tag
                             github_str += `<dd><a href=${res.data.url}/blob/${branch}/${res.data.sourceDir}/${path_rst}>View</a></dd>`
@@ -229,8 +230,8 @@ var _rtfd_script = document.getElementsByTagName('script')[
                             ? other_path.replace('.html', '.rst')
                             : 'index.rst'
                         var github_str = ''
-                        github_str += `<dd><a href=${res.data.url}/blob/master/${res.data.sourceDir}/${path_rst}>View</a></dd>`
-                        github_str += `<dd><a href=${res.data.url}/edit/master/${res.data.sourceDir}/${path_rst}>Edit</a></dd>`
+                        github_str += `<dd><a href=${res.data.url}/blob/${dftBranch}/${res.data.sourceDir}/${path_rst}>View</a></dd>`
+                        github_str += `<dd><a href=${res.data.url}/edit/${dftBranch}/${res.data.sourceDir}/${path_rst}>Edit</a></dd>`
                         if (res.data.hideGit === true) {
                             github_str = ''
                         }

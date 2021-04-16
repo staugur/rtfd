@@ -1,0 +1,28 @@
+rtfd
+Copyright 2021 Hiroshi.tao
+
+This product includes software developed at
+SaintIC (https://www.saintic.com).
+
+
+This product relies on the following software:
+
+jwt-go
+https://github.com/dgrijalva/jwt-go
+Copyright (c) 2012 Dave Grijalva
+Licensed under the MIT License
+
+redigo
+https://github.com/gomodule/redigo
+Copyright 2012 Gary Burd
+Licensed under the Apache License, Version 2.0
+
+echo
+https://github.com/labstack/echo
+Copyright (c) 2017 LabStack
+Licensed under the MIT License
+
+go-homedir
+https://github.com/mitchellh/go-homedir
+Copyright (c) 2013 Mitchell Hashimoto
+Licensed under the MIT License

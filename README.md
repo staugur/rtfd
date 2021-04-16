@@ -40,7 +40,7 @@ rtfd -v
     2.2 使用`go get`命令：
 
     ```bash
-    go get -u tcw.im/rtfd      # 可使用 @tag 安装某个正式版本，如 @v1.1.0
+    go get -u tcw.im/rtfd      # 可使用 @tag 安装某个正式版本，如 @v1.2.0
     mv ~/go/bih/rtfd ~/bin/
     rtfd -v
     ```
