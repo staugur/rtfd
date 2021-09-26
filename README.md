@@ -10,7 +10,7 @@ Build, read your exclusive and fuck docs.
 安装
 -------
 
-rtfd 仅支持 linux 操作系统
+rtfd 仅支持 linux 操作系统！
 
 ### **使用编译好的可执行程序**
 

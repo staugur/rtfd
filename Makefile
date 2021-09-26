@@ -18,7 +18,10 @@ gotool:
 	go fmt ./
 	go vet ./
 
-build:
+build-arm:
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ${LDFLAGS} -o bin/$(BINARY) && chmod +x bin/$(BINARY)
+
+build-amd:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ${LDFLAGS} -o bin/$(BINARY) && chmod +x bin/$(BINARY)
 
 dev:
@@ -28,5 +31,6 @@ dev:
 test:
 	@go test -count=1 ./...
 
-release: gotool build
-	cd bin/ && tar zcvf $(BINARY).$(Version)-linux-amd64.tar.gz $(BINARY) && rm $(BINARY)
+release: gotool
+	$(MAKE) build-arm && cd bin/ && tar zcvf $(BINARY).$(Version)-linux-arm64.tar.gz $(BINARY) && rm $(BINARY)
+	$(MAKE) build-amd && cd bin/ && tar zcvf $(BINARY).$(Version)-linux-amd64.tar.gz $(BINARY) && rm $(BINARY)

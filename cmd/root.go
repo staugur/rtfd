@@ -30,7 +30,7 @@ import (
 
 var (
 	// a global config file of rtfd, default is ~/.rtfd.cfg
-	cfgFile string
+	cfgFile string = os.Getenv("RTFD_CFG")
 
 	// commitID is git commit hash when building
 	commitID string
@@ -83,6 +83,9 @@ func init() {
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
+	}
+	if cfgFile != "" {
+		cfg = cfgFile
 	}
 
 	rootCmd.Flags().SortFlags = false
