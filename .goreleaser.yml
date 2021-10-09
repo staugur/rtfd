@@ -1,0 +1,35 @@
+project_name: rtfd
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X tcw.im/rtfd/cmd.built={{.Date}}
+      - -X tcw.im/rtfd/cmd.commitID={{.Commit}}
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - 386
+      - arm64
+archives:
+  - replacements:
+      linux: linux
+      386: i386
+      amd64: amd64
+    name_template: "{{ .Binary }}.{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - 'README*.md'
+      - '.github'
