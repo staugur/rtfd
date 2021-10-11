@@ -1,5 +1,4 @@
-rtfd
-====
+## rtfd
 
 Build, read your exclusive and fuck docs.
 
@@ -7,22 +6,28 @@ Build, read your exclusive and fuck docs.
 [![Documentation Status](https://open.saintic.com/rtfd/saintic-docs/badge)](https://docs.saintic.com/rtfd/)
 [![Go test](https://github.com/staugur/rtfd/actions/workflows/go.yml/badge.svg)](https://github.com/staugur/rtfd/actions/workflows/go.yml)
 
-安装
--------
+### 依赖
 
 rtfd 仅支持 linux 操作系统！
 
-### **使用编译好的可执行程序**
+构建脚本还需要 bash 运行环境，git命令，
+python2.7和python3.6+环境（并安装了pip、virtualenv模块），nginx服务。
+
+另外，依赖外部 redis 服务。
+
+### 安装
+
+#### 使用编译好的可执行程序
 
 ```bash
-version=1.2.0
+version=1.3.2
 wget -c https://github.com/staugur/rtfd/releases/download/v${version}/rtfd.${version}-linux-amd64.tar.gz
 tar zxf rtfd.${version}-linux-amd64.tar.gz
 mv rtfd ~/bin/
 rtfd -v
 ```
 
-### **使用源码编译最新版**
+#### 使用源码编译最新版
 
 1. 安装golang环境，版本1.16+
 
@@ -45,8 +50,7 @@ rtfd -v
     rtfd -v
     ```
 
-使用
-------
+### 使用
 
 ```bash
 rtfd --init
@@ -56,7 +60,6 @@ rtfd build {ProjectName}
 
 More options with `--help / -h` option.
 
-文档
-------
+### 文档
 
 More please see the [detailed documentation](https://docs.saintic.com/rtfd)

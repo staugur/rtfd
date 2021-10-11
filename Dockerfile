@@ -15,7 +15,7 @@ ARG TARGETARCH=amd64
 RUN if [ "x$goproxy" != "x" ]; then go env -w GOPROXY=${goproxy},direct; fi ; \
     CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -ldflags "-s -w -X tcw.im/rtfd/cmd.built=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" .
 
-# run application with a small image
+# -- run application with a small image --
 FROM $runos
 
 COPY --from=builder /build/rtfd /bin/
@@ -26,9 +26,9 @@ RUN apk add --no-cache nginx python3 py3-pip && \
     pip2 install --no-cache-dir virtualenv && \
     pip3 install --no-cache-dir virtualenv supervisor
 
-COPY assets/supervisord.conf /etc/
+COPY scripts/supervisord.conf /etc/
 
-COPY assets/nginx.conf /etc/nginx/
+COPY scripts/nginx.conf /etc/nginx/
 
 COPY assets/rtfd.cfg /
 

@@ -1,14 +1,14 @@
 #!/bin/bash
 #Author:      staugur
-#Version:     0.3
+#Version:     0.4
 #Description: 最终调用的核心脚本，此脚本只负责构建，会在docs的项目下，生成不同语言和不同版本的文档
 #CreateTime:  2019-08-05
-#ModifyTime:  2021-03-09
+#ModifyTime:  2021-10-11
 #License:     BSD 3-Clause
 #Copyright:   (c) 2019 by staugur.
 
 rtfd_cmd="rtfd"
-rtfd_cfg="$HOME/.rtfd.cfg"
+rtfd_cfg="${RTFD_CFG:-$HOME/.rtfd.cfg}"
 
 checkExitParam() {
     local n=$1
@@ -229,7 +229,7 @@ Options:
     -h, --help    The help information
     -n, --name    The docs project name
     -b, --branch  The docs project branch, default is master.
-    -c, --config  The config file, default is ${HOME}/.rtfd.cfg
+    -c, --config  The config file, default is ${rtfd_cfg}
 "
     return $?
 }
@@ -250,12 +250,12 @@ main() {
         -b | --branch)
             local branch="${2}"
             checkExitParam branch $branch
-            rtfd_cfg="${config:=$rtfd_cfg}"
             shift
             ;;
         -c | --config)
             local config="${2}"
             checkExitParam config $config
+            rtfd_cfg="${config:=$rtfd_cfg}"
             shift
             ;;
         -h | --help | \?)
