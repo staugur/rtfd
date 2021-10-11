@@ -1,8 +1,9 @@
 'use strict'
 
-var _rtfd_script = document.getElementsByTagName('script')[
-    document.getElementsByTagName('script').length - 1
-]
+var _rtfd_script =
+    document.getElementsByTagName('script')[
+        document.getElementsByTagName('script').length - 1
+    ]
 
 ;(function () {
     const _rtfd_style = `
@@ -93,7 +94,9 @@ var _rtfd_script = document.getElementsByTagName('script')[
     text-transform: none;
 }
 /* end rtfd*/
-`
+`,
+        icon_baseuri =
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4lc7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMwBHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrzdQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII='
     //Determines whether the id exists on the page. This id returns true, otherwise it returns false.
     function hasId(id) {
         var element = document.getElementById(id)
@@ -219,7 +222,7 @@ var _rtfd_script = document.getElementsByTagName('script')[
                         if (res.data.hideGit === true) {
                             github_str = ''
                         }
-                        var base_str = `<div id="rtfd" class="rtfd"><div id="rtfd-header"><img src="${res.data.icon}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id="rtfd-body"><dl><dt>Languages</dt>${langs_str}</dl><dl><dt>Versions</dt>${vers_str}</dl><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class="footer"><span>Powered by <a href="https://github.com/staugur/rtfd">rtfd</a></span></small></div></div>`
+                        var base_str = `<div id="rtfd" class="rtfd"><div id="rtfd-header"><img src="${icon_baseuri}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id="rtfd-body"><dl><dt>Languages</dt>${langs_str}</dl><dl><dt>Versions</dt>${vers_str}</dl><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class="footer"><span>Powered by <a href="https://github.com/staugur/rtfd">rtfd</a></span></small></div></div>`
                     } else {
                         var branch = 'latest'
                         var other_path = location.pathname
@@ -235,7 +238,7 @@ var _rtfd_script = document.getElementsByTagName('script')[
                         if (res.data.hideGit === true) {
                             github_str = ''
                         }
-                        var base_str = `<div id="rtfd" class="rtfd"><div id="rtfd-header"><img src="${res.data.icon}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id="rtfd-body"><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class="footer"><span>Powered by <a href="https://github.com/staugur/rtfd">rtfd</a></span></small></div></div>`
+                        var base_str = `<div id="rtfd" class="rtfd"><div id="rtfd-header"><img src="${icon_baseuri}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id="rtfd-body"><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class="footer"><span>Powered by <a href="https://github.com/staugur/rtfd">rtfd</a></span></small></div></div>`
                     }
                     addCSS(
                         'https://cdn.jsdelivr.net/gh/staaky/tipped/dist/css/tipped.css'

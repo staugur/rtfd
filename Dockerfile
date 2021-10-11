@@ -22,7 +22,7 @@ COPY --from=builder /build/rtfd /bin/
 
 WORKDIR /rtfd
 
-RUN apk add --no-cache nginx python3 py3-pip && \
+RUN apk add --no-cache nginx python3 py3-pip bash git && \
     pip2 install --no-cache-dir virtualenv && \
     pip3 install --no-cache-dir virtualenv supervisor
 
@@ -31,6 +31,8 @@ COPY scripts/supervisord.conf /etc/
 COPY scripts/nginx.conf /etc/nginx/
 
 COPY assets/rtfd.cfg /
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 ENV RTFD_CFG=/rtfd.cfg
 

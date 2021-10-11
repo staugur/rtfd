@@ -10,10 +10,10 @@ Build, read your exclusive and fuck docs.
 
 rtfd 仅支持 linux 操作系统！
 
-构建脚本还需要 bash 运行环境，git命令，
+构建脚本还需要 bash 运行环境，git、mktemp命令，
 python2.7和python3.6+环境（并安装了pip、virtualenv模块），nginx服务。
 
-另外，依赖外部 redis 服务。
+另外，依赖外部 redis 服务；如使用 GitHub App 功能则需要能访问 GitHub API。
 
 ### 安装
 
