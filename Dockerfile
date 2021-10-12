@@ -24,9 +24,10 @@ WORKDIR /rtfd
 
 RUN apt update && \
     apt install -y --no-install-recommends nginx python3 python3-pip git && \
-    pip2 install --no-cache-dir virtualenv && \
-    pip3 install --no-cache-dir virtualenv supervisor && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    python2 -m pip install --no-cache-dir virtualenv && \
+    python3 -m pip install --upgrade pip && \
+    python3 -m pip install --no-cache-dir virtualenv setuptools supervisor && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY scripts/supervisord.conf /etc/
 

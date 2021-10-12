@@ -138,7 +138,7 @@ _envManager() {
         ;;
     esac
     local vd="venv-${py_version}"
-    local venv="${py_path} -m virtualenv -p ${py_path}"
+    local venv="${py_path} -m virtualenv"
     #: 创建虚拟环境
     if [ ! -d $vd ]; then
         $venv $vd
