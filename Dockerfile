@@ -1,5 +1,5 @@
 ARG buildos=golang:1.17.2-alpine
-ARG runos=python:2.7.18-alpine
+ARG runos=python:2.7.18-slim
 
 # -- build dependencies with alpine --
 FROM $buildos AS builder

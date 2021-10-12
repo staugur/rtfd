@@ -40,7 +40,8 @@ const (
 	GSPGitee  = "Gitee"
 	GSPNA     = "N/A"
 
-	ResetEmpty = `\`
+	// 此标记要求重置为默认值
+	ResetEmpty = "-"
 
 	WebhookID = "_webhook_id"
 	InstallID = "_installation_id"

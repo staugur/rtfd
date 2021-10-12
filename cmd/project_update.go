@@ -66,6 +66,8 @@ var updateDesc = `更新文档项目配置
         # 部分字段仅在下一次构建时生效
         # 特殊字段meta系统内置字段：
             # _sep: 当meta内部字段的值为多值类型时，指定其分隔符，默认是 |
+        # 上述部分字段可以将值设为 - 表示重置为空，允许列表如下：
+            requirement index secret before after
 
 第二种方式，通过 file 选项：
 
@@ -137,6 +139,10 @@ var updateCmd = &cobra.Command{
 						os.Exit(1)
 					}
 				} else {
+					allowEmpty := []string{"requirement", "index", "secret,", "before", "after"}
+					if value == vars.ResetEmpty && gtc.StrInSlice(field, allowEmpty) {
+						value = ""
+					}
 					rule[field] = value
 				}
 			}
