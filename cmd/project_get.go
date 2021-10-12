@@ -66,7 +66,7 @@ var getCmd = &cobra.Command{
 
 		var data []byte
 		if build {
-			bs, err := pm.GetNameWithBuilder(name)
+			bs, err := pm.GetNameWithBuildset(name)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(127)

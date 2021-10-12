@@ -258,7 +258,7 @@ func apiBadge(c echo.Context) error {
 		branch = opt.Latest
 	}
 
-	builder, err := pm.GetBuilder(name, branch)
+	builder, err := pm.GetBuildset(name, branch)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "not found branch") {
 			return badgeRes(c, unknown)

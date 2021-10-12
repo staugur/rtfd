@@ -4,7 +4,7 @@ Build, read your exclusive and fuck docs.
 
 [![Go Reference](https://pkg.go.dev/badge/tcw.im/rtfd.svg)](https://pkg.go.dev/tcw.im/rtfd)
 [![Documentation Status](https://open.saintic.com/rtfd/saintic-docs/badge)](https://docs.saintic.com/rtfd/)
-[![Go test](https://github.com/staugur/rtfd/actions/workflows/go.yml/badge.svg)](https://github.com/staugur/rtfd/actions/workflows/go.yml)
+[![Go test](https://github.com/staugur/rtfd/actions/workflows/gotest.yml/badge.svg)](https://github.com/staugur/rtfd/actions/workflows/gotest.yml)
 
 ### 依赖
 

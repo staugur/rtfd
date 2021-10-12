@@ -132,7 +132,7 @@ type Result struct {
 // OptionsWithResult 嵌套了 Options 和 Result 两种结构
 type OptionsWithResult struct {
 	Options
-	Builder []Result
+	Buildset []Result
 }
 
 // ProjectManager 项目管理器
@@ -271,9 +271,7 @@ func (pm *ProjectManager) GenerateOption(name, url string) (opt Options, err err
 		isPublic = true
 	}
 
-	if strings.HasSuffix(url, ".git") {
-		url = strings.TrimSuffix(url, ".git")
-	}
+	url = strings.TrimSuffix(url, ".git")
 	gsp, err := util.GitServiceProvider(url)
 	if err != nil {
 		return
@@ -403,17 +401,17 @@ func (pm *ProjectManager) GetName(name string) (opt Options, err error) {
 	return opt, nil
 }
 
-// GetNameWithBuilder 获取文档项目配置及其构建集详细数据
-func (pm *ProjectManager) GetNameWithBuilder(name string) (ropt OptionsWithResult, err error) {
+// GetNameWithBuildset 获取文档项目配置及其构建集详细数据
+func (pm *ProjectManager) GetNameWithBuildset(name string) (ropt OptionsWithResult, err error) {
 	opt, err := pm.GetName(name)
 	if err != nil {
 		return
 	}
-	members, err := pm.ListBuilder(name)
+	members, err := pm.ListBuildset(name)
 	if err != nil {
 		return
 	}
-	return OptionsWithResult{Options: opt, Builder: members}, nil
+	return OptionsWithResult{Options: opt, Buildset: members}, nil
 }
 
 // GetNameOption 获取文档项目某项配置值
@@ -475,8 +473,8 @@ func (pm *ProjectManager) ListProject() (members []string, err error) {
 	return pm.db.SMembers(GBPK)
 }
 
-// ListBuilder 获取所有构建集
-func (pm *ProjectManager) ListBuilder(name string) (builders []Result, err error) {
+// ListBuildset 获取所有构建集
+func (pm *ProjectManager) ListBuildset(name string) (builders []Result, err error) {
 	hash, err := pm.db.HGetAll(BRK(name))
 	if err != nil {
 		return
@@ -494,8 +492,8 @@ func (pm *ProjectManager) ListBuilder(name string) (builders []Result, err error
 	return builders, nil
 }
 
-// GetBuilder 获取某个构建结果
-func (pm *ProjectManager) GetBuilder(name, branch string) (builder Result, err error) {
+// GetBuildset 获取某个构建结果
+func (pm *ProjectManager) GetBuildset(name, branch string) (builder Result, err error) {
 	val, err := pm.db.HGet(BRK(name), branch)
 	if err != nil {
 		if err == redis.ErrNil {

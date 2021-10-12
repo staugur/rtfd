@@ -7,7 +7,9 @@
 #License:     BSD 3-Clause
 #Copyright:   (c) 2019 by staugur.
 
-rtfd_cmd="rtfd"
+[[ -n $RTFD_DEBUG ]] && set -x
+
+readonly rtfd_cmd="rtfd"
 rtfd_cfg="${RTFD_CFG:-$HOME/.rtfd.cfg}"
 
 checkExitParam() {

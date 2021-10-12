@@ -32,8 +32,6 @@ COPY scripts/nginx.conf /etc/nginx/
 
 COPY assets/rtfd.cfg /
 
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-
 ENV RTFD_CFG=/rtfd.cfg
 
 EXPOSE 80 443 5000
