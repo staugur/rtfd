@@ -18,9 +18,6 @@ RUN if [ "x$goproxy" != "x" ]; then go env -w GOPROXY=${goproxy},direct; fi ; \
 # -- run application with a small image --
 FROM $runos
 
-COPY --from=builder /build/rtfd /bin/
-
-WORKDIR /rtfd
 
 RUN apt update && \
     apt install -y --no-install-recommends nginx python3 python3-pip git && \
@@ -28,6 +25,8 @@ RUN apt update && \
     python3 -m pip install --upgrade pip && \
     python3 -m pip install --no-cache-dir virtualenv setuptools supervisor && \
     rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /build/rtfd /bin/
 
 COPY scripts/supervisord.conf /etc/
 
@@ -38,5 +37,7 @@ COPY assets/rtfd.cfg /
 ENV RTFD_CFG=/rtfd.cfg
 
 EXPOSE 80 443 5000
+
+WORKDIR /rtfd
 
 ENTRYPOINT ["supervisord", "-c", "/etc/supervisord.conf"]

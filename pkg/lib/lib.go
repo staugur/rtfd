@@ -697,9 +697,6 @@ func (pm *ProjectManager) Update(opt *Options, rule map[string]interface{}) (ok 
 
 	uh := &updateHook{pm: pm, opt: opt}
 	for field, value := range rule {
-		if value == "" {
-			fail = append(fail, field)
-		}
 		fn, e := uh.handle(field)
 		if e != nil {
 			fail = append(fail, fmt.Sprintf("%s:%s", field, e.Error()))
