@@ -22,9 +22,11 @@ COPY --from=builder /build/rtfd /bin/
 
 WORKDIR /rtfd
 
-RUN apk add --no-cache nginx python3 py3-pip bash git && \
+RUN apt update && \
+    apt install -y --no-install-recommends nginx python3 python3-pip git && \
     pip2 install --no-cache-dir virtualenv && \
-    pip3 install --no-cache-dir virtualenv supervisor
+    pip3 install --no-cache-dir virtualenv supervisor && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/supervisord.conf /etc/
 
