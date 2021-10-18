@@ -10,7 +10,7 @@ Build, read your exclusive and fuck docs.
 
 rtfd 仅支持 linux 操作系统！
 
-构建脚本还需要 bash 运行环境，git、mktemp命令，
+构建脚本还需要 bash 运行环境，git命令，
 python2.7和python3.6+环境（并安装了pip、virtualenv模块），nginx服务。
 
 另外，依赖外部 redis 服务；如使用 GitHub App 功能则需要能访问 GitHub API。
@@ -20,7 +20,7 @@ python2.7和python3.6+环境（并安装了pip、virtualenv模块），nginx服�
 #### 使用编译好的可执行程序
 
 ```bash
-version=1.3.2
+version=1.3.3
 wget -c https://github.com/staugur/rtfd/releases/download/v${version}/rtfd.${version}-linux-amd64.tar.gz
 tar zxf rtfd.${version}-linux-amd64.tar.gz
 mv rtfd ~/bin/
@@ -45,7 +45,7 @@ rtfd -v
     2.2 使用`go get`命令：
 
     ```bash
-    go get -u tcw.im/rtfd      # 可使用 @tag 安装某个正式版本，如 @v1.2.0
+    go get -u tcw.im/rtfd      # 可使用 @tag 安装某个正式版本，如 @v1.3.3
     mv ~/go/bih/rtfd ~/bin/
     rtfd -v
     ```
