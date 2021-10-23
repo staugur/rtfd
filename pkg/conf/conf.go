@@ -102,6 +102,15 @@ func (c Config) GetPath(section, key string) (string, error) {
 	return v, nil
 }
 
+// MustPath 可设置默认值的 GetPath
+func (c Config) MustPath(section, key, defaults string) string {
+	v, _ := c.GetPath(section, key)
+	if v == "" {
+		v = defaults
+	}
+	return v
+}
+
 // BaseDir 获取base_dir（专项方法）
 func (c Config) BaseDir() string {
 	dir, err := c.GetPath(vars.DFT, "base_dir")

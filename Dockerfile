@@ -1,5 +1,5 @@
-ARG buildos=golang:1.17.2-alpine
-ARG runos=python:2.7.18-slim
+ARG buildos=golang:1.17-alpine
+ARG runos=python:2.7-slim
 
 # -- build dependencies with alpine --
 FROM $buildos AS builder
@@ -7,7 +7,7 @@ WORKDIR /build
 COPY . .
 ARG goproxy
 ARG TARGETARCH
-RUN if [ "x$goproxy" != "x" ]; then go env -w GOPROXY=${goproxy},direct; fi ; \
+RUN if [ "x$goproxy" != "x" ]; then go env -w GOPROXY=${goproxy},direct; fi ;\
     CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -ldflags "-s -w -X tcw.im/rtfd/cmd.built=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" .
 
 # -- run application with a small image --
@@ -24,5 +24,4 @@ COPY scripts/nginx.conf /etc/nginx/
 COPY assets/rtfd.cfg /
 ENV RTFD_CFG=/rtfd.cfg
 EXPOSE 80 443 5000
-WORKDIR /rtfd
 ENTRYPOINT ["supervisord"]

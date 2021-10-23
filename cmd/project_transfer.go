@@ -91,16 +91,18 @@ var transferCmd = &cobra.Command{
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			meta := opt.Meta
-			if meta == nil {
-				meta = make(map[string]string)
-			}
-			for k := range meta {
-				if strings.HasPrefix(k, "_") {
-					err = opt.UpdateMeta(k, vars.ResetEmpty)
-					if err != nil {
-						fmt.Println(err)
-						os.Exit(1)
+			if esm, _ := flagset.GetBool("export-sys-meta"); !esm {
+				meta := opt.Meta
+				if meta == nil {
+					meta = make(map[string]string)
+				}
+				for k := range meta {
+					if strings.HasPrefix(k, "_") {
+						err = opt.UpdateMeta(k, vars.ResetEmpty)
+						if err != nil {
+							fmt.Println(err)
+							os.Exit(1)
+						}
 					}
 				}
 			}
@@ -167,6 +169,7 @@ var transferCmd = &cobra.Command{
 func init() {
 	projectCmd.AddCommand(transferCmd)
 	transferCmd.Flags().BoolP("export", "e", false, "导出（格式为 base64 编码）项目")
+	transferCmd.Flags().BoolP("export-sys-meta", "", false, "是否导出Meta内置字段")
 	transferCmd.Flags().StringP("import", "i", "", "导入（格式为 base64 编码）项目")
 	transferCmd.Flags().BoolP("import-debug", "d", false, "不导入项目，仅查看选项")
 }

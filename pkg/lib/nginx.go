@@ -144,7 +144,6 @@ func nginxSSLTPL() string {
     ssl_stapling_verify on;
     resolver 8.8.8.8 114.114.114.114 valid=300s;
     resolver_timeout 5s;
-    ssl_session_cache builtin:1000 shared:SSL:10m;
     ssl_session_tickets on;
     ssl_session_timeout  10m;
     ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;

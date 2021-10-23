@@ -517,7 +517,9 @@ func (pm *ProjectManager) renderNginx(opt *Options) error {
 	}
 	basedir := pm.cfg.BaseDir()
 	DocsDir := filepath.Join(basedir, "docs")
-	NginxDir := filepath.Join(basedir, "nginx")
+	dftNginxDir := filepath.Join(basedir, "nginx")
+	NginxDir := pm.cfg.MustPath("nginx", "conf_dir", dftNginxDir)
+	NginxExtDir := pm.cfg.MustPath("nginx", "conf_ext_dir", dftNginxDir)
 	if !gtc.IsDir(basedir) {
 		err := gtc.CreateDir(basedir)
 		if err != nil {
@@ -536,12 +538,27 @@ func (pm *ProjectManager) renderNginx(opt *Options) error {
 			return err
 		}
 	}
+	if !gtc.IsDir(NginxExtDir) {
+		err := gtc.CreateDir(NginxExtDir)
+		if err != nil {
+			return err
+		}
+	}
 	// 渲染默认域名的nginx配置
 	dftLang := strings.Split(opt.Lang, ",")[0]
 	dftNgxFile := filepath.Join(NginxDir, fmt.Sprintf("%s.conf", name))
-	cstNgxFile := filepath.Join(NginxDir, fmt.Sprintf("%s.ext.conf", name))
+	cstNgxFile := filepath.Join(NginxExtDir, fmt.Sprintf("%s.conf", name))
 	dftSSLCrt := pm.cfg.GetKey("nginx", "ssl_crt")
 	dftSSLKey := pm.cfg.GetKey("nginx", "ssl_key")
+	// 兼容旧版本的配置，如果渲染时存在则自动删除
+	dftNgxFileOld := filepath.Join(dftNginxDir, fmt.Sprintf("%s.conf", name))
+	cstNgxFileOld := filepath.Join(dftNginxDir, fmt.Sprintf("%s.ext.conf", name))
+	if gtc.IsFile(dftNgxFileOld) {
+		os.Remove(dftNgxFileOld)
+	}
+	if gtc.IsFile(cstNgxFileOld) {
+		os.Remove(cstNgxFileOld)
+	}
 	ngxopt := &nginxOptions{
 		Name: name, Lang: dftLang, Domain: opt.DefaultDomain, DocsDir: DocsDir,
 		Single: opt.Single, SSLCrt: dftSSLCrt, SSLKey: dftSSLKey,
@@ -554,7 +571,6 @@ func (pm *ProjectManager) renderNginx(opt *Options) error {
 	if err != nil {
 		return err
 	}
-
 	// 渲染自定义域名的nginx配置
 	if util.IsDomain(opt.CustomDomain) {
 		ngxopt.Domain = opt.CustomDomain
@@ -642,17 +658,27 @@ func (pm *ProjectManager) Remove(name string) error {
 
 	basedir := pm.cfg.BaseDir()
 	DocsDir := filepath.Join(basedir, "docs", name)
-	NginxDir := filepath.Join(basedir, "nginx")
+	dftNginxDir := filepath.Join(basedir, "nginx")
+	NginxDir := pm.cfg.MustPath("nginx", "conf_dir", dftNginxDir)
+	NginxExtDir := pm.cfg.MustPath("nginx", "conf_ext_dir", dftNginxDir)
 	dftNgxFile := filepath.Join(NginxDir, fmt.Sprintf("%s.conf", name))
-	cstNgxFile := filepath.Join(NginxDir, fmt.Sprintf("%s.ext.conf", name))
-
+	cstNgxFile := filepath.Join(NginxExtDir, fmt.Sprintf("%s.conf", name))
+	// 兼容旧版本的扩展配置，如果渲染时存在则自动删除
+	dftNgxFileOld := filepath.Join(dftNginxDir, fmt.Sprintf("%s.conf", name))
+	cstNgxFileOld := filepath.Join(dftNginxDir, fmt.Sprintf("%s.ext.conf", name))
+	if gtc.IsFile(dftNgxFileOld) {
+		os.Remove(dftNgxFileOld)
+	}
+	if gtc.IsFile(cstNgxFileOld) {
+		os.Remove(cstNgxFileOld)
+	}
 	if gtc.IsDir(DocsDir) {
 		err = os.RemoveAll(DocsDir)
 		if err != nil {
 			return err
 		}
 	}
-	if gtc.IsFile(dftNgxFile) || gtc.IsFile(cstNgxFile) {
+	if gtc.IsFile(dftNgxFile) || gtc.IsFile(cstNgxFile) || gtc.IsFile(cstNgxFileOld) || gtc.IsFile(dftNgxFileOld) {
 		os.Remove(dftNgxFile)
 		os.Remove(cstNgxFile)
 		err = pm.reloadNginx()

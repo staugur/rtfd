@@ -32,4 +32,5 @@ changelog:
       - '^docs:'
       - '^test:'
       - 'README*.md'
+      - 'NOTICE'
       - '.github'
