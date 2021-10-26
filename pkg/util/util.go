@@ -66,6 +66,8 @@ func RunCmdStream(name string, args []string, f func(line string)) error {
 	if err != nil {
 		return err
 	}
+	//命令的错误输出和标准输出都连接到同一个管道
+	cmd.Stderr = cmd.Stdout
 
 	if err = cmd.Start(); err != nil {
 		return err

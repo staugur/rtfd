@@ -33,6 +33,9 @@ var buildCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		name := args[0]
 		branch := cmd.Flag("branch").Value.String()
+		flagset := cmd.Flags()
+		isDebug, _ := flagset.GetBool("debug")
+		isLog, _ := flagset.GetBool("log")
 
 		b, err := build.New(cfgFile)
 		if err != nil {
@@ -40,7 +43,15 @@ var buildCmd = &cobra.Command{
 			return
 		}
 
-		err = b.Build(name, branch, vars.CLISender)
+		if isDebug && isLog {
+			err = b.BuildWithAll(name, branch, vars.CLISender)
+		} else if isDebug {
+			err = b.BuildWithDebug(name, branch, vars.CLISender)
+		} else if isLog {
+			err = b.BuildWithLog(name, branch, vars.CLISender)
+		} else {
+			err = b.Build(name, branch, vars.CLISender)
+		}
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -50,4 +61,6 @@ var buildCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(buildCmd)
 	buildCmd.Flags().StringP("branch", "b", "", "分支或标签")
+	buildCmd.Flags().BoolP("debug", "", false, "使用调试模式运行构建")
+	buildCmd.Flags().BoolP("log", "", false, "日志记录构建输出")
 }

@@ -7,8 +7,6 @@
 #License:     BSD 3-Clause
 #Copyright:   (c) 2019 by staugur.
 
-[[ -n $RTFD_DEBUG ]] && set -x
-
 readonly rtfd_cmd="rtfd"
 rtfd_cfg="${RTFD_CFG:-$HOME/.rtfd.cfg}"
 
@@ -278,10 +276,12 @@ main() {
         echo "Not found config file $rtfd_cfg"
         exit 1
     fi
+    which $rtfd_cmd > /dev/null 2>&1
+    [ $? -ne 0 ] && echo "Not found $rtfd_cmd" && exit 130
     #: 设置默认配置
     local branch=${branch:=master}
     local base_dir=$(_getRtfdConf default base_dir)
-    _debugp "$project_name $branch $base_dir"
+    echo "Run a build for ${project_name}:${branch} with rtfd $($rtfd_cmd -v) at $(date +%F_%T)"
     #: 校验参数
     checkExitParam base_dir $base_dir
     checkExitParam project_name $project_name

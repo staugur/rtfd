@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -60,8 +61,30 @@ func New(path string) (b *Builder, err error) {
 	return &Builder{path, sh, pm}, nil
 }
 
-// Build 构建文档
+// Build 默认方式构建文档
 func (b *Builder) Build(name, branch string, sender vars.Sender) error {
+	return b.build(name, branch, sender, false, false)
+}
+
+// BuildWithDebug 调试方式构建文档
+func (b *Builder) BuildWithDebug(name, branch string, sender vars.Sender) error {
+	return b.build(name, branch, sender, true, false)
+}
+
+// BuildWithLog 构建文档时记录日志（cli方式除外）
+func (b *Builder) BuildWithLog(name, branch string, sender vars.Sender) error {
+	return b.build(name, branch, sender, false, true)
+}
+
+// BuildWithAll 以调试模式构建文档并记录日志
+func (b *Builder) BuildWithAll(name, branch string, sender vars.Sender) error {
+	return b.build(name, branch, sender, true, true)
+}
+
+// build 构建文档
+// - isDebug 则以 `bash -x` 模式调试运行
+// - isLog 则对脚本每行输出记录日志
+func (b *Builder) build(name, branch string, sender vars.Sender, isDebug bool, isLog bool) error {
 	if !b.pm.HasName(name) {
 		return errors.New("not found project")
 	}
@@ -72,12 +95,20 @@ func (b *Builder) Build(name, branch string, sender vars.Sender) error {
 	if branch == "" {
 		branch = data.Latest
 	}
-	args := []string{b.sh, "-n", name, "-b", branch, "-c", b.path}
+	var args []string
+	if isDebug {
+		args = []string{"-x", b.sh, "-n", name, "-b", branch, "-c", b.path}
+	} else {
+		args = []string{b.sh, "-n", name, "-b", branch, "-c", b.path}
+	}
+
 	status := false
 	usedtime := -1
 	util.RunCmdStream("bash", args, func(line string) {
 		if sender == vars.CLISender {
 			fmt.Printf(line)
+		} else if isLog {
+			log.Printf(line)
 		}
 		if strings.HasPrefix(line, "Build Successfully") {
 			status = true
