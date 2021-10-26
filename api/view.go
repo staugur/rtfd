@@ -143,7 +143,7 @@ func apiBuild(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	go b.Build(name, branch, vars.APISender)
+	go b.BuildWithLog(name, branch, vars.APISender)
 	return c.JSON(201, resb{res{Success: true}, branch})
 }
 
@@ -233,7 +233,7 @@ func webhookBuild(c echo.Context) error {
 		return c.JSON(200, resb{res{false, "excluded branch"}, branch})
 	}
 
-	go b.Build(name, branch, vars.WebhookSender)
+	go b.BuildWithLog(name, branch, vars.WebhookSender)
 	return c.JSON(201, resb{res{Success: true}, branch})
 }
 
