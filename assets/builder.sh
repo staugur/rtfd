@@ -1,9 +1,9 @@
 #!/bin/bash
 #Author:      staugur
-#Version:     0.4
+#Version:     0.5
 #Description: 最终调用的核心脚本，此脚本只负责构建，会在docs的项目下，生成不同语言和不同版本的文档
 #CreateTime:  2019-08-05
-#ModifyTime:  2021-10-11
+#ModifyTime:  2022-01-06
 #License:     BSD 3-Clause
 #Copyright:   (c) 2019 by staugur.
 
@@ -214,7 +214,7 @@ _codeManager() {
     cd $runtime_dir
     checkExitRetcode
     [ -d $project_name ] && rm -rf $project_name
-    git clone --branch $branch --recursive $project_git $project_name
+    git clone --branch $branch --single-branch --depth=1 --recursive $project_git $project_name
     checkExitRetcode
     cd $project_name
     checkExitRetcode
