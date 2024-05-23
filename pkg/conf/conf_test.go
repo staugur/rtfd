@@ -1,7 +1,6 @@
 package conf
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -17,7 +16,7 @@ func TestConf(t *testing.T) {
     latest = master
     `)
 	f := filepath.Join(os.TempDir(), "_rtfd_conf_test.ini")
-	err := ioutil.WriteFile(f, data, 0644)
+	err := os.WriteFile(f, data, 0644)
 	if err != nil {
 		t.Fatal("write test file error")
 	}

@@ -26,7 +26,7 @@ import (
 
 	"tcw.im/rtfd/pkg/util"
 
-	"tcw.im/gtc"
+	"pkg.tcw.im/gtc"
 )
 
 // 更新文档项目配置结构体

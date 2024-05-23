@@ -26,7 +26,7 @@ import (
 	"tcw.im/rtfd/vars"
 
 	"github.com/spf13/cobra"
-	"tcw.im/gtc"
+	"pkg.tcw.im/gtc"
 )
 
 var updateDesc = `更新文档项目配置

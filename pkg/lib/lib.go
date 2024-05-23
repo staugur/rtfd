@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -34,8 +33,8 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 	homedir "github.com/mitchellh/go-homedir"
-	"tcw.im/gtc"
-	db "tcw.im/gtc/redigo"
+	"pkg.tcw.im/gtc"
+	db "pkg.tcw.im/gtc/redigo"
 )
 
 type (
@@ -567,7 +566,7 @@ func (pm *ProjectManager) renderNginx(opt *Options) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(dftNgxFile, []byte(dftConf), 0644)
+	err = os.WriteFile(dftNgxFile, []byte(dftConf), 0644)
 	if err != nil {
 		return err
 	}
@@ -580,7 +579,7 @@ func (pm *ProjectManager) renderNginx(opt *Options) error {
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile(cstNgxFile, []byte(cstConf), 0644)
+		err = os.WriteFile(cstNgxFile, []byte(cstConf), 0644)
 		if err != nil {
 			return err
 		}

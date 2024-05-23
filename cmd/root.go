@@ -18,14 +18,13 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"tcw.im/rtfd/assets"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"tcw.im/gtc"
+	"pkg.tcw.im/gtc"
 )
 
 var (
@@ -54,7 +53,7 @@ var rootCmd = &cobra.Command{
 		} else if newInit {
 			//新增rtfd配置文件
 			if !gtc.IsFile(cfgFile) {
-				err := ioutil.WriteFile(cfgFile, assets.RtfdCFG, 0644)
+				err := os.WriteFile(cfgFile, assets.RtfdCFG, 0644)
 				if err != nil {
 					fmt.Println("failed to generate configuration file")
 					os.Exit(129)

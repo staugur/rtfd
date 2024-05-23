@@ -23,7 +23,7 @@ import (
 
 	"tcw.im/rtfd/pkg/util"
 
-	"tcw.im/gtc"
+	"pkg.tcw.im/gtc"
 )
 
 // 渲染nginx配置文件所需参数，前四项是必填项，后面选填，最后Now、SSL、SSLCFG会自动填充

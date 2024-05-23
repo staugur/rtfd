@@ -24,9 +24,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -35,7 +35,7 @@ import (
 	"tcw.im/rtfd/vars"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"tcw.im/gtc"
+	"pkg.tcw.im/gtc"
 )
 
 // GitHub App Post Webhook data
@@ -120,7 +120,7 @@ func request(method, url, auth string, body io.Reader) (text []byte, err error) 
 		return
 	}
 	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }
 
 func now() int64 {
@@ -163,7 +163,7 @@ func (gh *GHApp) BaseURL(url string) {
 }
 
 func (gh *GHApp) generateJWT() error {
-	content, err := ioutil.ReadFile(gh.privateKey)
+	content, err := os.ReadFile(gh.privateKey)
 	if err != nil {
 		return err
 	}
