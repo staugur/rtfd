@@ -19,7 +19,8 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -30,7 +31,7 @@ import (
 	"tcw.im/rtfd/vars"
 
 	"github.com/labstack/echo/v4"
-	"tcw.im/gtc"
+	"pkg.tcw.im/gtc"
 )
 
 type res struct {
@@ -106,7 +107,7 @@ func apiDesc(c echo.Context) error {
 	for _, lang := range strings.Split(opt.Lang, ",") {
 		langDir := filepath.Join(basedir, "docs", name, lang)
 		if gtc.IsDir(langDir) {
-			ifs, err := ioutil.ReadDir(langDir)
+			ifs, err := os.ReadDir(langDir)
 			if err != nil {
 				continue
 			}
@@ -187,7 +188,7 @@ func webhookBuild(c echo.Context) error {
 	}
 
 	var body map[string]interface{}
-	RawBody, err := ioutil.ReadAll(c.Request().Body)
+	RawBody, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		return err
 	}

@@ -24,7 +24,7 @@ import (
 	"tcw.im/rtfd/pkg/util"
 
 	"github.com/labstack/echo/v4"
-	"tcw.im/gtc"
+	"pkg.tcw.im/gtc"
 )
 
 func getArg(c echo.Context, key string) string {

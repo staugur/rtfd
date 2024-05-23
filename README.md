@@ -11,7 +11,7 @@ Build, read your exclusive and fuck docs.
 rtfd 仅支持 linux 操作系统！
 
 构建脚本还需要 bash 运行环境，git命令，
-python2.7和python3.6+环境（并安装了pip、virtualenv模块），nginx服务。
+python2.7和python3.8+环境（并安装了pip、virtualenv模块），nginx服务。
 
 另外，依赖外部 redis 服务；如使用 GitHub App 功能则需要能访问 GitHub API。
 
@@ -29,7 +29,7 @@ rtfd -v
 
 #### 使用源码编译最新版
 
-1. 安装golang环境，版本1.16+
+1. 安装golang环境，版本1.20+
 
 2. 编译安装（以下两种方式）
 

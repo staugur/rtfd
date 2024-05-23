@@ -19,7 +19,6 @@ package build
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -136,7 +135,7 @@ func genBuilderScript(dir string) (sh string, err error) {
 	}
 	sh = filepath.Join(dir, ".rtfd-builder.sh")
 
-	err = ioutil.WriteFile(sh, assets.BuiderSH, 0644)
+	err = os.WriteFile(sh, assets.BuiderSH, 0644)
 	if err != nil {
 		return
 	}
