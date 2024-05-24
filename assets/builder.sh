@@ -281,7 +281,7 @@ main() {
     #: 设置默认配置
     local branch=${branch:=master}
     local base_dir=$(_getRtfdConf default base_dir)
-    echo "Run a build for ${project_name}:${branch} with rtfd $($rtfd_cmd -v) at $(date +%F_%T)"
+    echo "Run a build for ${project_name}:${branch} with rtfd $($rtfd_cmd -v) at $(date +%FT%T)"
     #: 校验参数
     checkExitParam base_dir $base_dir
     checkExitParam project_name $project_name
