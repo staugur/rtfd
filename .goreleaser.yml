@@ -16,11 +16,14 @@ builds:
       - 386
       - arm64
 archives:
-  - replacements:
-      linux: linux
-      386: i386
-      amd64: amd64
-    name_template: "{{ .Binary }}.{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+  - id: foo
+    name_template: >-
+      {{- .Binary }}.
+      {{- .Version }}.
+      {{- title .Os }}.
+      {{- if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end -}}
 checksum:
   name_template: 'checksums.txt'
 snapshot:
