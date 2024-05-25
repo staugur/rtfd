@@ -31,8 +31,8 @@ import (
 	"strings"
 	"time"
 
-	"tcw.im/rtfd/pkg/util"
-	"tcw.im/rtfd/vars"
+	"pkg/tcw.im/rtfd/pkg/util"
+	"pkg/tcw.im/rtfd/vars"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"pkg.tcw.im/gtc"

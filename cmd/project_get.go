@@ -22,7 +22,7 @@ import (
 	"os"
 	"strings"
 
-	"tcw.im/rtfd/pkg/lib"
+	"pkg/tcw.im/rtfd/pkg/lib"
 
 	"github.com/spf13/cobra"
 )

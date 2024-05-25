@@ -20,8 +20,8 @@ import (
 	"errors"
 	"strings"
 
-	"tcw.im/rtfd/pkg/lib"
-	"tcw.im/rtfd/pkg/util"
+	"pkg/tcw.im/rtfd/pkg/lib"
+	"pkg/tcw.im/rtfd/pkg/util"
 
 	"github.com/labstack/echo/v4"
 	"pkg.tcw.im/gtc"

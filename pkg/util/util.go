@@ -32,7 +32,7 @@ import (
 	"strings"
 	"time"
 
-	"tcw.im/rtfd/vars"
+	"pkg/tcw.im/rtfd/vars"
 )
 
 var (

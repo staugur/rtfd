@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"tcw.im/rtfd/assets"
+	"pkg/tcw.im/rtfd/assets"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"

@@ -19,8 +19,8 @@ package api
 import (
 	"fmt"
 
-	"tcw.im/rtfd/assets"
-	"tcw.im/rtfd/pkg/lib"
+	"pkg/tcw.im/rtfd/assets"
+	"pkg/tcw.im/rtfd/pkg/lib"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"

@@ -25,10 +25,10 @@ import (
 	"strconv"
 	"strings"
 
-	"tcw.im/rtfd/pkg/build"
-	"tcw.im/rtfd/pkg/lib"
-	"tcw.im/rtfd/pkg/util"
-	"tcw.im/rtfd/vars"
+	"pkg/tcw.im/rtfd/pkg/build"
+	"pkg/tcw.im/rtfd/pkg/lib"
+	"pkg/tcw.im/rtfd/pkg/util"
+	"pkg/tcw.im/rtfd/vars"
 
 	"github.com/labstack/echo/v4"
 	"pkg.tcw.im/gtc"

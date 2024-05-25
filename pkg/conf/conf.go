@@ -21,7 +21,7 @@ package conf
 import (
 	"strings"
 
-	"tcw.im/rtfd/vars"
+	"pkg/tcw.im/rtfd/vars"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"gopkg.in/ini.v1"

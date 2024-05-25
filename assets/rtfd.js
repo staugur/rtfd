@@ -253,10 +253,10 @@ var _rtfd_script =
                             base_str = `<div id="rtfd" class="rtfd"><div id="rtfd-header"><img src="${icon_baseuri}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id="rtfd-body"><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class="footer"><span>Powered by <a href="https://github.com/staugur/rtfd">rtfd</a></span></small></div></div>`
                         }
                         addCSS(
-                            'https://cdn.jsdelivr.net/gh/staaky/tipped/dist/css/tipped.css'
+                            'https://static.saintic.com/rtfd/tipped/tipped.css'
                         )
                         addJS(
-                            'https://cdn.jsdelivr.net/gh/staaky/tipped/dist/js/tipped.min.js',
+                            'https://static.saintic.com/rtfd/tipped/tipped.min.js',
                             function () {
                                 $('body').append(base_str)
                                 Tipped.create('#rtfd-header', {
@@ -282,5 +282,5 @@ var _rtfd_script =
             })
         }
 
-        addJS("https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js", init)
+        addJS("https://static.saintic.com/rtfd/jquery-3.7.1.min.js", init)
     })()

@@ -27,9 +27,9 @@ import (
 	"reflect"
 	"strings"
 
-	"tcw.im/rtfd/pkg/conf"
-	"tcw.im/rtfd/pkg/util"
-	"tcw.im/rtfd/vars"
+	"pkg/tcw.im/rtfd/pkg/conf"
+	"pkg/tcw.im/rtfd/pkg/util"
+	"pkg/tcw.im/rtfd/vars"
 
 	"github.com/gomodule/redigo/redis"
 	homedir "github.com/mitchellh/go-homedir"

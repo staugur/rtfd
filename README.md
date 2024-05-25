@@ -2,7 +2,7 @@
 
 Build, read your exclusive and fuck docs.
 
-[![Go Reference](https://pkg.go.dev/badge/tcw.im/rtfd.svg)](https://pkg.go.dev/tcw.im/rtfd)
+[![Go Reference](https://pkg.go.dev/badge/pkg/tcw.im/rtfd.svg)](https://pkg.go.dev/pkg/tcw.im/rtfd)
 [![Documentation Status](https://open.saintic.com/rtfd/saintic-docs/badge)](https://docs.saintic.com/rtfd/)
 [![Go test](https://github.com/staugur/rtfd/actions/workflows/gotest.yml/badge.svg)](https://github.com/staugur/rtfd/actions/workflows/gotest.yml)
 
@@ -20,7 +20,7 @@ python2.7和python3.8+环境（并安装了pip、virtualenv模块），nginx服�
 #### 使用编译好的可执行程序
 
 ```bash
-version=1.3.3
+version=1.5.0
 wget -c https://github.com/staugur/rtfd/releases/download/v${version}/rtfd.${version}-linux-amd64.tar.gz
 tar zxf rtfd.${version}-linux-amd64.tar.gz
 mv rtfd ~/bin/
@@ -45,7 +45,7 @@ rtfd -v
     2.2 使用`go get`命令：
 
     ```bash
-    go get -u tcw.im/rtfd      # 可使用 @tag 安装某个正式版本，如 @v1.3.3
+    go get -u pkg.pkg/tcw.im/rtfd      # 可使用 @tag 安装某个正式版本，如 @v1.3.3
     mv ~/go/bih/rtfd ~/bin/
     rtfd -v
     ```

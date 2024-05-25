@@ -7,8 +7,8 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -s -w
-      - -X tcw.im/rtfd/cmd.built={{.Date}}
-      - -X tcw.im/rtfd/cmd.commitID={{.Commit}}
+      - -X pkg/tcw.im/rtfd/cmd.built={{.Date}}
+      - -X pkg/tcw.im/rtfd/cmd.commitID={{.Commit}}
     goos:
       - linux
     goarch:

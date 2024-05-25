@@ -19,8 +19,8 @@ package main
 import (
 	"log"
 
-	_ "tcw.im/rtfd/assets"
-	"tcw.im/rtfd/cmd"
+	_ "pkg/tcw.im/rtfd/assets"
+	"pkg/tcw.im/rtfd/cmd"
 )
 
 func init() {

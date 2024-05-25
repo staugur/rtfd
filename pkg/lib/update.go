@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"tcw.im/rtfd/pkg/util"
+	"pkg/tcw.im/rtfd/pkg/util"
 
 	"pkg.tcw.im/gtc"
 )

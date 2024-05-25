@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"tcw.im/rtfd/pkg/lib"
+	"pkg/tcw.im/rtfd/pkg/lib"
 
 	"github.com/spf13/cobra"
 )
