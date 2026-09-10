@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"pkg/tcw.im/rtfd/pkg/conf"
@@ -32,14 +33,13 @@ import (
 	"pkg/tcw.im/rtfd/vars"
 
 	"github.com/gomodule/redigo/redis"
-	homedir "github.com/mitchellh/go-homedir"
 	"pkg.tcw.im/gtc"
 	db "pkg.tcw.im/gtc/redigo"
 )
 
 type (
-	// PyVer Python版本
-	PyVer uint8
+	// PyVer Python版本，如3、3.10、3.12，需在配置文件py分区中定义
+	PyVer string
 	// BuilderType 构建器类型
 	BuilderType string
 	// Path 文件或目录路径
@@ -49,10 +49,8 @@ type (
 )
 
 const (
-	// PY2 is Python 2.x
-	PY2 PyVer = 2
-	// PY3 is Python 3.x
-	PY3 PyVer = 3
+	// PY3 is Python 3.x（默认版本，已移除Python 2.x支持）
+	PY3 PyVer = vars.DefaultPy
 
 	// HTMLBuilder HTML构建器
 	HTMLBuilder BuilderType = "html"
@@ -62,6 +60,18 @@ const (
 	SingleHTMLBuilder BuilderType = "singlehtml"
 )
 
+// UnmarshalJSON 解析Python版本，兼容历史以数字（2、3）存储的数据
+func (p *PyVer) UnmarshalJSON(data []byte) error {
+	val := strings.Trim(strings.TrimSpace(string(data)), `"`)
+	// 已移除Python2支持，历史数据回退到默认版本
+	if val == "" || val == "null" || val == "2" || strings.HasPrefix(val, "2.") {
+		*p = PY3
+		return nil
+	}
+	*p = PyVer(val)
+	return nil
+}
+
 // Options 每个文档项目的配置项
 type Options struct {
 	// 项目在数据库中唯一标识名
@@ -70,7 +80,7 @@ type Options struct {
 	URL URL
 	// 默认显示的分支
 	Latest string
-	// 使用的python版本，2或3
+	// 使用的python版本，如3、3.10，需在配置文件py分区中定义
 	Version PyVer
 	// 是否单一版本
 	Single bool
@@ -194,18 +204,13 @@ func OptionKeyMap(key string) string {
 	case "afterhook":
 		return "AfterHook"
 	default:
-		return strings.Title(strings.ToLower(key))
+		return util.TitleCase(strings.ToLower(key))
 	}
 }
 
 // New 新建项目管理器示例，path是rtfd配置文件
 func New(path string) (pm *ProjectManager, err error) {
-	if strings.HasPrefix(path, "~") {
-		path, err = homedir.Expand(path)
-		if err != nil {
-			return
-		}
-	}
+	path = util.ExpandPath(path)
 	if !gtc.IsFile(path) {
 		return nil, errors.New("not found config path")
 	}
@@ -282,21 +287,21 @@ func (pm *ProjectManager) GenerateOption(name, url string) (opt Options, err err
 		return
 	}
 	return Options{
-		Name: name, URL: url, Version: PY3, Latest: pm.cfg.DefaultBranch(),
+		Name: name, URL: url, Version: PyVer(pm.cfg.DefaultPyVersion()), Latest: pm.cfg.DefaultBranch(),
 		SourceDir: "docs", Lang: "en", ShowNav: true, HideGit: false, GSP: gsp,
 		DefaultDomain: name + "." + dn, Builder: HTMLBuilder, IsPublic: isPublic,
 	}, nil
 }
 
 // SetOption 按照 Options 参数更新key
-func (pm *ProjectManager) SetOption(opt *Options, key string, value interface{}) {
+func (pm *ProjectManager) SetOption(opt *Options, key string, value any) {
 	p := reflect.ValueOf(opt)
 	f := p.Elem().FieldByName(key)
 	switch key {
 	case "Single", "Install", "ShowNav", "HideGit", "SSL", "IsPublic":
 		f.SetBool(value.(bool))
 	case "Version":
-		f.SetUint(uint64(value.(uint8)))
+		f.SetString(fmt.Sprint(value))
 	default:
 		f.SetString(value.(string))
 	}
@@ -315,8 +320,15 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 	//校验必选项
 	if opt.URL == "" || opt.DefaultDomain == "" || opt.Latest == "" || opt.Lang == "" ||
 		(opt.Builder != HTMLBuilder && opt.Builder != DirHTMLBuilder && opt.Builder != SingleHTMLBuilder) ||
-		(opt.Version != PY2 && opt.Version != PY3) || opt.SourceDir == "" {
+		opt.SourceDir == "" {
 		return errors.New("required fields are missing")
+	}
+	// 校验python版本是否已配置
+	if !pm.cfg.HasPyVersion(string(opt.Version)) {
+		return fmt.Errorf(
+			"unsupported python version: %s, available: %s",
+			opt.Version, strings.Join(pm.cfg.PyVersions(), ", "),
+		)
 	}
 	domain := opt.CustomDomain
 	if domain != "" {
@@ -439,8 +451,6 @@ func (pm *ProjectManager) GetNameOption(name, key string) (val string, err error
 			return "true", nil
 		}
 		return "false", nil
-	case "Version":
-		return fmt.Sprint(f.Uint()), nil
 	default:
 		if f.IsValid() {
 			return f.String(), nil
@@ -558,9 +568,17 @@ func (pm *ProjectManager) renderNginx(opt *Options) error {
 	if gtc.IsFile(cstNgxFileOld) {
 		os.Remove(cstNgxFileOld)
 	}
+	// 静态资源缓存时间，非正整数表示不设置缓存头
+	staticExpires := pm.cfg.MustKey("nginx", "static_expires", "3600")
+	if n, e := strconv.Atoi(staticExpires); e != nil || n <= 0 {
+		staticExpires = ""
+	}
 	ngxopt := &nginxOptions{
 		Name: name, Lang: dftLang, Domain: opt.DefaultDomain, DocsDir: DocsDir,
 		Single: opt.Single, SSLCrt: dftSSLCrt, SSLKey: dftSSLKey,
+		StaticExpires: staticExpires,
+		HTMLNoCache:   gtc.IsTrue(pm.cfg.MustKey("nginx", "html_nocache", "on")),
+		OpenFileCache: gtc.IsTrue(pm.cfg.MustKey("nginx", "open_file_cache", "on")),
 	}
 	dftConf, err := ngxopt.render()
 	if err != nil {
@@ -584,7 +602,8 @@ func (pm *ProjectManager) renderNginx(opt *Options) error {
 			return err
 		}
 	} else {
-		if gtc.IsFile(cstNgxFile) {
+		// conf_ext_dir 未单独配置时与默认配置同路径，此时不能删除
+		if cstNgxFile != dftNgxFile && gtc.IsFile(cstNgxFile) {
 			os.Remove(cstNgxFile)
 		}
 	}
@@ -713,7 +732,7 @@ func (pm *ProjectManager) Remove(name string) error {
 }
 
 // Update 更新文档项目配置
-func (pm *ProjectManager) Update(opt *Options, rule map[string]interface{}) (ok []string, fail []string, err error) {
+func (pm *ProjectManager) Update(opt *Options, rule map[string]any) (ok []string, fail []string, err error) {
 	name := opt.Name
 	if !pm.HasName(name) {
 		err = errors.New("not found project")

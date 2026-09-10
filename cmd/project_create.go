@@ -53,7 +53,7 @@ var createCmd = &cobra.Command{
 		}
 		source := cmd.Flag("sourcedir").Value.String()
 		lang := cmd.Flag("lang").Value.String()
-		pyver, err := flagset.GetUint8("version")
+		pyver, err := flagset.GetString("version")
 		if err != nil {
 			fmt.Printf("invalid param(version): %v\n", pyver)
 			fmt.Println(err)
@@ -96,7 +96,10 @@ var createCmd = &cobra.Command{
 		if latest == "" {
 			latest = pm.CFG().DefaultBranch()
 		}
-		optBind := make(map[string]interface{})
+		if pyver == "" {
+			pyver = pm.CFG().DefaultPyVersion()
+		}
+		optBind := make(map[string]any)
 		optBind["Latest"] = latest
 		optBind["Version"] = pyver
 		optBind["Single"] = single
@@ -135,7 +138,7 @@ func init() {
 	createCmd.Flags().BoolP("single", "", false, "是否为单一版本")
 	createCmd.Flags().StringP("sourcedir", "s", "docs", "实际文档文件所在目录，目录路径是项目的相对位置")
 	createCmd.Flags().StringP("lang", "l", "en", "文档语言，支持多种，以英文逗号分隔")
-	createCmd.Flags().Uint8P("version", "v", 3, "构建文档所用的Python版本，2或3")
+	createCmd.Flags().StringP("version", "v", "", "构建文档所用的Python版本，需在配置文件py分区中定义，留空取默认版本")
 	createCmd.Flags().StringP("requirement", "r", "", "需要安装的依赖包需求文件（文件路径是项目的相对位置），支持多个，以英文逗号分隔")
 	createCmd.Flags().BoolP("install", "", false, "是否需要安装项目")
 	createCmd.Flags().StringP("index", "i", "", "指定pip安装时的pypi源")

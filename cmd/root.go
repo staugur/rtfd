@@ -21,8 +21,8 @@ import (
 	"os"
 
 	"pkg/tcw.im/rtfd/assets"
+	"pkg/tcw.im/rtfd/pkg/util"
 
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"pkg.tcw.im/gtc"
 )
@@ -78,11 +78,7 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	cfg, err := homedir.Expand("~/.rtfd.cfg")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	cfg := util.ExpandPath("~/.rtfd.cfg")
 	if cfgFile != "" {
 		cfg = cfgFile
 	}

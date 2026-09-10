@@ -40,6 +40,9 @@ const (
 	GSPGitee  = "Gitee"
 	GSPNA     = "N/A"
 
+	// DefaultPy 默认的Python版本标识（3、3.10等，仅用于缺省值与兼容历史数据）
+	DefaultPy = "3"
+
 	// 此标记要求重置为默认值
 	ResetEmpty = "-"
 

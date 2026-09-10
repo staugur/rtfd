@@ -1,6 +1,8 @@
 package util
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -45,6 +47,40 @@ func TestUtil(t *testing.T) {
 	}
 	if HMACSha1Byte([]byte("abc"), []byte(hs1k)) != hs1v {
 		t.Fatal("hmac-byte sha1 fail")
+	}
+}
+
+func TestExpandPath(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("no home dir")
+	}
+	cases := map[string]string{
+		"":         "",
+		"~":        home,
+		"~/rtfd":   filepath.Join(home, "rtfd"),
+		"/tmp/cfg": "/tmp/cfg",
+		"rtfd.cfg": "rtfd.cfg",
+		"~x/cfg":   "~x/cfg",
+	}
+	for in, want := range cases {
+		if got := ExpandPath(in); got != want {
+			t.Errorf("ExpandPath(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestTitleCase(t *testing.T) {
+	cases := map[string]string{
+		"":        "",
+		"name":    "Name",
+		"latest":  "Latest",
+		"Builder": "Builder",
+	}
+	for in, want := range cases {
+		if got := TitleCase(in); got != want {
+			t.Errorf("TitleCase(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 

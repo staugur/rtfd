@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"pkg/tcw.im/rtfd/pkg/util"
@@ -37,7 +36,7 @@ type updateHook struct {
 }
 
 // 根据要更新的字段选择对应处理函数
-func (u *updateHook) handle(field string) (fn func(value interface{}) error, err error) {
+func (u *updateHook) handle(field string) (fn func(value any) error, err error) {
 	switch strings.ToLower(field) {
 	case "url":
 		fn = u.url
@@ -81,7 +80,7 @@ func (u *updateHook) handle(field string) (fn func(value interface{}) error, err
 	return
 }
 
-func (u *updateHook) url(value interface{}) error {
+func (u *updateHook) url(value any) error {
 	rawurl := value.(string)
 
 	typ, err := util.CheckGitURL(rawurl)
@@ -94,9 +93,7 @@ func (u *updateHook) url(value interface{}) error {
 		isPublic = true
 	}
 
-	if strings.HasSuffix(rawurl, ".git") {
-		rawurl = strings.TrimSuffix(rawurl, ".git")
-	}
+	rawurl = strings.TrimSuffix(rawurl, ".git")
 	gsp, err := util.GitServiceProvider(rawurl)
 	if err != nil {
 		return err
@@ -108,7 +105,7 @@ func (u *updateHook) url(value interface{}) error {
 	return nil
 }
 
-func (u *updateHook) latest(value interface{}) error {
+func (u *updateHook) latest(value any) error {
 	br := value.(string)
 	// 检测br，避免安全风险
 	if strings.HasPrefix(br, "/") || strings.HasPrefix(br, ".") {
@@ -130,26 +127,28 @@ func (u *updateHook) latest(value interface{}) error {
 	return nil
 }
 
-func (u *updateHook) version(value interface{}) error {
-	v, err := strconv.Atoi(value.(string))
-	if err != nil {
-		return err
-	}
-	ver := PyVer(v)
-	if ver != PY2 && ver != PY3 {
+func (u *updateHook) version(value any) error {
+	ver := strings.TrimSpace(value.(string))
+	if ver == "" {
 		return errors.New("invalid version value")
 	}
-	u.opt.Version = ver
+	if !u.pm.CFG().HasPyVersion(ver) {
+		return fmt.Errorf(
+			"unsupported python version: %s, available: %s",
+			ver, strings.Join(u.pm.CFG().PyVersions(), ", "),
+		)
+	}
+	u.opt.Version = PyVer(ver)
 	return nil
 }
 
-func (u *updateHook) single(value interface{}) error {
+func (u *updateHook) single(value any) error {
 	u.opt.Single = gtc.IsTrue(value.(string))
 	u.render = true
 	return nil
 }
 
-func (u *updateHook) sourceDir(value interface{}) error {
+func (u *updateHook) sourceDir(value any) error {
 	sd := value.(string)
 	// 检测sd，避免安全风险
 	if strings.HasPrefix(sd, "/") || strings.HasPrefix(sd, "..") {
@@ -159,13 +158,13 @@ func (u *updateHook) sourceDir(value interface{}) error {
 	return nil
 }
 
-func (u *updateHook) lang(value interface{}) error {
+func (u *updateHook) lang(value any) error {
 	u.opt.Lang = value.(string)
 	u.render = true
 	return nil
 }
 
-func (u *updateHook) requirement(value interface{}) error {
+func (u *updateHook) requirement(value any) error {
 	req := value.(string)
 	// 检测req，避免安全风险
 	if strings.HasPrefix(req, "/") || strings.HasPrefix(req, "..") {
@@ -175,32 +174,32 @@ func (u *updateHook) requirement(value interface{}) error {
 	return nil
 }
 
-func (u *updateHook) install(value interface{}) error {
+func (u *updateHook) install(value any) error {
 	u.opt.Install = gtc.IsTrue(value.(string))
 	return nil
 }
 
-func (u *updateHook) index(value interface{}) error {
+func (u *updateHook) index(value any) error {
 	u.opt.Index = value.(string)
 	return nil
 }
 
-func (u *updateHook) showNav(value interface{}) error {
+func (u *updateHook) showNav(value any) error {
 	u.opt.ShowNav = gtc.IsTrue(value.(string))
 	return nil
 }
 
-func (u *updateHook) hideGit(value interface{}) error {
+func (u *updateHook) hideGit(value any) error {
 	u.opt.HideGit = gtc.IsTrue(value.(string))
 	return nil
 }
 
-func (u *updateHook) secret(value interface{}) error {
+func (u *updateHook) secret(value any) error {
 	u.opt.Secret = value.(string)
 	return nil
 }
 
-func (u *updateHook) customDomain(value interface{}) error {
+func (u *updateHook) customDomain(value any) error {
 	dn := strings.ToLower(value.(string))
 
 	// 清除自定义域名
@@ -234,22 +233,22 @@ func (u *updateHook) customDomain(value interface{}) error {
 	return nil
 }
 
-func (u *updateHook) builder(value interface{}) error {
+func (u *updateHook) builder(value any) error {
 	u.opt.Builder = value.(BuilderType)
 	return nil
 }
 
-func (u *updateHook) beforeHook(value interface{}) error {
+func (u *updateHook) beforeHook(value any) error {
 	u.opt.BeforeHook = value.(string)
 	return nil
 }
 
-func (u *updateHook) afterHook(value interface{}) error {
+func (u *updateHook) afterHook(value any) error {
 	u.opt.AfterHook = value.(string)
 	return nil
 }
 
-func (u *updateHook) ssl(value interface{}) error {
+func (u *updateHook) ssl(value any) error {
 	v := value.(string)
 
 	// 取消自定义域名SSL
@@ -277,7 +276,7 @@ func (u *updateHook) ssl(value interface{}) error {
 	return nil
 }
 
-func (u *updateHook) meta(value interface{}) error {
+func (u *updateHook) meta(value any) error {
 	// value format key=value, update only one at a time
 	v := value.(string)
 	ms := strings.Split(v, "=")

@@ -49,7 +49,7 @@ type resp struct {
 }
 type resd struct {
 	res
-	Data map[string]interface{} `json:"data"`
+	Data map[string]any `json:"data"`
 }
 
 func customHTTPErrorHandler(err error, c echo.Context) {
@@ -72,7 +72,7 @@ func apiDesc(c echo.Context) error {
 		return err
 	}
 
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	if opt.IsPublic {
 		data["url"] = opt.URL
 	} else {
@@ -187,7 +187,7 @@ func webhookBuild(c echo.Context) error {
 		return err
 	}
 
-	var body map[string]interface{}
+	var body map[string]any
 	RawBody, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		return err
@@ -210,7 +210,7 @@ func webhookBuild(c echo.Context) error {
 		} else {
 			action := body["action"].(string)
 			if action == "released" {
-				release := body["release"].(map[string]interface{})
+				release := body["release"].(map[string]any)
 				branch = release["tag_name"].(string)
 			} else {
 				return errors.New("the action is ignored in the release event")

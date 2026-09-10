@@ -34,7 +34,7 @@ import (
 	"pkg/tcw.im/rtfd/pkg/util"
 	"pkg/tcw.im/rtfd/vars"
 
-	jwt "github.com/dgrijalva/jwt-go"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"pkg.tcw.im/gtc"
 )
 
@@ -211,10 +211,7 @@ func (gh *GHApp) setAllToken(AccessTokenURL string) error {
 
 func (gh *GHApp) ghurl(uri string) string {
 	if !strings.HasPrefix(uri, vars.GitHubApi) {
-		if strings.HasPrefix(uri, "/") {
-			uri = strings.TrimPrefix(uri, "/")
-		}
-		uri = fmt.Sprintf("%s/%s", vars.GitHubApi, uri)
+		uri = fmt.Sprintf("%s/%s", vars.GitHubApi, strings.TrimPrefix(uri, "/"))
 	}
 	return uri
 }
@@ -240,7 +237,7 @@ func (gh *GHApp) requestWithTokenBody(method, uri string, config UserWebhookConf
 		err = errors.New("invalid access token")
 		return
 	}
-	body := make(map[string]interface{})
+	body := make(map[string]any)
 	body["config"] = config
 	body["events"] = []string{"push", "release"}
 	bodyByte, err := json.Marshal(body)
@@ -252,10 +249,7 @@ func (gh *GHApp) requestWithTokenBody(method, uri string, config UserWebhookConf
 }
 
 func (gh *GHApp) genRoute(name string) []string {
-	u := gh.baseURL
-	if strings.HasSuffix(u, "/") {
-		u = strings.TrimSuffix(u, "/")
-	}
+	u := strings.TrimSuffix(gh.baseURL, "/")
 	r1 := fmt.Sprintf("%s/rtfd/%s/webhook", u, name)
 	r2 := fmt.Sprintf("%s/rtfd/webhook/%s", u, name)
 	return []string{r1, r2}

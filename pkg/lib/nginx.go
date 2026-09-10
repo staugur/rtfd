@@ -37,6 +37,10 @@ type nginxOptions struct {
 	SSLCrt string // ssl公钥
 	SSLKey string // ssl私钥
 
+	StaticExpires string // 静态资源缓存时间（秒），空表示不设置缓存头
+	HTMLNoCache   bool   // html是否禁用强缓存（改用no-cache协商缓存）
+	OpenFileCache bool   // 是否开启文件元数据缓存
+
 	Now    string // 当前时间
 	SSL    bool   // 是否开启ssl
 	SSLCFG string // ssl配置内容
@@ -104,7 +108,26 @@ server {
     {{- if .SSL -}}
         {{ .SSLCFG }}
     {{- end }}
+    {{- if .OpenFileCache }}
+    #: 缓存文件元数据，降低大量静态文档的 stat/open 开销
+    open_file_cache max=5000 inactive=30s;
+    open_file_cache_valid 30s;
+    open_file_cache_min_uses 2;
+    open_file_cache_errors on;
+    {{- end }}
+    #: 静态资源（Sphinx的_static、_images及常见静态后缀）可安全缓存
+    location ~* ^/(_static|_images|_downloads)/|\.(css|js|png|jpe?g|gif|ico|svg|woff2?|ttf|eot)$ {
+        {{- if .StaticExpires }}
+        expires {{ .StaticExpires }}s;
+        add_header Cache-Control "public";
+        {{- end }}
+        access_log off;
+    }
     location / {
+        {{- if .HTMLNoCache }}
+        #: 文档内容会随重建变化，html使用协商缓存（可304，不复用过期副本）
+        add_header Cache-Control "no-cache";
+        {{- end }}
         if (-e $document_root$home$document_uri) {
             return 302 $home$document_uri$is_args$args;
         }
@@ -127,6 +150,27 @@ server {
     index index.html master.html;
     {{- if .SSL -}}
         {{ .SSLCFG }}
+    {{- end }}
+    {{- if .OpenFileCache }}
+    #: 缓存文件元数据，降低大量静态文档的 stat/open 开销
+    open_file_cache max=5000 inactive=30s;
+    open_file_cache_valid 30s;
+    open_file_cache_min_uses 2;
+    open_file_cache_errors on;
+    {{- end }}
+    #: 静态资源（Sphinx的_static、_images及常见静态后缀）可安全缓存
+    location ~* ^/(_static|_images|_downloads)/|\.(css|js|png|jpe?g|gif|ico|svg|woff2?|ttf|eot)$ {
+        {{- if .StaticExpires }}
+        expires {{ .StaticExpires }}s;
+        add_header Cache-Control "public";
+        {{- end }}
+        access_log off;
+    }
+    {{- if .HTMLNoCache }}
+    #: 文档内容会随重建变化，html使用协商缓存（可304，不复用过期副本）
+    location ~* \.html$ {
+        add_header Cache-Control "no-cache";
+    }
     {{- end }}
 }
 `

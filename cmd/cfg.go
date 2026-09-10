@@ -69,7 +69,7 @@ func init() {
 	)
 }
 
-func printResult(isJSON bool, data interface{}) {
+func printResult(isJSON bool, data any) {
 	if !isJSON {
 		fmt.Printf("%+v\n", data)
 		return

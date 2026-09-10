@@ -94,20 +94,30 @@ func (b *Builder) build(name, branch string, sender vars.Sender, isDebug bool, i
 	if branch == "" {
 		branch = data.Latest
 	}
+	// 解析构建所用的python程序，版本未配置时回退到默认版本
+	pycmd := b.pm.CFG().PyCommand(string(data.Version))
+	if pycmd == "" {
+		pycmd = b.pm.CFG().PyCommand(b.pm.CFG().DefaultPyVersion())
+	}
+	if pycmd == "" {
+		return fmt.Errorf(
+			"not found available python for project %s, version: %s", name, data.Version,
+		)
+	}
 	var args []string
 	if isDebug {
-		args = []string{"-x", b.sh, "-n", name, "-b", branch, "-c", b.path}
+		args = []string{"-x", b.sh, "-n", name, "-b", branch, "-c", b.path, "-p", pycmd}
 	} else {
-		args = []string{b.sh, "-n", name, "-b", branch, "-c", b.path}
+		args = []string{b.sh, "-n", name, "-b", branch, "-c", b.path, "-p", pycmd}
 	}
 
 	status := false
 	usedtime := -1
 	util.RunCmdStream("bash", args, func(line string) {
 		if sender == vars.CLISender {
-			fmt.Printf(line)
+			fmt.Print(line)
 		} else if isLog {
-			log.Printf(line)
+			log.Print(line)
 		}
 		if strings.HasPrefix(line, "Build Successfully") {
 			status = true

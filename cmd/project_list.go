@@ -51,7 +51,7 @@ var listCmd = &cobra.Command{
 			fmt.Println(err)
 			os.Exit(128)
 		}
-		members := make([]interface{}, len(list))
+		members := make([]any, len(list))
 		if verbose {
 			list, err := pm.ListFullProject()
 			if err != nil {

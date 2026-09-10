@@ -3,6 +3,8 @@ package main
 import (
 	"testing"
 
+	"pkg/tcw.im/rtfd/pkg/conf"
+
 	"gopkg.in/ini.v1"
 )
 
@@ -32,11 +34,11 @@ func TestDefaultConf(t *testing.T) {
 	}
 
 	pySec := cfg.Section("py")
-	if !pySec.HasKey("py2") {
-		t.Fatal("no py2")
+	if pySec.HasKey("py2") {
+		t.Fatal("python2 is not supported")
 	}
-	if !pySec.HasKey("py3") {
-		t.Fatal("no py3")
+	if !pySec.HasKey("3") {
+		t.Fatal("no python3")
 	}
 
 	apiSec := cfg.Section("api")
@@ -52,5 +54,16 @@ func TestDefaultConf(t *testing.T) {
 	_, err = apiSec.Key("port").Int()
 	if err != nil {
 		t.Fatal("invalid api.port")
+	}
+
+	pcfg, err := conf.New("assets/rtfd.cfg")
+	if err != nil {
+		t.Fatalf("Fail to read file: %v", err)
+	}
+	if len(pcfg.PyVersions()) == 0 {
+		t.Fatal("no available python version")
+	}
+	if !pcfg.HasPyVersion(pcfg.DefaultPyVersion()) {
+		t.Fatal("invalid default python version")
 	}
 }

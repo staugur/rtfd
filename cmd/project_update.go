@@ -37,7 +37,7 @@ var updateDesc = `更新文档项目配置
 
     url：        文档项目的git仓库地址
     latest：     latest所指向的分支
-    version：    构建文档所用的Python版本，2或3（int）
+    version：    构建文档所用的Python版本，需在配置文件py分区中定义，如3、3.10
     single：     是否单一版本（bool）
     source：     文档源文件所在目录
     lang：       文档语言
@@ -111,7 +111,7 @@ var updateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		rule := make(map[string]interface{})
+		rule := make(map[string]any)
 		var isUpFile bool
 		var fileMD5 string
 		if text != "" {

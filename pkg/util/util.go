@@ -27,10 +27,13 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"pkg/tcw.im/rtfd/vars"
 )
@@ -111,6 +114,35 @@ func IsDomain(v string) bool {
 // GetNow 获取当前年月日时分秒
 func GetNow() string {
 	return time.Now().Format("2006-01-02 15:04:05")
+}
+
+// ExpandPath 将路径开头的 ~ 展开为当前用户的家目录，其余路径原样返回
+// （替代已废弃的 github.com/mitchellh/go-homedir）
+func ExpandPath(path string) string {
+	if path == "" {
+		return path
+	}
+	if path != "~" && !strings.HasPrefix(path, "~/") {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	if path == "~" {
+		return home
+	}
+	return filepath.Join(home, strings.TrimPrefix(path, "~/"))
+}
+
+// TitleCase 将字符串首字母转为大写（替代已废弃的 strings.Title）
+func TitleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	rs := []rune(s)
+	rs[0] = unicode.ToUpper(rs[0])
+	return string(rs)
 }
 
 // CheckGitURL 检查url是否为支持的git地址。
