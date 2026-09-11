@@ -1,0 +1,911 @@
+basePath: /
+definitions:
+  api.descData:
+    properties:
+      builder:
+        description: Sphinx 构建器
+        type: string
+      defaultBranch:
+        description: 系统默认分支
+        type: string
+      dn:
+        description: 自定义域名，未设置时为 false
+      gsp:
+        description: git 服务商（GitHub/Gitee）
+        type: string
+      hideGit:
+        description: 是否隐藏git入口（非html构建器时恒为true）
+        type: boolean
+      icon:
+        description: 站点图标（base64 data uri）
+        type: string
+      lang:
+        description: 语言列表
+        items:
+          type: string
+        type: array
+      latest:
+        description: 最新版本（分支或tag）
+        type: string
+      public:
+        description: 是否公开仓库
+        type: boolean
+      showNav:
+        description: 是否显示挂件导航
+        type: boolean
+      single:
+        description: 是否单一版本
+        type: boolean
+      sourceDir:
+        description: 文档源目录
+        type: string
+      url:
+        description: 仓库地址（私有仓库会剥敏）
+        type: string
+      versions:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: '各语言的可用版本：{语言: [版本]}'
+        type: object
+    type: object
+  api.exportData:
+    properties:
+      export:
+        description: base64 编码的配置
+        type: string
+      name:
+        description: 项目名称
+        type: string
+    type: object
+  api.importData:
+    properties:
+      name:
+        description: 导入后的项目名称
+        type: string
+    type: object
+  api.res:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  api.resb:
+    properties:
+      branch:
+        type: string
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  api.resd:
+    properties:
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  api.resp:
+    properties:
+      message:
+        type: string
+      ping:
+        type: string
+      success:
+        type: boolean
+    type: object
+  api.resup:
+    properties:
+      failed:
+        description: 更新失败的字段（格式 field:reason）
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      success:
+        type: boolean
+      updated:
+        description: 更新成功的字段
+        items:
+          type: string
+        type: array
+    type: object
+  lib.BuilderType:
+    enum:
+    - html
+    - dirhtml
+    - singlehtml
+    type: string
+    x-enum-varnames:
+    - HTMLBuilder
+    - DirHTMLBuilder
+    - SingleHTMLBuilder
+  lib.Options:
+    properties:
+      AfterHook:
+        description: 构建成功后的钩子命令
+        type: string
+      BeforeHook:
+        description: 构建前的钩子命令
+        type: string
+      Builder:
+        allOf:
+        - $ref: '#/definitions/lib.BuilderType'
+        description: Sphinx构建器，支持html、dirhtml、singlehtml
+      CustomDomain:
+        description: 自定义域名
+        type: string
+      DefaultDomain:
+        description: 默认域名
+        type: string
+      GSP:
+        description: git服务提供商（自动填充）
+        type: string
+      HideGit:
+        description: 隐藏git
+        type: boolean
+      Index:
+        description: pypi仓库
+        type: string
+      Install:
+        description: 是否安装项目
+        type: boolean
+      IsPublic:
+        description: 是否为公开仓库（原type，自动填充）
+        type: boolean
+      Lang:
+        description: 文档语言，以半角逗号分隔多种语言
+        type: string
+      Latest:
+        description: 默认显示的分支
+        type: string
+      Meta:
+        additionalProperties:
+          type: string
+        description: 额外配置数据
+        type: object
+      Name:
+        description: 项目在数据库中唯一标识名
+        type: string
+      Requirement:
+        description: 依赖包文件，以半角逗号分隔多个文件
+        type: string
+      SSL:
+        description: 自定义域名开启HTTPS（自动填充）
+        type: boolean
+      SSLPrivate:
+        description: 自定义域名的ssl私钥
+        type: string
+      SSLPublic:
+        description: 自定义域名的ssl公钥
+        type: string
+      Secret:
+        description: webhook secret
+        type: string
+      ShowNav:
+        description: 是否显示导航
+        type: boolean
+      Single:
+        description: 是否单一版本
+        type: boolean
+      SourceDir:
+        description: 文档源文件路径
+        type: string
+      URL:
+        description: git地址，可以是包含用户名密码的私有仓库
+        type: string
+      Version:
+        allOf:
+        - $ref: '#/definitions/lib.PyVer'
+        description: 使用的python版本，如3、3.10，需在配置文件py分区中定义
+    type: object
+  lib.OptionsWithResult:
+    properties:
+      AfterHook:
+        description: 构建成功后的钩子命令
+        type: string
+      BeforeHook:
+        description: 构建前的钩子命令
+        type: string
+      Builder:
+        allOf:
+        - $ref: '#/definitions/lib.BuilderType'
+        description: Sphinx构建器，支持html、dirhtml、singlehtml
+      Buildset:
+        items:
+          $ref: '#/definitions/lib.Result'
+        type: array
+      CustomDomain:
+        description: 自定义域名
+        type: string
+      DefaultDomain:
+        description: 默认域名
+        type: string
+      GSP:
+        description: git服务提供商（自动填充）
+        type: string
+      HideGit:
+        description: 隐藏git
+        type: boolean
+      Index:
+        description: pypi仓库
+        type: string
+      Install:
+        description: 是否安装项目
+        type: boolean
+      IsPublic:
+        description: 是否为公开仓库（原type，自动填充）
+        type: boolean
+      Lang:
+        description: 文档语言，以半角逗号分隔多种语言
+        type: string
+      Latest:
+        description: 默认显示的分支
+        type: string
+      Meta:
+        additionalProperties:
+          type: string
+        description: 额外配置数据
+        type: object
+      Name:
+        description: 项目在数据库中唯一标识名
+        type: string
+      Requirement:
+        description: 依赖包文件，以半角逗号分隔多个文件
+        type: string
+      SSL:
+        description: 自定义域名开启HTTPS（自动填充）
+        type: boolean
+      SSLPrivate:
+        description: 自定义域名的ssl私钥
+        type: string
+      SSLPublic:
+        description: 自定义域名的ssl公钥
+        type: string
+      Secret:
+        description: webhook secret
+        type: string
+      ShowNav:
+        description: 是否显示导航
+        type: boolean
+      Single:
+        description: 是否单一版本
+        type: boolean
+      SourceDir:
+        description: 文档源文件路径
+        type: string
+      URL:
+        description: git地址，可以是包含用户名密码的私有仓库
+        type: string
+      Version:
+        allOf:
+        - $ref: '#/definitions/lib.PyVer'
+        description: 使用的python版本，如3、3.10，需在配置文件py分区中定义
+    type: object
+  lib.PyVer:
+    enum:
+    - "3"
+    type: string
+    x-enum-varnames:
+    - PY3
+  lib.Result:
+    properties:
+      Branch:
+        description: 触发构建的分支或标签
+        type: string
+      Btime:
+        description: 构建完成时间（结束时）
+        type: string
+      Sender:
+        allOf:
+        - $ref: '#/definitions/vars.Sender'
+        description: 发起构建的来源
+      Status:
+        description: 构建结果 passing表示true 其他表示false
+        type: boolean
+      Usedtime:
+        description: 构建总花费时间（单位秒）
+        type: integer
+    type: object
+  vars.Sender:
+    enum:
+    - api
+    - cli
+    - webhook
+    type: string
+    x-enum-varnames:
+    - APISender
+    - CLISender
+    - WebhookSender
+host: localhost:5000
+info:
+  contact: {}
+  description: |-
+    rtfd 是自托管的 Sphinx 文档构建与托管服务，本文档描述其 HTTP API（版本号与 assets/VERSION 保持一致）。
+    所有接口挂 /rtfd 前缀，响应统一为 {"success":bool,"message":string,"data":any}，
+    业务错误同样以该结构返回（HTTP 200），由 customHTTPErrorHandler 统一处理。
+    鉴权：管理接口（项目管理、配置查询、导入导出）需请求头 X-Rtfd-Sign，值为 MD5(配置 [api] secret)；
+    项目级接口（详情/更新/删除/导出）额外接受 MD5(项目 secret)；构建与 webhook 接口使用项目 secret。
+    多数接口兼容两种路径风格：/rtfd/{name}/xxx 与 /rtfd/xxx/{name}（文档只列出前者）。
+  license:
+    name: Apache-2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0
+  title: Rtfd API
+  version: 2.0.0
+paths:
+  /rtfd/{name}/badge:
+    get:
+      description: |-
+        返回 SVG 状态徽章（passing/failing/unknown），可直接内嵌到 README。无需鉴权。
+        路径别名：GET /rtfd/badge/{name}
+      parameters:
+      - description: 项目名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 分支或tag，缺省用项目最新版本；latest 亦表示最新版本
+        in: query
+        name: branch
+        type: string
+      produces:
+      - image/svg+xml
+      responses:
+        "200":
+          description: SVG 内容
+          schema:
+            type: string
+        default:
+          description: 查询构建结果失败
+          schema:
+            $ref: '#/definitions/api.res'
+      summary: 文档状态徽章
+      tags:
+      - 挂件
+  /rtfd/{name}/build:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        异步触发指定项目的文档构建，接口立即返回 201，构建结果可经项目详情（build=1）查询。
+        路径别名：POST /rtfd/build/{name}；鉴权：项目 secret（未设置则免鉴权）
+      parameters:
+      - description: 项目名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 分支或tag，缺省用项目最新版本
+        in: query
+        name: branch
+        type: string
+      - description: 为 true/on/1 时输出完整构建日志（BuildWithAll）
+        in: query
+        name: debug
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: 已异步启动，branch 回显实际分支
+          schema:
+            $ref: '#/definitions/api.resb'
+        default:
+          description: 项目不存在或签名校验失败
+          schema:
+            $ref: '#/definitions/api.res'
+      security:
+      - RtfdSign: []
+      summary: 触发构建
+      tags:
+      - 构建
+  /rtfd/{name}/desc:
+    get:
+      description: |-
+        返回项目 URL、语言、最新版本、可用版本、构建器、是否隐藏git等元数据，供文档页面浮动挂件（rtfd.js）渲染。
+        无需鉴权。路径别名：GET /rtfd/desc/{name}
+      parameters:
+      - description: 项目名称（不区分大小写）
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: '项目元数据，data.versions 为 {语言: [版本]} 映射'
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.resd'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.descData'
+              type: object
+        default:
+          description: 项目不存在或数据目录无效（success=false）
+          schema:
+            $ref: '#/definitions/api.res'
+      summary: 获取项目描述
+      tags:
+      - 挂件
+  /rtfd/{name}/export:
+    get:
+      description: |-
+        返回 base64 编码的项目配置，可通过导入接口或 CLI 在其它 rtfd 实例中还原。
+        sysmeta=1 时保留系统 meta（如 _installation_id、_webhook_id）。需管理密钥或项目密钥。
+        路径别名：GET /rtfd/export/{name}
+      parameters:
+      - description: 项目名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 为 true/on/1 时保留系统 meta
+        in: query
+        name: sysmeta
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: data.export 为 base64 配置
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.resd'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.exportData'
+              type: object
+        default:
+          description: 项目不存在或密钥校验失败
+          schema:
+            $ref: '#/definitions/api.res'
+      security:
+      - RtfdSign: []
+      summary: 导出项目配置
+      tags:
+      - 项目管理
+  /rtfd/{name}/info:
+    get:
+      description: |-
+        默认返回项目完整配置；key 指定单个字段；build=1 时附带构建集。需管理密钥或项目密钥。
+        路径别名：GET /rtfd/info/{name}
+      parameters:
+      - description: 项目名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 字段名，如 lang、secret、url，返回 data.{key,value}
+        in: query
+        name: key
+        type: string
+      - description: 为 true/on/1 时附带构建集（data.buildset）
+        in: query
+        name: build
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 项目配置（key 时为 data.{key,value}）
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.resd'
+            - properties:
+                data:
+                  $ref: '#/definitions/lib.OptionsWithResult'
+              type: object
+        default:
+          description: 项目不存在或密钥校验失败
+          schema:
+            $ref: '#/definitions/api.res'
+      security:
+      - RtfdSign: []
+      summary: 项目详情
+      tags:
+      - 项目管理
+  /rtfd/{name}/remove:
+    delete:
+      description: |-
+        删除项目配置、构建结果并移除对应的 nginx 配置。需管理密钥或项目密钥。
+        路径别名：/rtfd/remove/{name}（POST 与 DELETE 均可）
+      parameters:
+      - description: 项目名称
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/api.res'
+        default:
+          description: 项目不存在或密钥校验失败
+          schema:
+            $ref: '#/definitions/api.res'
+      security:
+      - RtfdSign: []
+      summary: 删除项目
+      tags:
+      - 项目管理
+    post:
+      description: |-
+        删除项目配置、构建结果并移除对应的 nginx 配置。需管理密钥或项目密钥。
+        路径别名：/rtfd/remove/{name}（POST 与 DELETE 均可）
+      parameters:
+      - description: 项目名称
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 删除成功
+          schema:
+            $ref: '#/definitions/api.res'
+        default:
+          description: 项目不存在或密钥校验失败
+          schema:
+            $ref: '#/definitions/api.res'
+      security:
+      - RtfdSign: []
+      summary: 删除项目
+      tags:
+      - 项目管理
+  /rtfd/{name}/update:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: |-
+        三种传参方式（按优先级）：text（Field:Value 逗号分隔，sep 可自定义分隔符）、file（服务端 .rtfd.ini 路径，内容未变化则跳过）、
+        或直接以字段名传参（如 lang=zh_CN&single=on）。值 - 表示重置为空（requirement/index/secret/before/after）。
+        字段名同创建项目；需管理密钥或项目密钥。路径别名：POST /rtfd/update/{name}
+      parameters:
+      - description: 项目名称
+        in: path
+        name: name
+        required: true
+        type: string
+      - description: 更新规则，如 lang:zh_CN,single:on
+        in: formData
+        name: text
+        type: string
+      - description: text 的字段分隔符，默认英文逗号
+        in: formData
+        name: sep
+        type: string
+      - description: 服务端规则文件路径（.rtfd.ini）
+        in: formData
+        name: file
+        type: string
+      - description: 直接传字段：见创建项目参数列表
+        in: formData
+        name: url
+        type: string
+      - description: 直接传字段：语言，如 en
+        in: formData
+        name: lang
+        type: string
+      - description: 直接传字段：是否单一版本
+        in: formData
+        name: single
+        type: string
+      - description: 直接传字段：分支或tag
+        in: formData
+        name: latest
+        type: string
+      - description: 直接传字段：Python 版本
+        in: formData
+        name: version
+        type: string
+      - description: 直接传字段：文档源目录
+        in: formData
+        name: sourcedir
+        type: string
+      - description: 直接传字段：依赖文件路径，- 重置
+        in: formData
+        name: requirement
+        type: string
+      - description: 直接传字段：是否安装依赖
+        in: formData
+        name: install
+        type: string
+      - description: 直接传字段：pip 源索引，- 重置
+        in: formData
+        name: index
+        type: string
+      - description: 直接传字段：Sphinx 构建器
+        in: formData
+        name: builder
+        type: string
+      - description: 直接传字段：项目密钥，- 重置
+        in: formData
+        name: secret
+        type: string
+      - description: 直接传字段：自定义域名，- 取消
+        in: formData
+        name: domain
+        type: string
+      - description: 直接传字段：证书路径（需与 sslkey 同时提供）
+        in: formData
+        name: sslcrt
+        type: string
+      - description: 直接传字段：证书私钥路径
+        in: formData
+        name: sslkey
+        type: string
+      - description: 直接传字段：是否显示挂件导航
+        in: formData
+        name: shownav
+        type: string
+      - description: 直接传字段：是否隐藏git入口
+        in: formData
+        name: hidegit
+        type: string
+      - description: 直接传字段：构建前钩子，- 重置
+        in: formData
+        name: before
+        type: string
+      - description: 直接传字段：构建后钩子，- 重置
+        in: formData
+        name: after
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 更新结果，updated/failed 为字段列表；规则文件内容未变化时 updated/failed 为空且 message=not
+            updated
+          schema:
+            $ref: '#/definitions/api.resup'
+        default:
+          description: 项目不存在、规则为空或密钥校验失败
+          schema:
+            $ref: '#/definitions/api.res'
+      security:
+      - RtfdSign: []
+      summary: 更新项目配置
+      tags:
+      - 项目管理
+  /rtfd/{name}/webhook:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        接收 GitHub（校验 X-Hub-Signature HMAC-SHA1）与 Gitee（校验 X-Gitee-Token）的 push/release 事件，
+        校验通过后异步构建；ping 事件直接返回 pong；命中项目 meta 的 excluded_branch 时忽略。
+        路径别名：POST /rtfd/webhook/{name}
+      parameters:
+      - description: 项目名称
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ping 事件回 pong（success=true，ping=pong）
+          schema:
+            $ref: '#/definitions/api.resp'
+        "201":
+          description: 已异步启动构建（命中 excluded_branch 时返回 200 且 success=false）
+          schema:
+            $ref: '#/definitions/api.resb'
+        default:
+          description: 来源、事件类型或签名校验失败
+          schema:
+            $ref: '#/definitions/api.res'
+      summary: git仓库webhook
+      tags:
+      - webhook
+  /rtfd/github/app:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        接收 installation / installation_repositories 事件（需 header X-GitHub-Hook-Installation-Target-Type=integration），
+        校验 App ID 后同步项目 meta 与仓库级 webhook
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 处理成功
+          schema:
+            $ref: '#/definitions/api.res'
+        default:
+          description: 事件类型、目标类型或 App ID 校验失败
+          schema:
+            $ref: '#/definitions/api.res'
+      summary: GitHub App 事件回调
+      tags:
+      - webhook
+  /rtfd/import:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: |-
+        导入 base64 编码的项目配置（由导出接口或 CLI `rtfd project transfer -e` 生成）；
+        name 可选，用于改名导入（缺省取配置中的名称）；导入走创建流程，会重新校验并渲染 nginx。需管理密钥。
+      parameters:
+      - description: base64 编码的项目配置
+        in: formData
+        name: export
+        required: true
+        type: string
+      - description: 新项目名称，缺省用配置中的名称
+        in: formData
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: data.name 为导入后的项目名
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.resd'
+            - properties:
+                data:
+                  $ref: '#/definitions/api.importData'
+              type: object
+        default:
+          description: 配置非法、名称已存在或密钥校验失败
+          schema:
+            $ref: '#/definitions/api.res'
+      security:
+      - RtfdSign: []
+      summary: 导入项目配置
+      tags:
+      - 项目管理
+  /rtfd/projects:
+    get:
+      description: 返回全部项目名称；verbose=1 时返回完整项目配置数组。需管理密钥。
+      parameters:
+      - description: 为 true/on/1 时返回完整配置（[]lib.OptionsWithResult）
+        in: query
+        name: verbose
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 项目名称数组；verbose 时为完整配置数组
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.resd'
+            - properties:
+                data:
+                  items:
+                    type: string
+                  type: array
+              type: object
+        default:
+          description: 密钥未配置或校验失败
+          schema:
+            $ref: '#/definitions/api.res'
+      security:
+      - RtfdSign: []
+      summary: 项目列表
+      tags:
+      - 项目管理
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: |-
+        参数与 CLI `rtfd project create` 一致：url 必需，其余字段可选、空值沿用系统默认；创建后自动渲染 nginx 配置。
+        参数可放在表单、query 或 JSON body（键不区分大小写）；需管理密钥。
+      parameters:
+      - description: 项目名称（仅小写字母数字与-_.）
+        in: formData
+        name: name
+        required: true
+        type: string
+      - description: git 仓库地址（https 或 ssh）
+        in: formData
+        name: url
+        required: true
+        type: string
+      - description: 分支或tag，缺省用系统 default_branch
+        in: formData
+        name: latest
+        type: string
+      - description: Python 版本（需在 [py] 分区中定义，如 3.10）
+        in: formData
+        name: version
+        type: string
+      - description: 语言，多个用英文逗号分隔，如 zh_CN,en
+        in: formData
+        name: lang
+        type: string
+      - description: 是否单一版本（true/false）
+        in: formData
+        name: single
+        type: string
+      - description: 文档源目录，默认 docs
+        in: formData
+        name: sourcedir
+        type: string
+      - description: 依赖文件相对路径（相对文档源目录）
+        in: formData
+        name: requirement
+        type: string
+      - description: 是否安装依赖（true/false）
+        in: formData
+        name: install
+        type: string
+      - description: pip 源索引地址
+        in: formData
+        name: index
+        type: string
+      - description: Sphinx 构建器：html/dirhtml/singlehtml
+        in: formData
+        name: builder
+        type: string
+      - description: 项目密钥（构建与 webhook 签名用）
+        in: formData
+        name: secret
+        type: string
+      - description: 自定义域名（需已解析到本机）
+        in: formData
+        name: domain
+        type: string
+      - description: 自定义域名证书路径（与 sslkey 成对）
+        in: formData
+        name: sslcrt
+        type: string
+      - description: 自定义域名证书私钥路径（与 sslcrt 成对）
+        in: formData
+        name: sslkey
+        type: string
+      - description: 构建前钩子命令
+        in: formData
+        name: before
+        type: string
+      - description: 构建后钩子命令
+        in: formData
+        name: after
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: 创建成功，data 为项目配置
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.resd'
+            - properties:
+                data:
+                  $ref: '#/definitions/lib.Options'
+              type: object
+        default:
+          description: 参数非法、名称/自定义域名已存在或密钥校验失败
+          schema:
+            $ref: '#/definitions/api.res'
+      security:
+      - RtfdSign: []
+      summary: 创建项目
+      tags:
+      - 项目管理
+schemes:
+- http
+- https
+securityDefinitions:
+  RtfdSign:
+    description: 密钥签名：MD5([api] secret) 或 MD5(项目 secret)
+    in: header
+    name: X-Rtfd-Sign
+    type: apiKey
+swagger: "2.0"

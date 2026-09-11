@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"pkg/tcw.im/rtfd/assets"
-	"pkg/tcw.im/rtfd/pkg/conf"
 	"pkg/tcw.im/rtfd/pkg/lib"
 	"pkg/tcw.im/rtfd/pkg/util"
 	"pkg/tcw.im/rtfd/vars"
@@ -44,16 +43,20 @@ type Builder struct {
 
 // New 新建构建器实例
 func New(path string) (b *Builder, err error) {
-	cfg, err := conf.New(path)
-	if err != nil {
-		return
-	}
 	pm, err := lib.New(path)
 	if err != nil {
 		return
 	}
+	return NewFromPM(path, pm)
+}
 
-	sh, err := genBuilderScript(cfg.BaseDir())
+// NewFromPM 复用已有的项目管理器创建构建器实例，
+// 避免API等常驻服务每次构建都新建数据库连接
+func NewFromPM(path string, pm *lib.ProjectManager) (b *Builder, err error) {
+	if pm == nil {
+		return nil, errors.New("nil project manager")
+	}
+	sh, err := genBuilderScript(pm.CFG().BaseDir())
 	if err != nil {
 		return
 	}

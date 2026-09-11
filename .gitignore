@@ -21,3 +21,5 @@ old/
 
 bin/
 dist/
+.codebuddy/
+data/

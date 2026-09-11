@@ -21,12 +21,10 @@ import (
 	"os"
 	"strings"
 
-	"pkg/tcw.im/rtfd/pkg/conf"
 	"pkg/tcw.im/rtfd/pkg/lib"
 	"pkg/tcw.im/rtfd/vars"
 
 	"github.com/spf13/cobra"
-	"pkg.tcw.im/gtc"
 )
 
 var updateDesc = `更新文档项目配置
@@ -111,87 +109,31 @@ var updateCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		rule := make(map[string]any)
-		var isUpFile bool
-		var fileMD5 string
+		var rule map[string]any
 		if text != "" {
-			var ssl string
-			for _, kv := range strings.Split(text, ",") {
-				kvs := strings.Split(kv, sep)
-				if len(kvs) != 2 {
-					fmt.Printf("invalid %s\n", kv)
-					os.Exit(1)
-				}
-				field := kvs[0]
-				value := kvs[1]
-				if field == "" || value == "" {
-					continue
-				}
-				if field == "sslcrt" {
-					ssl = value
-				} else if field == "sslpri" {
-					ssl += "," + value
-				} else if field == "ssl" {
-					if gtc.IsFalse(value) {
-						ssl = value
-					} else {
-						fmt.Println("invalid ssl")
-						os.Exit(1)
-					}
-				} else {
-					allowEmpty := []string{"requirement", "index", "secret,", "before", "after"}
-					if value == vars.ResetEmpty && gtc.StrInSlice(field, allowEmpty) {
-						value = ""
-					}
-					rule[field] = value
-				}
-			}
-			if ssl != "" {
-				rule["ssl"] = ssl
-			}
-		} else {
-			if !gtc.IsFile(file) {
-				fmt.Println("not found file")
-				os.Exit(1)
-			}
-			//Check if it needs to be updated
-			md5 := opt.GetMeta(vars.PUFMD5)
-			isUpFile = true
-			fileMD5, _ = gtc.MD5File(file)
-			if md5 != "" && fileMD5 != "" && fileMD5 == md5 {
-				fmt.Println("not updated")
-				return
-			}
-			cfg, err := conf.New(file)
+			rule, err = lib.ParseUpdateRule(text, sep)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			for k, v := range cfg.SecHash("project") {
-				if gtc.StrInSlice(k, []string{"latest"}) {
-					rule[k] = v
-				}
+		} else {
+			var fileMD5 string
+			rule, fileMD5, err = lib.ParseUpdateFile(file)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
 			}
-			for k, v := range cfg.SecHash("sphinx") {
-				if gtc.StrInSlice(k, []string{"sourcedir", "lang", "builder"}) {
-					rule[k] = v
-				}
+			// 规则文件内容未变化则跳过更新
+			if md5 := opt.GetMeta(vars.PUFMD5); md5 != "" && fileMD5 != "" && md5 == fileMD5 {
+				fmt.Println("not updated")
+				return
 			}
-			for k, v := range cfg.SecHash("python") {
-				if gtc.StrInSlice(k, []string{"version", "requirement", "install", "index"}) {
-					rule[k] = v
-				}
+			if err = opt.UpdateMeta(vars.PUFMD5, fileMD5); err != nil {
+				fmt.Println(err)
+				os.Exit(1)
 			}
 		}
 
-		if len(rule) <= 0 {
-			fmt.Println("empty rule")
-			os.Exit(1)
-		}
-
-		if isUpFile {
-			(&opt).UpdateMeta(vars.PUFMD5, fileMD5)
-		}
 		ok, fail, err := pm.Update(&opt, rule)
 		if err != nil {
 			fmt.Println(err)

@@ -10,17 +10,17 @@ Build, read your exclusive and fuck docs.
 
 rtfd 仅支持 linux 操作系统！
 
-构建脚本还需要 bash 运行环境，git命令，
-python3.8+环境（并安装了pip、virtualenv模块），nginx服务。
+构建脚本还需要 bash 运行环境，git命令，python3.10+环境（并安装了pip、virtualenv模块），nginx服务。
 
-另外，依赖外部 redis 服务；如使用 GitHub App 功能则需要能访问 GitHub API。
+另外，元数据存储使用关系型数据库（sqlite、mysql、pgsql 任选其一，默认sqlite，无需外部服务）；
+如使用 GitHub App 功能则需要能访问 GitHub API。
 
 ### 安装
 
 #### 使用编译好的可执行程序
 
 ```bash
-version=1.5.0
+version=2.0.0
 wget -c https://github.com/staugur/rtfd/releases/download/v${version}/rtfd.${version}-linux-amd64.tar.gz
 tar zxf rtfd.${version}-linux-amd64.tar.gz
 mv rtfd ~/bin/
@@ -62,4 +62,12 @@ More options with `--help / -h` option.
 
 ### 文档
 
-More please see the [detailed documentation](https://docs.saintic.com/rtfd)
+使用文档请查阅 [detailed documentation](https://docs.saintic.com/rtfd)
+
+HTTP 接口文档（Swagger UI）由 `api` 服务提供，启动后访问 `http://{host}:{port}/rtfd/docs` 即可在线调试；
+源码注解变更后需执行 `make docs` 重新生成 `docs/{swagger.json,swagger.yaml,docs.go}` 并一并提交。
+
+### 从旧版本（Redis存储）迁移
+
+1. 用旧版 rtfd(2.0.0之前) 导出全部项目：`rtfd p l | jq -r '.[]' | xargs -I{} rtfd p t -e {}` 得到 base64 串
+2. 部署新版并确认 `[database]` 可用后逐个导入：`rtfd p t -i <base64>`（名称已存在时可加新名称作为别名）

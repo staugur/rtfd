@@ -157,6 +157,27 @@ func (c Config) PyCommand(version string) string {
 	return ""
 }
 
+// DatabaseType 获取数据库类型（sqlite、mysql、pgsql），缺省sqlite
+func (c Config) DatabaseType() string {
+	return c.MustKey("database", "type", "sqlite")
+}
+
+// DatabaseDSN 获取数据库连接串（sqlite为文件路径，mysql/pgsql为驱动连接串）
+func (c Config) DatabaseDSN() string {
+	return c.GetKey("database", "dsn")
+}
+
+// DatabaseDebug 是否打印SQL
+func (c Config) DatabaseDebug() bool {
+	return strings.EqualFold(c.MustKey("database", "debug", "off"), "on")
+}
+
+// APISecret 获取API管理密钥（[api] secret），为空表示未配置，
+// 此时管理类接口不可用（构建触发、webhook等按项目密钥走原有逻辑）
+func (c Config) APISecret() string {
+	return c.GetKey("api", "secret")
+}
+
 // DefaultPyVersion 获取默认的Python版本：
 // py分区default指定的版本，未配置或无效时取第一个可用版本，都不存在时返回 vars.DefaultPy
 func (c Config) DefaultPyVersion() string {

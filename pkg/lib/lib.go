@@ -29,12 +29,12 @@ import (
 	"strings"
 
 	"pkg/tcw.im/rtfd/pkg/conf"
+	"pkg/tcw.im/rtfd/pkg/store"
 	"pkg/tcw.im/rtfd/pkg/util"
 	"pkg/tcw.im/rtfd/vars"
 
-	"github.com/gomodule/redigo/redis"
+	"gorm.io/gorm"
 	"pkg.tcw.im/gtc"
-	db "pkg.tcw.im/gtc/redigo"
 )
 
 type (
@@ -148,30 +148,67 @@ type OptionsWithResult struct {
 type ProjectManager struct {
 	path Path
 	cfg  *conf.Config
-	db   *db.DB
+	db   *gorm.DB
 }
 
-// 数据 Key 命名：
-// 1. 项目名称写入 GBPK，自定义域名写入 GBDK，类型均为set
-// 2. 项目配置写入 BCK，类型为string，内容为json
-// 3. 项目构建结果写入 BRK，类型为hash，键为branch/tag
-var (
-	// GBPK 文档项目名称集合，set类型
-	GBPK = "projects"
-	// GBDK 所有自定义的域名集合，set类型
-	GBDK = "domains"
-)
-
-// BCK 生成文档项目配置Key，string类型
-func BCK(projectName string) string {
-	projectName = strings.ToLower(projectName)
-	return "project:" + projectName
+// projectFromOptions 将项目配置转换为数据库模型
+func projectFromOptions(opt Options) *store.Project {
+	return &store.Project{
+		Name:          strings.ToLower(opt.Name),
+		URL:           string(opt.URL),
+		Latest:        opt.Latest,
+		Version:       string(opt.Version),
+		Single:        opt.Single,
+		SourceDir:     string(opt.SourceDir),
+		Lang:          opt.Lang,
+		Requirement:   string(opt.Requirement),
+		Install:       opt.Install,
+		Index:         string(opt.Index),
+		ShowNav:       opt.ShowNav,
+		HideGit:       opt.HideGit,
+		Secret:        opt.Secret,
+		DefaultDomain: opt.DefaultDomain,
+		CustomDomain:  opt.CustomDomain,
+		SSL:           opt.SSL,
+		SSLPublic:     string(opt.SSLPublic),
+		SSLPrivate:    string(opt.SSLPrivate),
+		Builder:       string(opt.Builder),
+		GSP:           opt.GSP,
+		IsPublic:      opt.IsPublic,
+		BeforeHook:    opt.BeforeHook,
+		AfterHook:     opt.AfterHook,
+		Meta:          opt.Meta,
+	}
 }
 
-// BRK 生成构建结果Key，hash类型
-func BRK(projectName string) string {
-	projectName = strings.ToLower(projectName)
-	return "builder:" + projectName
+// optionsFromProject 将数据库模型转换为项目配置
+func optionsFromProject(p *store.Project) Options {
+	return Options{
+		Name:          p.Name,
+		URL:           URL(p.URL),
+		Latest:        p.Latest,
+		Version:       PyVer(p.Version),
+		Single:        p.Single,
+		SourceDir:     Path(p.SourceDir),
+		Lang:          p.Lang,
+		Requirement:   Path(p.Requirement),
+		Install:       p.Install,
+		Index:         URL(p.Index),
+		ShowNav:       p.ShowNav,
+		HideGit:       p.HideGit,
+		Secret:        p.Secret,
+		DefaultDomain: p.DefaultDomain,
+		CustomDomain:  p.CustomDomain,
+		SSL:           p.SSL,
+		SSLPublic:     Path(p.SSLPublic),
+		SSLPrivate:    Path(p.SSLPrivate),
+		Builder:       BuilderType(p.Builder),
+		GSP:           p.GSP,
+		IsPublic:      p.IsPublic,
+		BeforeHook:    p.BeforeHook,
+		AfterHook:     p.AfterHook,
+		Meta:          p.Meta,
+	}
 }
 
 // OptionKeyMap 转换 Options 结构体字段名大小写
@@ -219,11 +256,10 @@ func New(path string) (pm *ProjectManager, err error) {
 		return
 	}
 
-	conn, err := db.New(cfg.GetKey(vars.DFT, "redis"))
+	conn, err := store.Open(cfg.DatabaseType(), cfg.DatabaseDSN(), cfg.DatabaseDebug())
 	if err != nil {
 		return
 	}
-	conn.Prefix = "rtfd:"
 
 	return &ProjectManager{path, cfg, conn}, nil
 }
@@ -233,28 +269,37 @@ func (pm *ProjectManager) CFG() *conf.Config {
 	return pm.cfg
 }
 
-// DB 即db实例
-func (pm *ProjectManager) DB() *db.DB {
+// DB 即数据库实例
+func (pm *ProjectManager) DB() *gorm.DB {
 	return pm.db
+}
+
+// Close 关闭数据库连接
+func (pm *ProjectManager) Close() error {
+	return store.Close(pm.db)
 }
 
 // HasName 是否存在名为 name 的文档项目
 func (pm *ProjectManager) HasName(name string) bool {
-	name = strings.ToLower(name)
-	has, err := pm.db.SIsMember(GBPK, name)
-	if err != nil {
-		panic(err)
-	}
-	return has
+	return pm.countProject(strings.ToLower(name)) > 0
 }
 
 // HasCustomDomain 判断是否已有自定义域名
 func (pm *ProjectManager) HasCustomDomain(domain string) bool {
-	has, err := pm.db.SIsMember(GBDK, domain)
-	if err != nil {
-		panic(err)
+	if domain == "" {
+		return false
 	}
-	return has
+	var count int64
+	pm.db.Model(&store.Project{}).
+		Where("custom_domain = ?", strings.ToLower(domain)).Count(&count)
+	return count > 0
+}
+
+// countProject 统计名称相同的项目数量
+func (pm *ProjectManager) countProject(name string) int64 {
+	var count int64
+	pm.db.Model(&store.Project{}).Where("name = ?", name).Count(&count)
+	return count
 }
 
 // GenerateOption 创建一个通用的默认选项（不作参数的系统级别检测）
@@ -307,6 +352,85 @@ func (pm *ProjectManager) SetOption(opt *Options, key string, value any) {
 	}
 }
 
+// optionAlias 参数别名归一，将外部传入的简写字段转为规范字段名
+func optionAlias(key string) string {
+	switch strings.ToLower(strings.TrimSpace(key)) {
+	case "domain":
+		return "customdomain"
+	case "source":
+		return "sourcedir"
+	case "sslcrt":
+		return "sslpublic"
+	case "sslkey", "sslpri":
+		return "sslprivate"
+	case "before":
+		return "beforehook"
+	case "after":
+		return "afterhook"
+	default:
+		return key
+	}
+}
+
+// SetOptionValue 按 Options 字段的实际类型写入参数值（字符串、布尔自动转换），
+// 供 API 等外部参数（值类型不确定）场景使用
+func (pm *ProjectManager) SetOptionValue(opt *Options, key string, value any) error {
+	field := OptionKeyMap(optionAlias(key))
+	f := reflect.ValueOf(opt).Elem().FieldByName(field)
+	if !f.IsValid() {
+		return fmt.Errorf("invalid field: %s", key)
+	}
+	switch f.Kind() {
+	case reflect.Bool:
+		f.SetBool(util.ParamBool(value))
+	case reflect.String:
+		f.SetString(util.ParamString(value))
+	default:
+		return fmt.Errorf("unsupported field: %s", key)
+	}
+	return nil
+}
+
+// CreateProject 创建文档项目（CLI 与 API 共用入口）：
+// rule 使用与 project update 一致的字段名（url、latest、version、single、sourcedir、
+// lang、requirement、install、index、secret、domain、sslcrt、sslkey、builder、before、after等），
+// 其中 url 必需，其余字段为空或未提供时沿用系统默认值。
+func (pm *ProjectManager) CreateProject(name string, rule map[string]any) (opt Options, err error) {
+	name = strings.ToLower(strings.TrimSpace(name))
+	rawurl := util.ParamString(rule["url"])
+	if rawurl == "" {
+		err = errors.New("empty url")
+		return
+	}
+	if pm.HasName(name) {
+		err = errors.New("the name already exists")
+		return
+	}
+
+	opt, err = pm.GenerateOption(name, rawurl)
+	if err != nil {
+		return
+	}
+
+	for key, value := range rule {
+		field := OptionKeyMap(optionAlias(key))
+		// 名称与地址由 GenerateOption 处理
+		if field == "Name" || field == "URL" {
+			continue
+		}
+		// 空值表示不覆盖默认配置
+		if util.ParamString(value) == "" {
+			continue
+		}
+		if err = pm.SetOptionValue(&opt, key, value); err != nil {
+			return
+		}
+	}
+
+	err = pm.Create(name, opt)
+	return
+}
+
 // Create 新建一个文档项目（唯一入口，必须通过GenerateOption方法生成选项）
 func (pm *ProjectManager) Create(name string, opt Options) error {
 	name = strings.ToLower(name)
@@ -357,20 +481,7 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 	}
 
 	// 基本数据生成完毕，写入数据库
-	val, err := json.Marshal(opt)
-	if err != nil {
-		return err
-	}
-
-	// 使用管道批量事务提交
-	tc := pm.db.Pipeline()
-	// 新增文档项目成功，以下分别是：添加到全局项目集合中、写入配置、添加到全局自定义域名键中
-	tc.SAdd(GBPK, name)
-	tc.Set(BCK(name), string(val)) //配置写入的是JSON格式
-	if domain != "" {
-		tc.SAdd(GBDK, domain)
-	}
-	_, err = tc.Execute()
+	err = pm.db.Create(projectFromOptions(opt)).Error
 	if err != nil {
 		return err
 	}
@@ -389,27 +500,26 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 	return nil
 }
 
-// GetSourceName 查询名为 name 的文档项目数据存储原数据（不经过解析，即JSON格式）
+// GetSourceName 查询名为 name 的文档项目数据（序列化为JSON格式返回）
 func (pm *ProjectManager) GetSourceName(name string) (value []byte, err error) {
-	name = strings.ToLower(name)
-	r, err := pm.db.Get(BCK(name))
+	opt, err := pm.GetName(name)
 	if err != nil {
 		return
 	}
-	return []byte(r), nil
+	return json.Marshal(opt)
 }
 
-// GetName 查询名为 name 的文档项目数据（解析后）
+// GetName 查询名为 name 的文档项目数据
 func (pm *ProjectManager) GetName(name string) (opt Options, err error) {
-	value, err := pm.GetSourceName(name)
+	var p store.Project
+	err = pm.db.Where("name = ?", strings.ToLower(name)).First(&p).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			err = errors.New("not found project")
+		}
 		return
 	}
-	err = json.Unmarshal(value, &opt)
-	if err != nil {
-		return
-	}
-	return opt, nil
+	return optionsFromProject(&p), nil
 }
 
 // GetNameWithBuildset 获取文档项目配置及其构建集详细数据
@@ -479,44 +589,48 @@ func (pm *ProjectManager) ListFullProject() (members []Options, err error) {
 
 // ListProject 获取所有项目
 func (pm *ProjectManager) ListProject() (members []string, err error) {
-	return pm.db.SMembers(GBPK)
+	err = pm.db.Model(&store.Project{}).Order("name").Pluck("name", &members).Error
+	return
 }
 
 // ListBuildset 获取所有构建集
 func (pm *ProjectManager) ListBuildset(name string) (builders []Result, err error) {
-	hash, err := pm.db.HGetAll(BRK(name))
+	var rows []store.BuildResult
+	err = pm.db.Where("project = ?", strings.ToLower(name)).
+		Order("branch").Find(&rows).Error
 	if err != nil {
 		return
 	}
-	builders = make([]Result, 0, len(hash))
-	for _, val := range hash {
-		var rst Result
-		e := json.Unmarshal([]byte(val), &rst)
-		if e != nil {
-			err = e
-			return
-		}
-		builders = append(builders, rst)
+	builders = make([]Result, 0, len(rows))
+	for _, row := range rows {
+		builders = append(builders, resultFromBuildResult(&row))
 	}
 	return builders, nil
 }
 
 // GetBuildset 获取某个构建结果
 func (pm *ProjectManager) GetBuildset(name, branch string) (builder Result, err error) {
-	val, err := pm.db.HGet(BRK(name), branch)
+	var row store.BuildResult
+	err = pm.db.Where("project = ? AND branch = ?", strings.ToLower(name), branch).
+		First(&row).Error
 	if err != nil {
-		if err == redis.ErrNil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			err = errors.New("not found branch")
 		}
 		return
 	}
+	return resultFromBuildResult(&row), nil
+}
 
-	var rst Result
-	err = json.Unmarshal([]byte(val), &rst)
-	if err != nil {
-		return
+// resultFromBuildResult 将构建结果模型转换为 Result
+func resultFromBuildResult(row *store.BuildResult) Result {
+	return Result{
+		Branch:   row.Branch,
+		Status:   row.Status,
+		Sender:   vars.Sender(row.Sender),
+		Btime:    row.Btime,
+		Usedtime: row.Usedtime,
 	}
-	return rst, nil
 }
 
 func (pm *ProjectManager) renderNginx(opt *Options) error {
@@ -647,20 +761,31 @@ func (pm *ProjectManager) reloadNginx() error {
 	return nil
 }
 
-// BuildRecord 记录构建结果
+// BuildRecord 记录构建结果（同项目同分支仅保留最新一条）
 func (pm *ProjectManager) BuildRecord(name string, branchOrTag string, result Result) error {
 	name = strings.ToLower(name)
-	rst, err := json.Marshal(result)
-	if err != nil {
-		return err
+	row := store.BuildResult{
+		Project:  name,
+		Branch:   branchOrTag,
+		Status:   result.Status,
+		Sender:   string(result.Sender),
+		Btime:    result.Btime,
+		Usedtime: result.Usedtime,
 	}
-
-	_, err = pm.db.HSet(BRK(name), branchOrTag, string(rst))
+	// 使用主键做upsert：存在则更新，不存在则新增
+	var old store.BuildResult
+	err := pm.db.Where("project = ? AND branch = ?", name, branchOrTag).First(&old).Error
 	if err != nil {
-		return err
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		return pm.db.Create(&row).Error
 	}
-
-	return nil
+	row.ID = old.ID
+	row.CreatedAt = old.CreatedAt
+	return pm.db.Model(&old).Select(
+		"status", "sender", "btime", "usedtime",
+	).Updates(row).Error
 }
 
 // Remove 删除一个文档项目及其数据
@@ -716,19 +841,14 @@ func (pm *ProjectManager) Remove(name string) error {
 		}
 	}
 
-	tc := pm.db.Pipeline()
-	tc.SRem(GBPK, name)
-	domain := opt.CustomDomain
-	if domain != "" {
-		tc.SRem(GBDK, domain)
-	}
-	tc.Del(BCK(name))
-	tc.Del(BRK(name))
-	_, err = tc.Execute()
-	if err != nil {
-		return err
-	}
-	return nil
+	// 删除项目及其构建结果（事务）
+	err = pm.db.Transaction(func(tx *gorm.DB) error {
+		if e := tx.Where("name = ?", name).Delete(&store.Project{}).Error; e != nil {
+			return e
+		}
+		return tx.Where("project = ?", name).Delete(&store.BuildResult{}).Error
+	})
+	return err
 }
 
 // Update 更新文档项目配置
@@ -754,11 +874,7 @@ func (pm *ProjectManager) Update(opt *Options, rule map[string]any) (ok []string
 		ok = append(ok, field)
 	}
 
-	val, err := json.Marshal(opt)
-	if err != nil {
-		return
-	}
-	_, err = pm.db.Set(BCK(name), string(val)) //配置写入的是JSON格式
+	err = pm.SaveOptions(opt)
 	if err != nil {
 		return
 	}
@@ -809,20 +925,23 @@ func (opt *Options) UpdateMeta(key, val string) error {
 
 // Writeback 配置写入数据库
 func (opt Options) Writeback(pm *ProjectManager) error {
+	return pm.SaveOptions(&opt)
+}
+
+// SaveOptions 将项目配置整体写回数据库
+func (pm *ProjectManager) SaveOptions(opt *Options) error {
 	name := strings.ToLower(opt.Name)
-	if !pm.HasName(name) {
-		return errors.New("not found project")
-	}
-	val, err := json.Marshal(opt)
+	var p store.Project
+	err := pm.db.Where("name = ?", name).First(&p).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("not found project")
+		}
 		return err
 	}
-	ok, err := pm.DB().Set(BCK(name), string(val))
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return errors.New("write fail")
-	}
-	return nil
+
+	data := projectFromOptions(*opt)
+	data.ID = p.ID
+	data.CreatedAt = p.CreatedAt
+	return pm.db.Save(data).Error
 }

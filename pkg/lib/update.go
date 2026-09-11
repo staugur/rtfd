@@ -23,10 +23,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"pkg/tcw.im/rtfd/pkg/conf"
 	"pkg/tcw.im/rtfd/pkg/util"
+	"pkg/tcw.im/rtfd/vars"
 
 	"pkg.tcw.im/gtc"
 )
+
+// allowEmptyFields 值可以为 - 表示重置为空的字段
+var allowEmptyFields = []string{"requirement", "index", "secret", "before", "after"}
 
 // 更新文档项目配置结构体
 type updateHook struct {
@@ -202,15 +207,8 @@ func (u *updateHook) secret(value any) error {
 func (u *updateHook) customDomain(value any) error {
 	dn := strings.ToLower(value.(string))
 
-	// 清除自定义域名
+	// 清除自定义域名（域名占用记录随项目配置一起落库）
 	if gtc.IsFalse(dn) {
-		odn := u.opt.CustomDomain
-		if u.pm.HasCustomDomain(odn) {
-			_, err := u.pm.db.SRem(GBDK, odn)
-			if err != nil {
-				return err
-			}
-		}
 		u.opt.CustomDomain = ""
 		u.render = true
 		return nil
@@ -223,19 +221,20 @@ func (u *updateHook) customDomain(value any) error {
 		return errors.New("this domain name already exists")
 	}
 
-	_, err := u.pm.db.SAdd(GBDK, dn)
-	if err != nil {
-		return err
-	}
-
 	u.opt.CustomDomain = dn
 	u.render = true
 	return nil
 }
 
 func (u *updateHook) builder(value any) error {
-	u.opt.Builder = value.(BuilderType)
-	return nil
+	// 兼容字符串与 BuilderType，并校验取值范围
+	bt := BuilderType(strings.TrimSpace(util.ParamString(value)))
+	switch bt {
+	case HTMLBuilder, DirHTMLBuilder, SingleHTMLBuilder:
+		u.opt.Builder = bt
+		return nil
+	}
+	return errors.New("invalid builder")
 }
 
 func (u *updateHook) beforeHook(value any) error {
@@ -289,4 +288,86 @@ func (u *updateHook) meta(value any) error {
 		return errors.New("cannot change system reserved fields")
 	}
 	return u.opt.UpdateMeta(key, val)
+}
+
+// ParseUpdateRule 解析text形式的更新规则，返回字段->值的映射（CLI 与 API 共用）。
+// 格式：Field:Value,Field:Value（分隔符由 sep 指定，缺省是英文冒号）；
+// 其中 sslcrt 与 sslpri 合并为 ssl 字段（值以英文逗号分隔），
+// requirement、index、secret、before、after的值可以为 - 表示重置为空。
+func ParseUpdateRule(text, sep string) (rule map[string]any, err error) {
+	if sep == "" {
+		sep = ":"
+	}
+	rule = make(map[string]any)
+	var ssl string
+	for _, kv := range strings.Split(text, ",") {
+		kvs := strings.Split(kv, sep)
+		if len(kvs) != 2 {
+			return nil, fmt.Errorf("invalid %s", kv)
+		}
+		field := kvs[0]
+		value := kvs[1]
+		if field == "" || value == "" {
+			continue
+		}
+		switch field {
+		case "sslcrt":
+			ssl = value
+		case "sslpri":
+			ssl += "," + value
+		case "ssl":
+			// ssl不在上方合并列表中，仅支持取消（值为0、false、off）
+			if !gtc.IsFalse(value) {
+				return nil, errors.New("invalid ssl")
+			}
+			ssl = value
+		default:
+			if value == vars.ResetEmpty && gtc.StrInSlice(field, allowEmptyFields) {
+				value = ""
+			}
+			rule[field] = value
+		}
+	}
+	if ssl != "" {
+		rule["ssl"] = ssl
+	}
+	if len(rule) == 0 {
+		err = errors.New("empty rule")
+	}
+	return
+}
+
+// ParseUpdateFile 解析仓库内的 .rtfd.ini 规则文件（构建期回写），
+// 仅白名单字段参与更新，同时返回文件内容MD5供调用方判断是否需要更新
+func ParseUpdateFile(path string) (rule map[string]any, md5 string, err error) {
+	if !gtc.IsFile(path) {
+		err = errors.New("not found file")
+		return
+	}
+	cfg, err := conf.New(path)
+	if err != nil {
+		return
+	}
+	md5, _ = gtc.MD5File(path)
+
+	rule = make(map[string]any)
+	for k, v := range cfg.SecHash("project") {
+		if gtc.StrInSlice(k, []string{"latest"}) {
+			rule[k] = v
+		}
+	}
+	for k, v := range cfg.SecHash("sphinx") {
+		if gtc.StrInSlice(k, []string{"sourcedir", "lang", "builder"}) {
+			rule[k] = v
+		}
+	}
+	for k, v := range cfg.SecHash("python") {
+		if gtc.StrInSlice(k, []string{"version", "requirement", "install", "index"}) {
+			rule[k] = v
+		}
+	}
+	if len(rule) == 0 {
+		err = errors.New("empty rule")
+	}
+	return
 }

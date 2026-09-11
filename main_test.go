@@ -20,6 +20,17 @@ func TestDefaultConf(t *testing.T) {
 	if !dftSec.HasKey("base_dir") {
 		t.Fatal("no base_dir")
 	}
+	if dftSec.HasKey("redis") {
+		t.Fatal("redis is not supported")
+	}
+
+	dbSec := cfg.Section("database")
+	if !dbSec.HasKey("type") {
+		t.Fatal("no database.type")
+	}
+	if !dbSec.HasKey("dsn") {
+		t.Fatal("no database.dsn")
+	}
 
 	ngxSec := cfg.Section("nginx")
 	if !ngxSec.HasKey("dn") {
@@ -51,6 +62,9 @@ func TestDefaultConf(t *testing.T) {
 	if !apiSec.HasKey("server_url") {
 		t.Fatal("no api.server_url")
 	}
+	if !apiSec.HasKey("secret") {
+		t.Fatal("no api.secret")
+	}
 	_, err = apiSec.Key("port").Int()
 	if err != nil {
 		t.Fatal("invalid api.port")
@@ -65,5 +79,8 @@ func TestDefaultConf(t *testing.T) {
 	}
 	if !pcfg.HasPyVersion(pcfg.DefaultPyVersion()) {
 		t.Fatal("invalid default python version")
+	}
+	if pcfg.DatabaseType() == "" || pcfg.DatabaseDSN() == "" {
+		t.Fatal("invalid database config")
 	}
 }

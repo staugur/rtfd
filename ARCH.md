@@ -13,18 +13,20 @@ Sphinx 构建 HTML 文档，交由 Nginx 静态托管，并提供 API / Webhook 
 | CLI | Go + cobra | 项目 CRUD、触发构建、查看配置、启动 API 服务 |
 | API 服务 | Go + echo v4 | desc / badge / build / webhook / GitHub App 回调 |
 | 构建器 | bash 脚本 `assets/builder.sh` | git clone → virtualenv → pip → sphinx-build |
-| 元数据存储 | Redis（`gtc/redigo`） | 项目配置、自定义域名、构建结果 |
+| 元数据存储 | 关系型数据库 + GORM（sqlite / mysql / pgsql） | 项目配置、自定义域名、构建结果 |
 | 文档托管 | Nginx | 静态托管 `{base_dir}/docs/` 下生成的 HTML，并负责域名/SSL |
-| 前端挂件 | `assets/rtfd.js`（jQuery+Tipped） | 注入生成文档，提供语言/版本/编辑链接浮动导航 |
+| 前端挂件 | `assets/rtfd.js`（原生 JS，零依赖） | 注入生成文档，右下角浮动面板提供语言/版本/编辑链接切换 |
 
 **运行环境**：仅支持 Linux；构建期依赖 bash、git、python3（含 pip、virtualenv，支持配置多版本）、
-nginx、外部 Redis 服务；GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
+nginx；元数据存储使用 sqlite / mysql / pgsql（默认 sqlite，无需外部服务）；
+GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 
 ### 技术栈
 
 - 语言/工程：Go 1.26，module `pkg/tcw.im/rtfd`，单二进制
-- CLI：`spf13/cobra v1.1`；Web：`labstack/echo/v4`
-- 存储：`gomodule/redigo` + `pkg.tcw.im/gtc/redigo`（Redis 客户端封装，统一前缀）
+- CLI：`spf13/cobra v1.10`；Web：`labstack/echo/v4`
+- 存储：`gorm.io/gorm` + 驱动 `glebarez/sqlite`（纯Go，保持 `CGO_ENABLED=0` 交叉编译）、
+  `gorm.io/driver/mysql`、`gorm.io/driver/postgres`
 - 配置：`gopkg.in/ini.v1`（INI 插值支持 `%(key)s`）
 - 静态资源打包：`go:embed`（builder.sh / rtfd.js / rtfd.cfg / VERSION）
 - 其它：`pkg.tcw.im/gtc`（通用工具库）、`golang-jwt/jwt/v5`（GitHub App 身份）
@@ -54,15 +56,14 @@ nginx、外部 Redis 服务；GitHub App 功能需能访问 GitHub API。**不�
 │    git clone(branch) → virtualenv → pip install → conf.py 注入 →             │
 │    sphinx-build ×(lang × branch) → latest 软链 → .rtfd.ini 回写              │
 └───────┬──────────────────────────────────────────────────────────────────────┘
-        │ 读写（Pipeline 批量事务）                │ 生成/重载配置 (nginx -t / reload)
+        │ 读写（GORM）                              │ 生成/重载配置 (nginx -t / reload)
         ▼                                        ▼
-┌──────────────────────┐      ┌────────────────────────────────────────────────┐
-│ Redis  (前缀 rtfd:)   │      │ Nginx                                        │
-│  projects   (set)     │      │ base/nginx/{name}.conf     默认域名 {n}.{dn}  │
-│  domains    (set)     │      │ base/nginx/ext/{name}.conf 自定义域名(可选SSL)│
-│  project:{n} (string) │      │ root: base/docs/{name}/{lang}/{version}       │
-│  builder:{n} (hash)   │      └────────────────────────────────────────────────┘
-└──────────────────────┘
+┌────────────────────────────┐  ┌─────────────────────────────────────────────┐
+│ 数据库 (sqlite/mysql/pgsql) │  │ Nginx                                       │
+│  projects      项目配置     │  │ base/nginx/{name}.conf     默认域名 {n}.{dn} │
+│  build_results 构建结果     │  │ base/nginx/ext/{name}.conf 自定义域名(SSL)   │
+└────────────────────────────┘  │ root: base/docs/{name}/{lang}/{version}      │
+                                └─────────────────────────────────────────────┘
 ```
 
 核心设计点：
@@ -70,25 +71,48 @@ nginx、外部 Redis 服务；GitHub App 功能需能访问 GitHub API。**不�
 - **构建与托管分离**：Go 只负责状态编排与参数化，真正的构建在 bash 脚本内完成；
   `builder.sh` 在构建期反查 `rtfd` CLI（`rtfd project get <name>:<key>`）获取配置，
   形成「Go → bash → Go」的回环协作。
-- **项目配置收敛于 Redis JSON**，本地文件系统只放构建产物与 nginx conf，
-  便于迁移（`rtfd project transfer` 可 base64 导入/导出）。
+- **项目配置收敛于数据库**，本地文件系统只放构建产物与 nginx conf，
+  便于迁移（`rtfd project transfer` 可 base64 导入/导出，也是跨存储迁移的手段）。
 - **webhook 自动构建**：GitHub/Gitee 推送事件打到 API，校验签名后异步触发构建。
 
 ---
 
 ## 3. 数据模型
 
-### 3.1 Redis Key（客户端统一前缀 `rtfd:`）
+### 3.1 表结构（`pkg/store`，GORM 自动迁移）
 
-| Key | 类型 | 说明 |
+**projects** —— 文档项目配置（`store.Project`，对应 `lib.Options` 的关系化存储）：
+
+| 列 | 类型 | 说明 |
 |---|---|---|
-| `projects` | set | 全部文档项目名（小写） |
-| `domains` | set | 全部已占用自定义域名 |
-| `project:{name}` | string | 项目配置，内容为 Options 的 JSON |
-| `builder:{name}` | hash | 构建结果，field=分支/标签，value=Result 的 JSON |
+| id | 主键 | 自增 |
+| name | varchar(100) | 项目名，唯一索引，统一小写 |
+| url / latest / version | varchar | git地址、默认分支、python版本（如 3.10） |
+| single / install / show_nav / hide_git / ssl / is_public | bool | 各类开关 |
+| source_dir / lang / requirement / index | varchar | 文档目录、语言、依赖文件、pip源 |
+| secret | varchar | build/webhook 校验密钥 |
+| default_domain | varchar | `{name}.{nginx.dn}` |
+| custom_domain | varchar(255) | 自定义域名，**普通索引**（唯一性由 `HasCustomDomain` 校验） |
+| ssl_public / ssl_private | varchar | 自定义域名证书 |
+| builder / gsp | varchar | 构建器、git服务商 |
+| before_hook / after_hook | varchar | 构建前后钩子 |
+| meta | text | `map[string]string` 的 JSON（`serializer:json`） |
+| created_at / updated_at | 时间 | GORM 自动维护 |
 
-Key 构造统一走 `pkg/lib` 中 `GBPK / GBDK / BCK(name) / BRK(name)` 常量与函数，
-项目名一律先 `strings.ToLower`。
+**build_results** —— 构建结果（`store.BuildResult`）：
+
+| 列 | 类型 | 说明 |
+|---|---|---|
+| id | 主键 | 自增 |
+| project + branch | varchar | **联合唯一索引**（同项目同分支只保留最新结果） |
+| status | bool | passing / failing |
+| sender | varchar | `cli` / `api` / `webhook` |
+| btime | varchar | 构建结束时间 `YYYY-MM-DD HH:MM:SS` |
+| usedtime | int | 耗时秒数 |
+| created_at / updated_at | 时间 | 首次构建 / 最近更新 |
+
+> 旧版本（Redis）的四类 Key：`projects`(set)、`domains`(set)、`project:{name}`(string JSON)、
+> `builder:{name}`(hash) 已废弃；迁移方式见「12. 迁移说明」。
 
 ### 3.2 Options —— 项目配置（`pkg/lib/lib.go`）
 
@@ -144,7 +168,8 @@ Meta key 需匹配 `^[a-z_][0-9a-z_]{1,63}$`，取值 `-`（`vars.ResetEmpty`）
 
 ## 4. 项目生命周期（`pkg/lib`）
 
-`ProjectManager` 是核心对象：持有配置路径 + `conf.Config` + Redis `db.DB`。
+`ProjectManager` 是核心对象：持有配置路径 + `conf.Config` + GORM `*gorm.DB`（由 `pkg/store.Open` 创建，
+启动时自动迁移表结构；项目名统一小写）。
 
 ### 4.1 创建 create
 
@@ -158,8 +183,7 @@ cli create → GenerateOption(name, url) 生成默认 Options
       ├─ 校验必填项；校验 python 版本已在 [py] 分区定义；自定义域名校验且须未占用；SSL 证书文件须存在
       ├─ renderNginx：渲染 {base}/nginx/{name}.conf（默认域）与 ext 目录（自定义域）
       │    → nginx -t 通过后 -s reload
-      └─ Redis Pipeline 批量事务：SAdd projects / Set project:{name}=JSON / SAdd domains
-         （GitHub 项目再异步创建仓库 webhook，失败仅告警不阻断）
+      └─ 写入 projects 表（GORM Create；GitHub 项目再异步创建仓库 webhook，失败仅告警不阻断）
 ```
 
 ### 4.2 查询
@@ -172,7 +196,7 @@ cli create → GenerateOption(name, url) 生成默认 Options
 
 1. `-t "Field:Value,..."`：`updateHook.handle()` 按字段分发到处理函数，逐字段
    校验/落 Options，设置 `render` 标志；收集 ok/fail 列表逐个打印；
-   完成后整体 JSON 写回 Redis，`render=true` 字段（lang/single/domain/ssl…）重渲染 nginx。
+   完成后整体写回 projects 表（`SaveOptions`），`render=true` 字段（lang/single/domain/ssl…）重渲染 nginx。
 2. `-f .rtfd.ini`：构建期自动回写，白名单抽取 `latest` 等字段，比对 meta
    `_update_file_md5` 未变化则跳过（输出 `not updated`）。
 
@@ -181,7 +205,7 @@ cli create → GenerateOption(name, url) 生成默认 Options
 ### 4.4 删除 remove
 
 按 name 清理：`docs/{name}` 目录、默认/扩展 nginx conf（删除后 reload）、
-GitHub webhook（若 GSP=GitHub）、最后 Redis Pipeline `SRem/Del` 四键原子完成。
+GitHub webhook（若 GSP=GitHub），最后在一个事务内删除 projects 记录及其 build_results 记录。
 
 ### 4.5 转储 transfer
 
@@ -244,7 +268,7 @@ trap SIGINT/SIGTERM 兜底清理退出
 
 ### 5.3 参数优先级
 
-`.rtfd.ini（仓库内）` > `项目 Options（Redis）` > `系统 rtfd.cfg 默认值`。
+`.rtfd.ini（仓库内）` > `项目 Options（数据库）` > `系统 rtfd.cfg 默认值`。
 builder.sh 通过 `_getDocsConf`（`rtfd project get`）与 `_getRtfdConf`（`rtfd cfg`）反查配置。
 
 ---
@@ -308,25 +332,60 @@ docs/{name}/
   建议取值不宜过长，或用版本号目录隔离）
 
 访问页面的语言/版本切换由注入页面的 `rtfd.js` 挂件完成：构建时 URL query 携带
-`name/branch/rtfd_api`，运行时向 `GET /rtfd/:name/desc` 拉取元数据渲染浮动面板。
+`name/branch/rtfd_api`，运行时用原生 `fetch` 向 `GET /rtfd/:name/desc` 拉取元数据，
+在页面右下角渲染浮动面板（默认只显示当前语言与版本，点击展开语言/版本/仓库链接）。
 
 ---
 
 ## 7. 对外 API（`api` 包，均挂 `/rtfd` 前缀）
 
-兼容两种路径风格（`:name` 在前后），新增接口建议同时注册两种。
+路由注册集中在 `api.registerRoutes`（`api.New` 供启动与测试复用），兼容两种路径风格
+（`:name` 在前或在后），新增接口建议同时注册两种。
 
-| 路由 | 方法 | 功能 | 鉴权/说明 |
+**公开接口**（无需密钥）：
+
+| 路由 | 方法 | 功能 | 说明 |
 |---|---|---|---|
 | `/:name/desc`、`/desc/:name` | GET | 项目描述 | 返回 URL、langs、latest、versions、builder、showNav 等，供 rtfd.js 渲染 |
 | `/:name/badge`、`/badge/:name` | GET | 文档状态徽章 SVG | `?branch=`，默认 Latest；passing/failing/unknown |
-| `/:name/build`、`/build/:name` | POST | 触发构建 | Header `X-Rtfd-Sign=MD5(secret)`（空 secret 免鉴权）；参数 branch；异步执行返回 201 |
+| `/:name/build`、`/build/:name` | POST | 触发构建 | Header `X-Rtfd-Sign=MD5(secret)`（空 secret 免鉴权）；参数 branch、debug；异步执行返回 201 |
 | `/:name/webhook`、`/webhook/:name` | POST | git webhook | 校验 GitHub `X-Hub-Signature`(sha1=HMAC) / Gitee `X-Gitee-Token`；识别 UA 分派；ping→pong；排除 `excluded_branch` |
 | `/assets/rtfd.js` | GET/HEAD | 静态挂件脚本 | 内嵌 assets.RtfdJS |
 | `/github/app` | POST | GitHub App 事件 | `installation`/`installation_repositories`，校验 App ID 后 `Dispatch` |
 
-统一响应：`{"success": bool, "message": string}`；错误由 `customHTTPErrorHandler`
+**管理接口**（对应 CLI 的 `project` 子命令，方便实现 Web 管理端）：
+
+| 路由 | 方法 | 功能 | 参数（支持表单/query/JSON） |
+|---|---|---|---|
+| `/projects` | GET | 项目列表 | `verbose=1` 返回完整 Options 数组，否则仅名称数组 |
+| `/projects` | POST | 创建项目 | `name`、`url` 必需，其余同 CLI create（`latest/version/single/sourcedir/lang/requirement/install/index/builder/secret/domain/sslcrt/sslkey/before/after`），空值沿用系统默认 |
+| `/:name/info`、`/info/:name` | GET | 项目详情 | `key=Field` 返回单字段、`build=1` 附带构建集，否则返回 Options 结构体（字段名为结构体字段名） |
+| `/:name/update`、`/update/:name` | POST | 更新配置 | `text=Field:Value,…`（`sep` 可自定义分隔符）、`file=服务端规则文件路径`、或直接以字段名传参；响应含 `updated/failed` 字段列表 |
+| `/:name/remove`、`/remove/:name` | POST/DELETE | 删除项目 | 同时清理构建结果与 nginx 配置 |
+| `/:name/export`、`/export/:name` | GET | 导出 base64 配置 | `sysmeta=1` 保留内置 meta |
+| `/import` | POST | 导入 base64 配置 | `export` 必需、`name` 可选（别名覆盖） |
+
+管理接口鉴权：Header `X-Rtfd-Sign=MD5(secret)`，密钥取自配置 `[api] secret`；
+项目级接口（info/update/remove/export）同时接受项目自身密钥。`[api] secret` 未配置时
+管理接口一律拒绝（`api secret is not configured`），避免 Web 管理能力被意外暴露；
+构建与 webhook 仍按项目密钥的原逻辑运行（空 secret 免鉴权）。
+
+统一响应：`{"success": bool, "message": string, "data": any}`；错误由 `customHTTPErrorHandler`
 输出（默认 HTTP 200，echo.HTTPError 除外）。
+
+### 7.1 接口文档（Swagger/OpenAPI）
+
+- 注解写在每个 handler 上方（swaggo 风格）：`@Summary/@Description/@Tags/@Produce/@Param/@Success/@Failure/@Security/@Router`；
+  通用信息（`@title/@version/@host/@securityDefinitions.apikey RtfdSign` 等）在 `main.go`
+- 生成：`make docs`（等价 `swag init -g main.go -o docs --ot go,json,yaml --propertyStrategy pascalcase`，swag 版本在 Makefile 里固定）；
+  产物 `docs/{docs.go,swagger.json,swagger.yaml}` **需提交**，`api` 空白导入 `docs` 包后注册到 swag 注册表
+- 在线查看：`GET /rtfd/docs`（301 到 `/rtfd/docs/index.html`）、规范文件 `/rtfd/docs/doc.json`、`/rtfd/docs/doc.yaml`；
+  Swagger UI 静态资源由 `swaggo/files` 内嵌（离线可用、无需鉴权），会使二进制增大约 8MB
+- 生成约定：swagger 2.0 中同一状态码只能有一个响应，因此业务错误统一记为 `@Failure default {object} res`
+  （实际仍为 HTTP 200）；`data` 用 `resd{data=<类型>}` 语法展开为具体模型；
+  `--propertyStrategy pascalcase` 是为了让未加 json tag 的 `lib.Options/Result` 字段名与实际响应（首字母大写）一致
+- 接口与文档一致性由 `api/docs_test.go`（UI/规范可访问、路径与安全定义齐全）和 CI 的 `make docs && git diff --exit-code docs`
+  兜底；不需要内嵌 UI 时可去掉 echo-swagger 依赖与 `/docs` 路由，仅保留 `docs/swagger.json` 供外部工具使用
 
 ---
 
@@ -345,6 +404,10 @@ rtfd  [-c/--config 文件]  [-v 版本]  [-i 构建信息]  [--init 生成默认
     ├── transfer (t)     -e <name> | -i <base64> [新名] 导入导出
     └── update (u) <name> [-s sep] (-t Field:Value,… | -f .rtfd.ini)  更新配置
 ```
+
+除 `api` 外，`project`、`build` 的每个动作都有对应的 HTTP 接口（见第 7 节管理接口表），
+`cmd` 与 `api` 两层都只做参数解析，业务统一下沉 `pkg/lib`（如 `CreateProject`、`ParseUpdateRule`、
+`Export/Import`、`Update`），保证两种入口行为一致。
 
 根命令 `initConfig`：除 `-h/-v/-i/--init` 外，所有子命令要求配置文件存在，否则打印提示并 `os.Exit(127)`。
 错误处理约定：cmd 层 `fmt.Println(err)` + `os.Exit`，退出码大致分为
@@ -371,11 +434,12 @@ rtfd  [-c/--config 文件]  [-v 版本]  [-i 构建信息]  [--init 生成默认
 
 | 分区 | 关键项 | 说明 |
 |---|---|---|
-| （default） | base_dir* / redis* / default_branch / unallowed_name / favicon_url / log_level | 数据根目录（初始化后勿改，否则丢数据）；Redis 连接串 `redis://[user:pwd@]host:port/db` |
+| （default） | base_dir* / default_branch / unallowed_name / favicon_url / log_level | 数据根目录（初始化后勿改，否则丢数据）等 |
+| [database] | type* / dsn* / debug | 数据库类型 `sqlite`/`mysql`/`pgsql`（默认sqlite）、连接串（sqlite为文件路径，支持 `%(base_dir)s` 插值）、是否打印SQL |
 | [nginx] | dn* / exec / sudo / ssl_crt / ssl_key / conf_dir / conf_ext_dir | 托管域名后缀；nginx 路径与是否 sudo；SSL 与配置目录 |
 | [nginx] | static_expires / html_nocache / open_file_cache | 静态资源缓存秒数（默认3600）、HTML 协商缓存（默认on）、文件元数据缓存（默认on），详见 6.1 |
 | [py] | `<版本号>`* / default / index | 可用 Python 版本映射（至少一项，键为版本号如 3、3.10、3.12，值为程序路径，要求带 pip+virtualenv）、默认版本（缺省取第一个可用版本）、pip 源 |
-| [api] | host / port / server_url* / server_static_url | 监听与对外服务地址（webhook 回跳用） |
+| [api] | host / port / server_url* / server_static_url / secret | 监听与对外服务地址（webhook 回跳用）、管理接口密钥（见第7节） |
 | [ghapp] | enable / app_id / private_key | GitHub Apps 开关与凭据 |
 
 > * = 必需。conf_dir 默认 `%(base_dir)s/nginx`，conf_ext_dir 默认 `%(conf_dir)s/ext`。
@@ -389,19 +453,22 @@ rtfd  [-c/--config 文件]  [-v 版本]  [-i 构建信息]  [--init 生成默认
 rtfd/
 ├── main.go           程序入口，仅空白导入 assets（embed 生效）+ 执行 cmd.Execute
 ├── main_test.go      默认配置结构断言（base_dir/nginx/py/api 分区完整性）
-├── api/              API 层：api.go(路由注册/Start) · view.go(处理器) · tool.go(公共函数)
+├── api/              API 层：api.go(路由注册/New/Start) · view.go(挂件/构建/webhook处理器)
+│                     · manage.go(项目管理处理器) · tool.go(参数解析/密钥校验等公共函数)
+├── docs/             swag 生成的接口文档（make docs）：docs.go · swagger.json · swagger.yaml
 ├── assets/           静态资源(go:embed)：rtfd.cfg · builder.sh · rtfd.js · VERSION · rtfd.ini(样例)
 ├── cmd/              cobra 命令层：root/api/cfg/build/project(+create/get/list/remove/transfer/update)
 ├── pkg/
 │   ├── build/        构建编排：Builder + builder.sh 落盘与输出流解析
 │   ├── conf/         ini 配置封装（SecHash/GetKey/BaseDir/DefaultBranch…）
 │   ├── lib/          ★ 核心业务：
-│   │   ├── lib.go     ProjectManager 项目 CRUD、Redis key、nginx 渲染调度
+│   │   ├── lib.go     ProjectManager 项目 CRUD（含 CreateProject 参数入口）、模型转换、nginx 渲染调度
 │   │   ├── nginx.go   nginx server 配置模板渲染（multi/single/ssl）
-│   │   ├── update.go  更新字段分派（updateHook）与安全校验
+│   │   ├── update.go  更新字段分派（updateHook）、规则解析（ParseUpdateRule/ParseUpdateFile）与安全校验
+│   │   ├── transfer.go 项目配置导出/导入（Export/DecodeExport/Import）
 │   │   └── app.go     GitHub App（JWT/installation token/webhook 同步）
 │   └── util/         纯工具：命令执行、正则校验、git URL/域名解析、HMAC-SHA1
-├── vars/             跨包常量（Sender、Redis Key 段、GitHub/Gitee 常量、ResetEmpty…）
+├── vars/             跨包常量（Sender、GitHub/Gitee 常量、ResetEmpty、默认版本…）
 ├── scripts/          部署：nginx.conf / supervisord.conf / rtfd.service / start.sh
 ├── Makefile          构建/测试/发布目标
 ├── Dockerfile        两阶段构建：golang:1.26-alpine 编译 → python:3.11-slim 运行镜像(+ nginx + supervisor)，
@@ -428,7 +495,8 @@ rtfd/
   构建时用 uv 预装 `ARG python_versions`（默认 `3.10 3.12`）的预编译 CPython，
   为每个版本装上 virtualenv 并以 `版本号 = /usr/local/bin/pythonX.Y` 写入 `/rtfd.cfg` 的 `[py]` 分区，
   同时固定 `default = 3`；不需要多版本时可 `--build-arg python_versions=""`。
-- 测试：纯单元测试（conf/util/nginx 渲染/main 默认配置），不依赖网络与 Redis 数据。
+- 测试：纯单元测试与 sqlite 集成测试（store 连接/迁移、项目 CRUD、conf、nginx 渲染、默认配置），
+  不依赖网络与外部数据库服务。
 
 ---
 
@@ -438,8 +506,35 @@ rtfd/
 |---|---|
 | 私有仓库 | URL 内嵌凭据仅 http(s) 的 github.com/gitee.com；对外接口经 `PublicGitURL` 剥敏 |
 | 构建/Webhook 伪造 | build API：`X-Rtfd-Sign=MD5(secret)`；GitHub：`X-Hub-Signature` HMAC-SHA1；Gitee：`X-Gitee-Token` 比对；`ping` 仅回 pong |
+| 管理接口滥用 | 管理接口需 `[api] secret`（未配置则直接拒绝），项目级接口额外接受项目密钥；CORS 仅放开必要方法与 `X-Rtfd-Sign` 头 |
 | 路径穿越 | `latest/sourcedir/requirement` 禁以 `/`、`..` 开头；meta key 白名单正则 |
-| 名称/域名注入 | name 正则、域名 `IsDomain` 校验、自定义域名全局唯一（domains set） |
+| 名称/域名注入 | name 正则、域名 `IsDomain` 校验、自定义域名占用检查（`HasCustomDomain`） |
 | GitHub App | 事件类型/目标类型白名单、installation App ID 与 header 强校验；webhook 仅 push/release |
 | 保留名 | `www` 及 `unallowed_name` 列表内名称禁止创建 |
-| 存储敏感信息 | secret 入 Options JSON（Redis），日志不输出明文；导出时默认剔除系统 meta |
+| 存储敏感信息 | secret 存 projects 表，日志不输出明文；导出时默认剔除系统 meta |
+| 数据库连接串 | dsn 含账号密码，配置文件权限应收敛（建议 0600）；`[database] debug = on` 时 SQL 会入日志，勿在生产开启 |
+
+---
+
+## 14. 迁移说明（Redis → 关系型数据库）
+
+rtfd 自本次重构起不再使用 Redis，元数据存 sqlite / mysql / pgsql。
+旧版本数据可通过**项目转储（transfer）机制**迁移，它与存储实现无关（导出/导入的是 Options JSON）：
+
+```bash
+# 1. 旧版本（Redis）：列出并逐个导出为 base64
+rtfd p l
+rtfd p t -e <NAME>
+
+# 2. 新版本：配置好 [database] 后逐个导入
+rtfd p t -i <BASE64> [新名称]
+```
+
+要点：
+
+- 导入走的是 `Create`，会重新校验名称/域名/python 版本并渲染 nginx 配置，因此**需先确认新环境的
+  `[py]` 版本、`[nginx] dn` 等与旧环境一致**
+- `Meta` 中的系统字段（`_webhook_id`、`_installation_id`）默认不导出（`--export-sys-meta` 可含），
+  GitHub App 项目导入后可重新触发 webhook 同步
+- 构建结果（Redis 中的 `builder:{name}`）不迁移，迁移后重新构建即可生成
+- sqlite 文件建议放在 `base_dir` 内（`dsn = %(base_dir)s/rtfd.db`），并纳入备份

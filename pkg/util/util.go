@@ -24,6 +24,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/url"
@@ -31,11 +32,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
 
 	"pkg/tcw.im/rtfd/vars"
+
+	"pkg.tcw.im/gtc"
 )
 
 var (
@@ -143,6 +147,34 @@ func TitleCase(s string) string {
 	rs := []rune(s)
 	rs[0] = unicode.ToUpper(rs[0])
 	return string(rs)
+}
+
+// ParamString 将外部参数值（API表单、JSON等）统一转为字符串
+func ParamString(value any) string {
+	switch v := value.(type) {
+	case nil:
+		return ""
+	case string:
+		return v
+	case bool:
+		return strconv.FormatBool(v)
+	case float64:
+		// JSON数字统一去掉多余的小数位
+		if v == float64(int64(v)) {
+			return strconv.FormatInt(int64(v), 10)
+		}
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	default:
+		return fmt.Sprint(v)
+	}
+}
+
+// ParamBool 将外部参数值解析为布尔值，true类型见 gtc.IsTrue（1、t、true、on）
+func ParamBool(value any) bool {
+	if v, ok := value.(bool); ok {
+		return v
+	}
+	return gtc.IsTrue(ParamString(value))
 }
 
 // CheckGitURL 检查url是否为支持的git地址。

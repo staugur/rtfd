@@ -21,6 +21,7 @@ import (
 	"os"
 
 	"pkg/tcw.im/rtfd/pkg/lib"
+	"pkg/tcw.im/rtfd/pkg/util"
 
 	"github.com/spf13/cobra"
 )
@@ -38,6 +39,10 @@ var createCmd = &cobra.Command{
 		if name == "" {
 			fmt.Println("empty name")
 			os.Exit(1)
+		}
+		if !util.IsProjectName(name) {
+			fmt.Println("invalid name")
+			os.Exit(129)
 		}
 		url := cmd.Flag("url").Value.String()
 		if url == "" {
@@ -86,43 +91,26 @@ var createCmd = &cobra.Command{
 			os.Exit(128)
 		}
 
-		opt, err := pm.GenerateOption(name, url)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(129)
+		// 未提供的参数（空值）由 CreateProject 沿用系统默认值
+		rule := map[string]any{
+			"url":         url,
+			"latest":      latest,
+			"version":     pyver,
+			"single":      single,
+			"sourcedir":   source,
+			"lang":        lang,
+			"requirement": req,
+			"install":     install,
+			"index":       index,
+			"secret":      secret,
+			"domain":      domain,
+			"sslcrt":      sslcrt,
+			"sslkey":      sslkey,
+			"builder":     builder,
+			"before":      before,
+			"after":       after,
 		}
-
-		// 需要更新值的key
-		if latest == "" {
-			latest = pm.CFG().DefaultBranch()
-		}
-		if pyver == "" {
-			pyver = pm.CFG().DefaultPyVersion()
-		}
-		optBind := make(map[string]any)
-		optBind["Latest"] = latest
-		optBind["Version"] = pyver
-		optBind["Single"] = single
-		optBind["SourceDir"] = source
-		optBind["Lang"] = lang
-		optBind["Requirement"] = req
-		optBind["Install"] = install
-		optBind["Index"] = index
-		optBind["ShowNav"] = true
-		optBind["Secret"] = secret
-		optBind["CustomDomain"] = domain
-		optBind["SSLPublic"] = sslcrt
-		optBind["SSLPrivate"] = sslkey
-		optBind["Builder"] = builder
-		optBind["BeforeHook"] = before
-		optBind["AfterHook"] = after
-
-		for k, v := range optBind {
-			pm.SetOption(&opt, k, v)
-		}
-
-		err = pm.Create(name, opt)
-		if err != nil {
+		if _, err = pm.CreateProject(name, rule); err != nil {
 			fmt.Println(err)
 			os.Exit(130)
 		}

@@ -2,13 +2,14 @@
 
 rtfd 是一个自托管的 **Sphinx 文档构建与托管服务**（单二进制 Go 程序）：
 用户提供 git 仓库（GitHub/Gitee），rtfd 按语言/分支用 Sphinx 构建 HTML，
-写回 Redis 元数据并交由 Nginx 静态托管；支持 CLI、HTTP API、Git 仓库 Webhook、
+写回数据库元数据并交由 Nginx 静态托管；支持 CLI、HTTP API、Git 仓库 Webhook、
 GitHub App 自动注册 webhook 与文档状态徽章。
 
-技术栈：Go 1.26，spf13/cobra（CLI）、labstack/echo v4（API）、redigo + gtc/redigo（Redis，
-统一前缀 `rtfd:`）、gopkg.in/ini.v1（配置）、go:embed（assets 打包）、
+技术栈：Go 1.26，spf13/cobra（CLI）、labstack/echo v4（API）、GORM（存储，支持 sqlite/mysql/pgsql）、
+gopkg.in/ini.v1（配置）、go:embed（assets 打包）、
 golang-jwt/jwt/v5（GitHub App 身份）。
-运行时依赖（仅 Linux）：bash、git、python3（含 pip、virtualenv，支持配置多版本，已移除 python2）、nginx、外部 Redis。
+运行时依赖（仅 Linux）：bash、git、python3（含 pip、virtualenv，支持配置多版本，已移除 python2）、nginx；
+元数据存储使用 sqlite / mysql / pgsql（默认 sqlite，纯 Go 驱动，无需外部服务）。
 核心构建逻辑在 bash 脚本（`assets/builder.sh`）；生成文档页注入 `assets/rtfd.js` 浮动导航挂件。
 详细架构见 `ARCH.md`。
 
@@ -25,6 +26,7 @@ rtfd/
 │   ├── build/          Builder：bash 调用、输出流解析、结果入库
 │   ├── conf/           ini 配置封装
 │   ├── lib/            核心业务：lib.go(ProjectManager/CRUD) nginx.go(模板) update.go(更新钩子) app.go(GitHub App)
+│   ├── store/          ★ 存储层：GORM 模型(Project/BuildResult) 与多方言连接、自动迁移
 │   └── util/           纯工具（命令执行/校验/git url/hmac）
 ├── vars/               跨包常量与全局类型
 ├── scripts/            部署脚本（supervisord/nginx/systemd）
@@ -84,16 +86,28 @@ import (
 | 导出类型/函数 | PascalCase | `ProjectManager`、`OptionKeyMap` |
 | 非导出函数/变量 | camelCase | `genBuilderScript`、`updateHook` |
 | 方法接收者 | 单字母缩写 | `pm *ProjectManager`、`u *updateHook` |
-| 全局常量/Key | UPPER_SNAKE_CASE | `GBPK`、`BCK`、`ResetEmpty`、`PY3` |
+| 全局常量 | UPPER_SNAKE_CASE | `ResetEmpty`、`PY3`、`SQLite` |
 | 跨包常量 | 统一放 `vars` 包 | `APISender`、`GSPGitHub`、`PUFMD5` |
 | 类型别名定义 | `type` 分组块 | `type PyVer uint8` |
 
+### 存储层约定（`pkg/store`）
+
+- 一律通过 `pkg/store` 的 GORM 模型访问数据库：`Project`（项目配置）、`BuildResult`（构建结果），
+  由 `store.Open(type, dsn, debug)` 打开连接并 `AutoMigrate`
+- 新增字段：改 `store.Project/BuildResult` 模型即可（自动迁移），**同时**更新 `lib` 中的
+  `projectFromOptions / optionsFromProject` 转换，否则字段会静默丢失
+- 不要再引入 Redis 等 KV 存储；项目名统一小写后查询（`strings.ToLower`）
+- 多库兼容：SQL 只用 GORM 表达，不写方言专属语法；sqlite 驱动为纯 Go（`glebarez/sqlite`），
+  以便 `CGO_ENABLED=0` 交叉编译
+- 配置只从 `[database]` 分区读取（`conf.DatabaseType/DatabaseDSN/DatabaseDebug`）
+
 ### 结构体与类型
 
-- 业务结构（`Options`、`Result`）集中定义于所属 package 顶部 `type` 块
-- Options/Result 通过 `encoding/json` 存取 Redis；**新增/改名 Options 字段必须评估**
-  存量 Redis JSON 兼容性（反序列化容错，不改名旧 key）
-- Redis Key 一律经 `GBPK/GBDK/BCK(name)/BRK(name)` 构造，项目名先 `strings.ToLower`
+- 业务结构（`Options`、`Result`）集中定义于所属 package 顶部 `type` 块；
+  持久化结构（`store.Project`、`store.BuildResult`）定义于 `pkg/store`
+- Options/Result 与模型之间通过 `projectFromOptions/optionsFromProject`、`resultFromBuildResult`
+  转换；**新增/改名 Options 字段必须同步模型与转换函数**
+- 查询一律把项目名 `strings.ToLower` 后匹配（`name` 列存小写）
 
 ### 注释与文档
 
@@ -140,9 +154,17 @@ import (
 - 新子命令在 `cmd/` 新建文件，`init()` 中 `rootCmd.AddCommand(...)` 注册；
   `project` 子命令注册到 `projectCmd` 并视情况加短别名（c/g/l/r/u/t）
 - `cmd` 层只做参数解析与打印，业务下沉 `pkg/lib` 或 `pkg/build`
-- API 新路由注册到 `api/api.go` 的 `/rtfd` Group，**兼容两种路径风格**
-  （`/:name/xxx` 与 `/xxx/:name` 各注册一条）；响应体保持
-  `{"success":bool,"message":string}` 风格
+- API 新路由注册到 `api/api.go` 的 `registerRoutes`（`/rtfd` Group，`api.New` 同时供启动与测试使用），
+  **兼容两种路径风格**（`/:name/xxx` 与 `/xxx/:name` 各注册一条）；响应体保持
+  `{"success":bool,"message":string,"data":any}` 风格
+- 管理类接口（项目增删改查、配置查询、导入导出）必须调用 `checkAPISecret`（全局，
+  配置 `[api] secret`）或 `checkProjectSecret`（全局或项目密钥），未配置 `[api] secret` 时拒绝；
+  项目相关入参用 `getFormParams` 解析（表单/query/JSON 通吃），值统一经 `util.ParamString/ParamBool` 转换
+- 接口文档由代码注解生成（swaggo）：新增/修改接口需在 handler 上方补
+  `@Summary/@Tags/@Param/@Success/@Failure/@Security/@Router` 注解，业务错误统一写
+  `@Failure default {object} res`（同一状态码只允许一个响应），`data` 用 `resd{data=<类型>}` 展开，
+  然后执行 `make docs` 并提交 `docs/` 生成物（CI 会校验是否最新）；
+  `docs/` 下的文件为生成物，不要手工修改（也无需补 License 头）
 - 触发构建统一经 `pkg/build.Builder`，Sender 用 `vars` 中 `CLISender/APISender/WebhookSender`
 - 构建输出识别以 `"Build Successfully"` 前缀行为准（解析第 3 段为耗时），改动 builder.sh 时勿破坏该约定
 
@@ -159,17 +181,22 @@ import (
 
 ## 前端（rtfd.js）
 
-- `assets/rtfd.js`：注入生成页的浮动导航（jQuery + Tipped），经构建 conf.py 追加
+- `assets/rtfd.js`：注入生成页的右下角浮动挂件，**零依赖**纯原生 JS（IIFE + 原生 DOM/`fetch`），
+  禁止再引入 jQuery / Tipped 之类第三方库与 CDN 资源；经构建 conf.py 追加
   `html_js_files` 引入，query 携带 `name/branch/rtfd_api`
 - 数据源为 `GET {rtfd_api}/rtfd/{name}/desc`；新增/修改返回字段需同步 rtfd.js 消费逻辑
-- 遵循现有 JS 风格：IIFE 包裹、`const/let`（**禁用 `var`**）、`===`、jQuery 对象 `$` 前缀、
-  DOM 插入使用 `.text()` 等防 XSS 手段
+- 交互：默认只显示当前语言与版本，点击展开语言/版本/仓库链接；多版本从 URL `/{lang}/{branch}/`
+  推导当前状态，单版本固定 `latest`，`showNav=false` 时整体不渲染
+- 样式全部以 `#rtfd-widget` 作用域前缀注入，避免污染文档主题自带样式
+- 遵循现有 JS 风格：IIFE 包裹、`const/let`（**禁用 `var`**）、`===`、文本一律经
+  `textContent` 写入（防 XSS，禁止 innerHTML 拼接外部数据）
 
 ## 测试与持续集成
 
-- `make test` = `go test -count=1 ./...`；测试为纯单元/本地（不依赖网络、不写真实 Redis 数据）
+- `make test` = `go test -count=1 ./...`；测试为纯单元/本地（不依赖网络与外部数据库，
+  存储相关测试使用 sqlite 临时库）
 - 测试文件置于被测包内 `*_test.go`（`pkg/conf`、`pkg/lib`、`pkg/util`、根 `main_test.go`）
-- CI（`.github/workflows/gotest.yml`）跑 push/PR 的 `go test`（自带 redis service）
+- CI（`.github/workflows/gotest.yml`）跑 push/PR 的 `go test`，无需外部服务（存储测试使用 sqlite）
 - 修改默认配置模板（`assets/rtfd.cfg`）必须同步 `main_test.go`，否则 CI 失败
 
 ## 变更与发布
@@ -177,5 +204,5 @@ import (
 - 版本号存 `assets/VERSION`（勿在代码硬编码）；发布流程 `make release`（linux amd64/arm64 tar.gz）
 - git 提交信息沿用现有简洁英文风格（参考 git log），tag `v*` 推送触发 GoReleaser
   与 Docker 镜像发布（master→`latest`、dev→`dev`）
-- 破坏性变更（Redis Key 结构、Options 字段、rtfd.cfg 必需项、builder.sh 输出约定）
+- 破坏性变更（数据表结构、Options 字段、rtfd.cfg 必需项、builder.sh 输出约定）
   需在提交信息与版本号中体现

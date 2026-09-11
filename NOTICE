@@ -12,10 +12,10 @@ https://github.com/dgrijalva/jwt-go
 Copyright (c) 2012 Dave Grijalva
 Licensed under the MIT License
 
-redigo
-https://github.com/gomodule/redigo
-Copyright 2012 Gary Burd
-Licensed under the Apache License, Version 2.0
+GORM
+https://github.com/go-gorm/gorm
+Copyright (c) 2013-present Jinzhu
+Licensed under the MIT License
 
 echo
 https://github.com/labstack/echo

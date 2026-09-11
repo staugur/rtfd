@@ -18,60 +18,109 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 
 	"pkg/tcw.im/rtfd/assets"
+	_ "pkg/tcw.im/rtfd/docs" // swag 生成的接口文档（注册到 swag 注册表，由 /rtfd/docs 提供）
+	"pkg/tcw.im/rtfd/pkg/build"
 	"pkg/tcw.im/rtfd/pkg/lib"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 var (
 	pm      *lib.ProjectManager
+	bld     *build.Builder
 	cfgFile string
 )
 
-// Start 启动web服务
-func Start(host string, port uint, cfg string) {
+// New 初始化API服务：加载配置、创建项目管理器与构建器并注册路由
+func New(cfg string) (*echo.Echo, error) {
 	ipm, err := lib.New(cfg)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	pm = ipm
 	cfgFile = cfg
+	// 构建器复用同一个项目管理器，避免每次构建都新建数据库连接
+	bld, err = build.NewFromPM(cfg, ipm)
+	if err != nil {
+		return nil, err
+	}
 
+	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = true
+	e.HTTPErrorHandler = customHTTPErrorHandler
+
+	g := e.Group("/rtfd", middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowHeaders: []string{"X-Rtfd-Sign", "X-RTFD-SIGN", echo.HeaderContentType},
+		AllowMethods: []string{
+			http.MethodGet, http.MethodHead, http.MethodPost,
+			http.MethodPut, http.MethodDelete, http.MethodOptions,
+		},
+	}))
+	registerRoutes(g)
+	return e, nil
+}
+
+// Start 启动web服务
+func Start(host string, port uint, cfg string) {
 	if host == "" {
 		host = "0.0.0.0"
 	}
 	if port == 0 {
 		port = 5000
 	}
+	e, err := New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Rtfd API is listening on %s:%d\n", host, port)
+	e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", host, port)))
+}
 
-	e := echo.New()
-	e.HTTPErrorHandler = customHTTPErrorHandler
-	g := e.Group("/rtfd", middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},
-		AllowHeaders: []string{"X-Rtfd-Sign", "X-RTFD-SIGN"},
-		AllowMethods: []string{"OPTIONS", "POST", "GET", "HEAD"},
-	}))
-
+// registerRoutes 注册路由，兼容两种路径风格（:name 在前或在后），
+// 以便管理端与文档页面挂件使用同一套接口
+func registerRoutes(g *echo.Group) {
+	// 公开接口：文档页面挂件数据、状态徽章与静态资源
 	g.GET("/:name/desc", apiDesc)
 	g.GET("/desc/:name", apiDesc)
-
 	g.GET("/:name/badge", apiBadge)
 	g.GET("/badge/:name", apiBadge)
-
-	g.POST("/:name/build", apiBuild)
-	g.POST("/build/:name", apiBuild)
-
-	g.POST("/:name/webhook", webhookBuild)
-	g.POST("/webhook/:name", webhookBuild)
-
 	g.Match([]string{"HEAD", "GET"}, "/assets/rtfd.js", func(c echo.Context) error {
 		return c.Blob(200, "application/javascript", assets.RtfdJS)
 	})
-
 	g.POST("/github/app", ghApp)
 
-	e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", host, port)))
+	// 构建触发与git webhook
+	g.POST("/:name/build", apiBuild)
+	g.POST("/build/:name", apiBuild)
+	g.POST("/:name/webhook", webhookBuild)
+	g.POST("/webhook/:name", webhookBuild)
+
+	// 项目管理：与CLI的project子命令对应，需密钥鉴权
+	g.GET("/projects", apiProjectList)
+	g.POST("/projects", apiProjectCreate)
+	g.GET("/:name/info", apiProjectInfo)
+	g.GET("/info/:name", apiProjectInfo)
+	g.POST("/:name/update", apiProjectUpdate)
+	g.POST("/update/:name", apiProjectUpdate)
+	g.POST("/:name/remove", apiProjectRemove)
+	g.POST("/remove/:name", apiProjectRemove)
+	g.DELETE("/:name/remove", apiProjectRemove)
+	g.DELETE("/remove/:name", apiProjectRemove)
+	g.GET("/:name/export", apiProjectExport)
+	g.GET("/export/:name", apiProjectExport)
+	g.POST("/import", apiProjectImport)
+
+	// 接口文档（Swagger UI）：/rtfd/docs/index.html，规范文件 /rtfd/docs/doc.json（或 doc.yaml）
+	// 文档由 `make docs` 依据代码注解生成到 docs/，仅提供服务端已编译的接口元数据，无需鉴权
+	g.GET("/docs", func(c echo.Context) error {
+		return c.Redirect(http.StatusMovedPermanently, "/rtfd/docs/index.html")
+	})
+	g.GET("/docs/*", echoSwagger.WrapHandler)
 }

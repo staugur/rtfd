@@ -17,15 +17,12 @@
 package cmd
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"pkg/tcw.im/rtfd/pkg/lib"
-	"pkg/tcw.im/rtfd/vars"
 )
 
 var transferDesc = `转储（导入、导出）文档项目
@@ -69,6 +66,11 @@ var transferCmd = &cobra.Command{
 			fmt.Println(err)
 			os.Exit(1)
 		}
+		esm, err := flagset.GetBool("export-sys-meta")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
 		// to import or export
 		pm, err := lib.New(cfgFile)
@@ -86,78 +88,39 @@ var transferCmd = &cobra.Command{
 				fmt.Println("empty name")
 				os.Exit(1)
 			}
-			opt, err := pm.GetName(name)
+			encode, err := pm.Export(name, esm)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			if esm, _ := flagset.GetBool("export-sys-meta"); !esm {
-				meta := opt.Meta
-				if meta == nil {
-					meta = make(map[string]string)
-				}
-				for k := range meta {
-					if strings.HasPrefix(k, "_") {
-						err = opt.UpdateMeta(k, vars.ResetEmpty)
-						if err != nil {
-							fmt.Println(err)
-							os.Exit(1)
-						}
-					}
-				}
-			}
-			val, err := json.Marshal(opt)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			encode := base64.StdEncoding.EncodeToString(val)
 			fmt.Println(encode)
 		} else {
 			if IM == "" {
 				cmd.Help()
 				os.Exit(1)
 			}
-			IMjson, err := base64.StdEncoding.DecodeString(IM)
+			opt, err := pm.DecodeExport(IM)
 			if err != nil {
-				fmt.Println("import decode fail")
 				fmt.Println(err)
 				os.Exit(129)
 			}
 			if IMdebug {
-				fmt.Println(string(IMjson))
+				val, _ := json.Marshal(opt)
+				fmt.Println(string(val))
 				os.Exit(0)
 			}
 
-			//ready to create a new project
-			var opt lib.Options
-			err = json.Unmarshal(IMjson, &opt)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(128)
-			}
+			// 导入相当于创建项目，可用别名覆盖原名称
 			name := opt.Name
 			if len(args) > 0 {
-				// override option Name
 				name = args[0]
-				opt.Name = name
 			}
-
 			if pm.HasName(name) {
 				fmt.Println("the name already exists")
 				fmt.Println("but you can overwrite it: rtfd p t -i <BASE64> <Name>")
 				os.Exit(128)
 			}
-
-			// override default option
-			dn := pm.CFG().GetKey("nginx", "dn")
-			if dn == "" {
-				panic("invalid nginx dn")
-			}
-			opt.DefaultDomain = name + "." + dn
-
-			err = pm.Create(name, opt)
-			if err != nil {
+			if _, err = pm.Import(opt, name); err != nil {
 				fmt.Println(err)
 				os.Exit(130)
 			}

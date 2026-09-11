@@ -1,286 +1,365 @@
 'use strict'
 
-var _rtfd_script =
-    document.getElementsByTagName('script')[
-    document.getElementsByTagName('script').length - 1
-    ]
+/*
+ * rtfd.js —— 文档页面右下角浮动挂件（无第三方依赖）
+ *
+ * 数据来源：GET {rtfd_api}/rtfd/{name}/desc（原生 fetch）
+ * 参数来源：注入脚本的 query（name/branch/rtfd_api），或 id=rtfd-script 的 data 属性
+ * 交互：默认只显示当前语言与版本，点击后在右下角展开语言列表、版本列表与仓库链接，
+ *       再次点击（或点击面板外、按 Esc）收起
+ *
+ * 多版本模式：文档路径形如 /{lang}/{branch}/...
+ * 单版本模式：Nginx 根目录即 {lang}/latest，路径中不含 lang/branch 前缀
+ */
+;(function () {
+    const DEFAULT_ICON =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4lc7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMwBHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrzdQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII='
 
-    ; (function () {
-        const _rtfd_style = `
-/* start rtfd */
-.rtfd {
+    const CSS = `
+#rtfd-widget {
     position: fixed;
-    display: block;
-    border: none;
     right: 20px;
-    bottom: 50px;
-    z-index: 9999999;
-    color: #fff;
-    max-width: 300px;
-    height: auto;
+    bottom: 20px;
+    z-index: 2147483000;
+    color: #3e3e3e;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: left;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
-
-.rtfd #rtfd-header {
+#rtfd-widget,
+#rtfd-widget * {
+    box-sizing: border-box;
+}
+#rtfd-widget .rtfd-trigger {
+    display: flex;
+    align-items: center;
+    max-width: 240px;
+    padding: 6px 10px;
     cursor: pointer;
-    width: 100px;
     color: #fcfcfc;
-    background-color: #1f1d1d;
-    overflow: hidden;
-    text-align: center;
-    padding-top: 6px;
-    padding-bottom: 6px;
-    border-radius: 1px;
+    background-color: #2c3e50;
+    border-radius: 3px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+    user-select: none;
+    white-space: nowrap;
 }
-
-.rtfd #rtfd-header scan {
-    text-align: center;
-    color: #27AE60;
-    font-size: 90%;
+#rtfd-widget .rtfd-trigger:hover {
+    background-color: #34495e;
 }
-
-.rtfd #rtfd-header img {
+#rtfd-widget .rtfd-icon {
+    flex: 0 0 auto;
     width: 14px;
     height: 14px;
+    margin-right: 6px;
     border: none;
 }
-
-#rtfd-body {
-    min-width: 200px;
-    display: none;
-    text-align: left;
-    font-size: 90%;
-    padding: 5px;
-    color: gray;
+#rtfd-widget .rtfd-current {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
 }
-
-#rtfd-body a {
+#rtfd-widget .rtfd-caret {
+    margin-left: 6px;
+    font-size: 10px;
+    opacity: .8;
+    transition: transform .15s;
+}
+#rtfd-widget.rtfd-open .rtfd-caret {
+    transform: rotate(180deg);
+}
+#rtfd-widget .rtfd-panel {
+    display: none;
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    width: 240px;
+    max-width: calc(100vw - 40px);
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 6px 0;
+    background-color: #fff;
+    border: 1px solid #d9dde1;
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .18);
+}
+#rtfd-widget.rtfd-open .rtfd-panel {
+    display: block;
+}
+#rtfd-widget .rtfd-title {
+    padding: 6px 12px 2px;
+    color: #8a9299;
+    font-size: 11px;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+}
+#rtfd-widget .rtfd-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+#rtfd-widget .rtfd-list a {
+    display: block;
+    padding: 5px 12px;
+    overflow: hidden;
+    color: #2c3e50;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#rtfd-widget .rtfd-list a:hover {
+    background-color: #f0f4f7;
+}
+#rtfd-widget .rtfd-active > a {
+    color: #2980b9;
+    font-weight: 700;
+    background-color: #eef6fc;
+}
+#rtfd-widget .rtfd-footer {
+    margin-top: 4px;
+    padding: 8px 12px 2px;
+    color: #9aa4ad;
+    font-size: 11px;
+    text-align: center;
+    border-top: 1px solid #eceff1;
+}
+#rtfd-widget .rtfd-footer a {
+    color: #2980b9;
     text-decoration: none;
 }
-
-#rtfd-body dd a {
-    display: inline-block;
-    padding: 5px;
-    color: #fcfcfc;
+@media (max-width: 480px) {
+    #rtfd-widget {
+        right: 10px;
+        bottom: 10px;
+    }
 }
+`
 
-#rtfd-body dl {
-    margin: 0;
-}
-
-#rtfd-body dl dd {
-    display: inline-block;
-    margin: 0;
-}
-
-#rtfd-body hr {
-    border: 1px solid #999;
-    display: block;
-    height: 1px;
-    border: 0;
-    margin: 20px 0;
-    padding: 0;
-    border-top: solid 1px #413d3d;
-}
-
-#rtfd-body .footer {
-    text-align: center;
-}
-
-#rtfd-body .active {
-    font-weight: bold;
-}
-
-.tpd-tooltip .tpd-title {
-    text-transform: none;
-}
-/* end rtfd*/
-`,
-            icon_baseuri =
-                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4lc7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMwBHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrzdQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII=';
-
-        String.prototype.substr = function (start, length) {
-            const S = this.toString(); // step 1 and 2
-            const size = S.length; // step 3
-            let intStart = Number.isNaN(Number(start)) ? 0 : Number.parseInt(start); // step 4
-            if (intStart === -Infinity) intStart = 0; // step 5
-            else if (intStart < 0) intStart = Math.max(size + intStart, 0); // step 6
-            else intStart = Math.min(intStart, size); // step 7
-            let intLength = length === undefined ? size : (Number.isNaN(Number(length)) ? 0 : Number.parseInt(length)); // step 8
-            intLength = Math.max(Math.min(intLength, size), 0); // step 9
-            let intEnd = Math.min(intStart + intLength, size); // step 10
-            return S.substring(intStart, intEnd); // step 11
-        };
-
-        //Determines whether the id exists on the page. This id returns true, otherwise it returns false.
-        function hasId(id) {
-            if (document.getElementById(id)) {
-                return true
-            } else {
-                return false
+    // 读取注入脚本携带的参数：优先 id=rtfd-script 的 data 属性，其次 script.src 的 query
+    function getUrlQuery(key, acq) {
+        const tag = document.getElementById('rtfd-script')
+        const scripts = document.getElementsByTagName('script')
+        const self = scripts[scripts.length - 1]
+        let str = ''
+        if (tag) {
+            str = tag.getAttribute('data') || ''
+        } else if (self) {
+            const src = self.getAttribute('src') || ''
+            if (src.indexOf('rtfd.js') > -1) {
+                str = src.indexOf('?') > -1 ? src.slice(src.indexOf('?') + 1) : ''
             }
         }
-        //Get script self data
-        function getUrlQuery(key, acq) {
-            /*
-                Get the parameters from the url query or data.
-                If there is a query key, the object value is returned.
-                The return value can specify the default value acq:
-                    such as key=status, return 1; key=non_exsits_key returns acq
-                */
-            let str = null;
-            if (hasId('rtfd-script') === true) {
-                str = document
-                    .getElementById('rtfd-script')
-                    .getAttribute('data')
-            } else {
-                if (
-                    _rtfd_script &&
-                    _rtfd_script.getAttribute('src') &&
-                    _rtfd_script.getAttribute('src').indexOf('rtfd.js') > -1
-                ) {
-                    let src = _rtfd_script.getAttribute('src')
-                    str = src.indexOf('?') > -1 ? src.substr(src.indexOf('?') + 1) : '';
+        const query = {}
+        str.split('&').forEach(function (kv) {
+            const i = kv.indexOf('=')
+            if (i > -1) {
+                query[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1))
+            }
+        })
+        return key ? query[key] || acq : query
+    }
+
+    function injectCSS(code) {
+        const style = document.createElement('style')
+        style.appendChild(document.createTextNode(code))
+        document.head.appendChild(style)
+    }
+
+    // 创建元素，文本一律经 textContent 写入，避免注入
+    function el(tag, cls, text) {
+        const node = document.createElement(tag)
+        if (cls) {
+            node.className = cls
+        }
+        if (text !== undefined && text !== null) {
+            node.textContent = text
+        }
+        return node
+    }
+
+    // 解析当前页面所处的语言、版本与文档相对路径
+    function currentState(single, langs) {
+        const segs = location.pathname.split('/').filter(function (s) { return s !== '' })
+        if (single) {
+            return { lang: langs[0] || '', branch: 'latest', rest: segs.join('/') }
+        }
+        return {
+            lang: segs[0] || langs[0] || '',
+            branch: segs[1] || 'latest',
+            rest: segs.slice(2).join('/')
+        }
+    }
+
+    // 语言/版本切换链接：/{lang}/{ver}/{rest}
+    function docURL(lang, ver, rest) {
+        return '/' + lang + '/' + ver + '/' + (rest || '')
+    }
+
+    // 带标题的链接分组，items: [{text, href, active}]
+    function group(title, items) {
+        const box = el('div', 'rtfd-group')
+        box.appendChild(el('div', 'rtfd-title', title))
+        const ul = el('ul', 'rtfd-list')
+        items.forEach(function (item) {
+            const li = el('li', item.active ? 'rtfd-active' : '')
+            const a = el('a', '', item.text)
+            a.href = item.href
+            if (item.active) {
+                a.setAttribute('aria-current', 'true')
+            }
+            li.appendChild(a)
+            ul.appendChild(li)
+        })
+        box.appendChild(ul)
+        return box
+    }
+
+    // 仓库（查看/编辑源码）分组
+    function repoGroup(data, cur) {
+        if (data.hideGit === true || !data.url) {
+            return null
+        }
+        const source = data.sourceDir || 'docs'
+        const rst = cur.rest ? cur.rest.replace(/\.html$/, '.rst') : 'index.rst'
+        const dftBranch = data.defaultBranch || ''
+        // 解析当前页面对应的 git ref：latest 指向项目最新版本
+        let ref = cur.branch
+        let canEdit = cur.branch === dftBranch
+        if (data.single === true) {
+            ref = data.latest || dftBranch || 'latest'
+            canEdit = true
+        } else if (cur.branch === 'latest') {
+            ref = data.latest || dftBranch || 'latest'
+            canEdit = ref === dftBranch
+        }
+        const suffix = '/' + source + '/' + rst
+        const items = [{ text: 'View', href: data.url + '/blob/' + ref + suffix }]
+        if (canEdit) {
+            items.push({ text: 'Edit', href: data.url + '/edit/' + ref + suffix })
+        }
+        return group('On ' + (data.gsp || 'Git'), items)
+    }
+
+    // 展开/收起面板：不传 open 时切换，传布尔值则显式设置
+    function bind(widget, trigger) {
+        function toggle(open) {
+            const isOpen = open === undefined ? !widget.classList.contains('rtfd-open') : open
+            widget.classList.toggle('rtfd-open', isOpen)
+            trigger.setAttribute('aria-expanded', String(isOpen))
+        }
+        trigger.addEventListener('click', function (event) {
+            event.stopPropagation()
+            toggle()
+        })
+        trigger.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                toggle()
+            }
+        })
+        document.addEventListener('click', function (event) {
+            if (!widget.contains(event.target)) {
+                toggle(false)
+            }
+        })
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                toggle(false)
+            }
+        })
+    }
+
+    function mount(data) {
+        injectCSS(CSS)
+
+        const single = data.single === true
+        const versions = data.versions || {}
+        let langs = Array.isArray(data.lang) ? data.lang.filter(Boolean) : []
+        if (!langs.length) {
+            langs = Object.keys(versions)
+        }
+        const cur = currentState(single, langs)
+
+        // 触发器：默认只显示当前语言与版本
+        const trigger = el('div', 'rtfd-trigger')
+        trigger.setAttribute('role', 'button')
+        trigger.setAttribute('tabindex', '0')
+        trigger.setAttribute('aria-expanded', 'false')
+        trigger.setAttribute('aria-label', '文档语言与版本')
+        const icon = el('img', 'rtfd-icon')
+        icon.src = data.icon || DEFAULT_ICON
+        icon.alt = ''
+        trigger.appendChild(icon)
+        trigger.appendChild(
+            el('span', 'rtfd-current', [cur.lang, cur.branch].filter(Boolean).join(' · '))
+        )
+        trigger.appendChild(el('span', 'rtfd-caret', '▾'))
+
+        const panel = el('div', 'rtfd-panel')
+        if (!single) {
+            // 仅有一种语言时无需展示语言列表
+            if (langs.length > 1) {
+                panel.appendChild(group('语言 Languages', langs.map(function (lang) {
+                    return { text: lang, href: docURL(lang, 'latest', cur.rest), active: lang === cur.lang }
+                })))
+            }
+            // 当前语言的可用版本，缺省补上当前版本
+            const vers = Array.isArray(versions[cur.lang]) ? versions[cur.lang].slice(0) : []
+            if (cur.branch && vers.indexOf(cur.branch) === -1) {
+                vers.unshift(cur.branch)
+            }
+            if (vers.length > 1) {
+                panel.appendChild(group('版本 Versions', vers.map(function (ver) {
+                    return { text: ver, href: docURL(cur.lang, ver, cur.rest), active: ver === cur.branch }
+                })))
+            }
+        }
+        const repo = repoGroup(data, cur)
+        if (repo) {
+            panel.appendChild(repo)
+        }
+
+        const footer = el('div', 'rtfd-footer')
+        footer.appendChild(document.createTextNode('Powered by '))
+        const home = el('a', '', 'rtfd')
+        home.href = 'https://github.com/staugur/rtfd'
+        home.target = '_blank'
+        home.rel = 'noopener noreferrer'
+        footer.appendChild(home)
+        panel.appendChild(footer)
+
+        const widget = el('div', '')
+        widget.id = 'rtfd-widget'
+        widget.appendChild(trigger)
+        widget.appendChild(panel)
+        document.body.appendChild(widget)
+        bind(widget, trigger)
+    }
+
+    function init() {
+        const name = getUrlQuery('name')
+        if (!name) {
+            return
+        }
+        const api = getUrlQuery('rtfd_api', '')
+        fetch(api + '/rtfd/' + encodeURIComponent(name) + '/desc', { credentials: 'omit' })
+            .then(function (resp) { return resp.json() })
+            .then(function (res) {
+                // showNav 显式为 false 时不展示挂件
+                if (!res || res.success !== true || !res.data || res.data.showNav === false) {
+                    return
                 }
-            }
-            let obj = {};
-            if (str) {
-                let arr = str.split('&')
-                for (let i = 0; i < arr.length; i++) {
-                    let tmp_arr = arr[i].split('=')
-                    obj[decodeURIComponent(tmp_arr[0])] = decodeURIComponent(tmp_arr[1])
-                }
-            }
-            return key ? obj[key] || acq : obj
-        }
-        //load css
-        function addCSS(href) {
-            let link = document.createElement('link')
-            link.type = 'text/css'
-            link.rel = 'stylesheet'
-            link.href = href
-            document.getElementsByTagName('head')[0].appendChild(link)
-        }
-        //load js
-        function addJS(src, cb) {
-            let script = document.createElement('script')
-            script.type = 'text/javascript'
-            script.src = src
-            document.getElementsByTagName('head')[0].appendChild(script)
-            script.onload = typeof cb === 'function' ? cb : function () { }
-        }
-        function loadCSSCode(code) {
-            let style = document.createElement('style')
-            style.rel = 'stylesheet'
-            try {
-                //for Chrome Firefox Opera Safari
-                style.appendChild(document.createTextNode(code))
-            } catch (ex) {
-                //for IE
-                style.styleSheet.cssText = code
-            }
-            let head = document.getElementsByTagName('head')[0]
-            head.appendChild(style)
-        }
-
-        //Initiate an ajax request to get the initialization code of the document
-        function init() {
-            let name = getUrlQuery('name')
-            loadCSSCode(_rtfd_style)
-            $.ajax({
-                url: getUrlQuery('rtfd_api') + '/rtfd/' + name + '/desc',
-                type: 'GET',
-                dataType: 'json',
-                success: function (res) {
-                    if (res.success === true && res.data.showNav != false) {
-                        let dftBranch = res.data.defaultBranch,
-                            base_str = '',
-                            branch = ''
-                        if (res.data.single === false) {
-                            let lang = location.pathname.split('/')[1]
-                            branch = location.pathname.split('/')[2]
-                            let other_path = location.pathname
-                                .split('/')
-                                .slice(3)
-                                .join('/')
-                            let path_rst = other_path
-                                ? other_path.replace('.html', '.rst')
-                                : 'index.rst'
-
-                            // console.debug(name, lang, branch, 'other is:' + other_path, 'rst is:' + path_rst)
-                            let langs_str = res.data.lang
-                                .map(function (_lang) {
-                                    let active = _lang === lang ? 'active' : ''
-                                    return `<dd class="${active}"><a href="/${_lang}/latest/${other_path}">${_lang}</a></dd>`
-                                })
-                                .join('')
-                            let vers_str = res.data.versions[lang]
-                                .map(function (_ver) {
-                                    let active = _ver === branch ? 'active' : ''
-                                    return `<dd class="${active}"><a href="/${lang}/${_ver}/${other_path}">${_ver}</a></dd>`
-                                })
-                                .join('')
-                            let github_str = ''
-                            if (
-                                branch === dftBranch ||
-                                (branch === 'latest' &&
-                                    res.data.latest === dftBranch)
-                            ) {
-                                github_str += `<dd><a href=${res.data.url}/blob/${dftBranch}/${res.data.sourceDir}/${path_rst}>View</a></dd>`
-                                github_str += `<dd><a href=${res.data.url}/edit/${dftBranch}/${res.data.sourceDir}/${path_rst}>Edit</a></dd>`
-                            } else {
-                                //for tag
-                                github_str += `<dd><a href=${res.data.url}/blob/${branch}/${res.data.sourceDir}/${path_rst}>View</a></dd>`
-                            }
-                            if (res.data.hideGit === true) {
-                                github_str = ''
-                            }
-                            base_str = `<div id="rtfd" class="rtfd"><div id="rtfd-header"><img src="${icon_baseuri}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id="rtfd-body"><dl><dt>Languages</dt>${langs_str}</dl><dl><dt>Versions</dt>${vers_str}</dl><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class="footer"><span>Powered by <a href="https://github.com/staugur/rtfd">rtfd</a></span></small></div></div>`
-                        } else {
-                            branch = 'latest'
-                            let other_path = location.pathname
-                                .split('/')
-                                .slice(1)
-                                .join('/')
-                            let path_rst = other_path
-                                ? other_path.replace('.html', '.rst')
-                                : 'index.rst'
-                            let github_str = ''
-                            github_str += `<dd><a href=${res.data.url}/blob/${dftBranch}/${res.data.sourceDir}/${path_rst}>View</a></dd>`
-                            github_str += `<dd><a href=${res.data.url}/edit/${dftBranch}/${res.data.sourceDir}/${path_rst}>Edit</a></dd>`
-                            if (res.data.hideGit === true) {
-                                github_str = ''
-                            }
-                            base_str = `<div id="rtfd" class="rtfd"><div id="rtfd-header"><img src="${icon_baseuri}"><scan>&nbsp;v: ${branch}&nbsp;</scan></div><div id="rtfd-body"><dl><dt>On ${res.data.gsp}</dt>${github_str}</dl><hr><small class="footer"><span>Powered by <a href="https://github.com/staugur/rtfd">rtfd</a></span></small></div></div>`
-                        }
-                        addCSS(
-                            'https://static.saintic.com/rtfd/tipped/tipped.css'
-                        )
-                        addJS(
-                            'https://static.saintic.com/rtfd/tipped/tipped.min.js',
-                            function () {
-                                $('body').append(base_str)
-                                Tipped.create('#rtfd-header', {
-                                    title:
-                                        `Version: ${branch}` +
-                                        (branch === 'latest'
-                                            ? ' -> ' + res.data.latest
-                                            : ''),
-                                    inline: 'rtfd-body',
-                                    showOn: 'click',
-                                    hideOn: 'click',
-                                    close: 'overlap',
-                                    position: 'left',
-                                    maxWidth: 250
-                                })
-                                $(window).scroll(function () {
-                                    Tipped.hide('#rtfd-header')
-                                })
-                            }
-                        )
-                    }
-                }
+                mount(res.data)
             })
-        }
+            .catch(function () {
+                // 元数据不可用时静默降级，不影响文档阅读
+            })
+    }
 
-        addJS("https://static.saintic.com/rtfd/jquery-3.7.1.min.js", init)
-    })()
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init)
+    } else {
+        init()
+    }
+})()
