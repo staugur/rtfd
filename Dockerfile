@@ -5,6 +5,10 @@ ARG uvimage=ghcr.io/astral-sh/uv:0.4.20
 # 额外安装的Python版本，空格分隔；系统自带的python3（版本号3）始终可用
 ARG python_versions="3.10 3.12"
 
+# -- uv 静态二进制来源，单独定义阶段 --
+# buildx 不支持在 COPY --from 中做变量展开，需先用 FROM $ARG 定义具名阶段
+FROM $uvimage AS uv
+
 # -- build dependencies with alpine --
 FROM $buildos AS builder
 WORKDIR /build
@@ -21,7 +25,7 @@ FROM $runos
 ENV UV_PYTHON_INSTALL_DIR=/opt/python \
     XDG_BIN_HOME=/usr/local/bin
 
-COPY --from=$uvimage /uv /usr/local/bin/uv
+COPY --from=uv /uv /usr/local/bin/uv
 
 RUN apt update -y && \
     apt install -y --no-install-recommends ca-certificates nginx python3 python3-pip python3-venv \

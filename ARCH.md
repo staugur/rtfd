@@ -471,7 +471,8 @@ rtfd/
 ├── vars/             跨包常量（Sender、GitHub/Gitee 常量、ResetEmpty、默认版本…）
 ├── scripts/          部署：nginx.conf / supervisord.conf / rtfd.service / start.sh
 ├── Makefile          构建/测试/发布目标
-├── Dockerfile        两阶段构建：golang:1.26-alpine 编译 → python:3.11-slim 运行镜像(+ nginx + supervisor)，
+├── Dockerfile        多阶段构建：uv 阶段(取静态二进制，COPY --from 不支持变量展开) →
+│                     golang:1.26-alpine 编译 → python:3.11-slim 运行镜像(+ nginx + supervisor)，
 │                     并用 uv 预装 `python_versions` 指定的额外 Python 版本后登记到 /rtfd.cfg 的 [py] 分区
 └── .github/workflows/ gotest.yml(测试) · publish.yml(镜像 master→latest、dev→dev、release) · goreleaser.yml(tag→多平台二进制)
 ```
