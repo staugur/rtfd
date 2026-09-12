@@ -95,7 +95,6 @@ GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 | custom_domain | varchar(255) | 自定义域名，**普通索引**（唯一性由 `HasCustomDomain` 校验） |
 | ssl_public / ssl_private | varchar | 自定义域名证书 |
 | builder / gsp | varchar | 构建器、git服务商 |
-| before_hook / after_hook | varchar | 构建前后钩子 |
 | meta | text | `map[string]string` 的 JSON（`serializer:json`） |
 | created_at / updated_at | 时间 | GORM 自动维护 |
 
@@ -134,7 +133,6 @@ GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 | CustomDomain / SSL / SSLPublic / SSLPrivate | 自定义域名 | 支持 HTTPS |
 | Builder | 构建器 | `html` / `dirhtml` / `singlehtml` |
 | GSP / IsPublic | git 服务商 | `GitHub` / `Gitee` / `N/A` 及公私有 |
-| BeforeHook / AfterHook | 钩子命令 | 构建前后执行 |
 | Meta | 扩展 KV | map，以下划线开头为系统保留 |
 
 **Python 版本**：`Version` 为字符串（`lib.PyVer`），取值必须是 `[py]` 分区中已定义的版本号；
@@ -252,14 +250,12 @@ main
       │    → source activate
       ├─ 逐 requirements 文件: <venv_py> -m pip install -i <index> -r <req>
       ├─ install=true 时额外 <venv_py> -m pip install .
-      ├─ conf.py 追加注入（自动生成标记 + 仅当未定义）:
-      │    html_js_files += "<server_static_url>rtfd.js?v=<ver>&name=..&branch=..&rtfd_api=.."
-      │    html_favicon = favicon_url
-      ├─ 执行 before_hook
+      ├─ conf.py 追加注入（自动生成标记 + 组合已有 setup，不覆盖）:
+      │    setup(app): app.add_js_file("<server_url>/rtfd/assets/rtfd.js?v=<ver>",
+      │        **{'data-name':.., 'data-branch':.., 'data-api':..})
       ├─ 对每种 lang: sphinx-build -E -T -D language=<lang> -b <builder>
       │        <SourceDir>  {docs}/{name}/{lang}/{branch}
       │    并 ln -nsf ../.. 使 {lang}/latest → {lang}/{Latest}
-      ├─ 执行 after_hook（成败仅 debug 输出，不阻断）
       ├─ deactivate
       └─ 若存在 .rtfd.ini → rtfd project update -f .rtfd.ini <name>（回写 DB）
 主流程结束打印 "Build Successfully, N seconds passed." 并删除临时目录
@@ -358,7 +354,7 @@ docs/{name}/
 | 路由 | 方法 | 功能 | 参数（支持表单/query/JSON） |
 |---|---|---|---|
 | `/projects` | GET | 项目列表 | `verbose=1` 返回完整 Options 数组，否则仅名称数组 |
-| `/projects` | POST | 创建项目 | `name`、`url` 必需，其余同 CLI create（`latest/version/single/sourcedir/lang/requirement/install/index/builder/secret/domain/sslcrt/sslkey/before/after`），空值沿用系统默认 |
+| `/projects` | POST | 创建项目 | `name`、`url` 必需，其余同 CLI create（`latest/version/single/sourcedir/lang/requirement/install/index/builder/secret/domain/sslcrt/sslkey`），空值沿用系统默认 |
 | `/:name/info`、`/info/:name` | GET | 项目详情 | `key=Field` 返回单字段、`build=1` 附带构建集，否则返回 Options 结构体（字段名为结构体字段名） |
 | `/:name/update`、`/update/:name` | POST | 更新配置 | `text=Field:Value,…`（`sep` 可自定义分隔符）、`file=服务端规则文件路径`、或直接以字段名传参；响应含 `updated/failed` 字段列表 |
 | `/:name/remove`、`/remove/:name` | POST/DELETE | 删除项目 | 同时清理构建结果与 nginx 配置 |
@@ -420,7 +416,7 @@ rtfd  [-c/--config 文件]  [-v 版本]  [-i 构建信息]  [--init 生成默认
 
 目的：创建 GitHub 项目时**自动注册仓库 webhook**，删除时自动清理，无需用户手动配置。
 
-- 配置段 `[ghapp]`：`enable/app_id/private_key`（PEM）+ `api.server_url`。
+- 配置段 `[ghapp]`：`app_id/private_key`（PEM）+ `api.server_url`；`app_id` 与 `private_key` 同时有效即启用（无独立开关）。
 - 身份：私钥签 RS256 JWT（`iss=app_id`，10 分钟），JWT 换 installation access token（缓存 1 小时）。
 - 事件流：
   - `/github/app` 收到 `installation.created/deleted`、`installation_repositories.added/removed`
@@ -434,13 +430,13 @@ rtfd  [-c/--config 文件]  [-v 版本]  [-i 构建信息]  [--init 生成默认
 
 | 分区 | 关键项 | 说明 |
 |---|---|---|
-| （default） | base_dir* / default_branch / unallowed_name / favicon_url / log_level | 数据根目录（初始化后勿改，否则丢数据）等 |
+| （default） | base_dir* / default_branch / unallowed_name / log_level | 数据根目录（初始化后勿改，否则丢数据）等 |
 | [database] | type* / dsn* / debug | 数据库类型 `sqlite`/`mysql`/`pgsql`（默认sqlite）、连接串（sqlite为文件路径，支持 `%(base_dir)s` 插值）、是否打印SQL |
 | [nginx] | dn* / exec / sudo / ssl_crt / ssl_key / conf_dir / conf_ext_dir | 托管域名后缀；nginx 路径与是否 sudo；SSL 与配置目录 |
 | [nginx] | static_expires / html_nocache / open_file_cache | 静态资源缓存秒数（默认3600）、HTML 协商缓存（默认on）、文件元数据缓存（默认on），详见 6.1 |
 | [py] | `<版本号>`* / default / index | 可用 Python 版本映射（至少一项，键为版本号如 3、3.10、3.12，值为程序路径，要求带 pip+virtualenv）、默认版本（缺省取第一个可用版本）、pip 源 |
-| [api] | host / port / server_url* / server_static_url / secret | 监听与对外服务地址（webhook 回跳用）、管理接口密钥（见第7节） |
-| [ghapp] | enable / app_id / private_key | GitHub Apps 开关与凭据 |
+| [api] | host / port / server_url* / secret | 监听与对外服务地址（webhook 回跳用）、管理接口密钥（见第7节） |
+| [ghapp] | app_id / private_key | GitHub Apps 凭据（两者同时有效即启用，无独立开关） |
 
 > * = 必需。conf_dir 默认 `%(base_dir)s/nginx`，conf_ext_dir 默认 `%(conf_dir)s/ext`。
 > 配置默认值同步维护于 `assets/rtfd.cfg`（`rtfd --init` 写入），变更需同步 `main_test.go` 断言。
@@ -472,7 +468,7 @@ rtfd/
 ├── scripts/          部署：nginx.conf / supervisord.conf / rtfd.service / start.sh
 ├── Makefile          构建/测试/发布目标
 ├── Dockerfile        多阶段构建：golang:1.26-alpine 编译 → ubuntu:24.04 运行镜像(+ nginx + supervisor)，
-│                     运行镜像用 apt + deadsnakes PPA 固定预装 3.10/3.11/3.12（系统自带 3.12），
+│                     运行镜像用 apt + deadsnakes PPA 固定预装 3.10/3.12（系统自带 3.12，deadsnakes 补 3.10），
 │                     版本列表写死在 assets/rtfd.cfg 的 [py] 分区；不再依赖 uv 动态安装
 └── .github/workflows/ gotest.yml(测试) · publish.yml(镜像 master→latest、dev→dev、release) · goreleaser.yml(tag→多平台二进制)
 ```
@@ -493,7 +489,7 @@ rtfd/
 - 镜像：`publish.yml` 在 master→`latest`、dev→`dev`、release published 时构建，
   运行时镜像内含 nginx + python3(3.12) + supervisor（supervisord 拉起 `rtfd api` 与 nginx）。
 - 镜像内多版本 Python：运行镜像基于 `ubuntu:24.04`，系统自带 `python3`(=3.12，版本号 `3`)；
-  通过 `apt` + deadsnakes PPA 固定预装 `3.10` / `3.11`（`python3.10 -m ensurepip` 自举 pip 后
+  通过 `apt` + deadsnakes PPA 固定预装 `3.10`（`python3.10 -m ensurepip` 自举 pip 后
   `pip install --break-system-packages virtualenv`，系统 3.12 的 virtualenv 由 apt `python3-virtualenv` 提供），
   三者均以 `版本号 = /usr/bin/pythonX.Y` 写死在 `assets/rtfd.cfg` 的 `[py]` 分区，`default = 3`；
   不再使用 uv 动态安装，版本调整需同时改 Dockerfile 的 apt 安装与 rtfd.cfg 的 [py] 分区。

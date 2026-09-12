@@ -92,7 +92,7 @@ func registerRoutes(g *echo.Group) {
 	g.GET("/:name/badge", apiBadge)
 	g.GET("/badge/:name", apiBadge)
 	g.Match([]string{"HEAD", "GET"}, "/assets/rtfd.js", func(c echo.Context) error {
-		return c.Blob(200, "application/javascript", assets.RtfdJS)
+		return c.Blob(200, "application/javascript; charset=utf-8", assets.RtfdJS)
 	})
 	g.POST("/github/app", ghApp)
 

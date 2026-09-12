@@ -130,17 +130,14 @@ func now() int64 {
 func NewGHApp(pm *ProjectManager) (gh *GHApp, err error) {
 	cfg := pm.CFG()
 	sec := "ghapp"
-	if gtc.IsFalse(cfg.GetKey(sec, "enable")) {
-		err = errors.New("service is not enabled")
-		return
-	}
+	// 无独立 enable 开关：app_id 与 private_key 同时有效（非空且私钥文件存在）即视为启用
 	id := cfg.GetKey(sec, "app_id")
 	pkey, err := cfg.GetPath(sec, "private_key")
 	if err != nil {
 		return
 	}
 	if id == "" || pkey == "" {
-		err = errors.New("invalid param")
+		err = errors.New("service is not enabled")
 		return
 	}
 	if !gtc.IsFile(pkey) {

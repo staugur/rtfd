@@ -49,8 +49,6 @@ var updateDesc = `更新文档项目配置
     domain：     自定义域名
     sslcrt：     自定义域名开启HTTPS时的证书公钥
     sslpri：     自定义域名开启HTTPS时的证书私钥
-    before：     构建前的钩子命令
-    after：      执行构建成功后的钩子命令
     meta：       额外配置数据，每次仅能更新一条，格式是 key=value（key不区分大小写）
 
     可一次更新一个或多个字段，格式是 -> Field:Value,Field:Value,...,Field:Value
@@ -65,7 +63,7 @@ var updateDesc = `更新文档项目配置
         # 特殊字段meta系统内置字段：
             # _sep: 当meta内部字段的值为多值类型时，指定其分隔符，默认是 |
         # 上述部分字段可以将值设为 - 表示重置为空，允许列表如下：
-            requirement index secret before after
+            requirement index secret
 
 第二种方式，通过 file 选项：
 

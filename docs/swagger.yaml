@@ -127,12 +127,6 @@ definitions:
     - SingleHTMLBuilder
   lib.Options:
     properties:
-      AfterHook:
-        description: 构建成功后的钩子命令
-        type: string
-      BeforeHook:
-        description: 构建前的钩子命令
-        type: string
       Builder:
         allOf:
         - $ref: '#/definitions/lib.BuilderType'
@@ -206,12 +200,6 @@ definitions:
     type: object
   lib.OptionsWithResult:
     properties:
-      AfterHook:
-        description: 构建成功后的钩子命令
-        type: string
-      BeforeHook:
-        description: 构建前的钩子命令
-        type: string
       Builder:
         allOf:
         - $ref: '#/definitions/lib.BuilderType'
@@ -570,7 +558,7 @@ paths:
       - application/x-www-form-urlencoded
       description: |-
         三种传参方式（按优先级）：text（Field:Value 逗号分隔，sep 可自定义分隔符）、file（服务端 .rtfd.ini 路径，内容未变化则跳过）、
-        或直接以字段名传参（如 lang=zh_CN&single=on）。值 - 表示重置为空（requirement/index/secret/before/after）。
+        或直接以字段名传参（如 lang=zh_CN&single=on）。值 - 表示重置为空（requirement/index/secret）。
         字段名同创建项目；需管理密钥或项目密钥。路径别名：POST /rtfd/update/{name}
       parameters:
       - description: 项目名称
@@ -653,14 +641,6 @@ paths:
       - description: 直接传字段：是否隐藏git入口
         in: formData
         name: hidegit
-        type: string
-      - description: 直接传字段：构建前钩子，- 重置
-        in: formData
-        name: before
-        type: string
-      - description: 直接传字段：构建后钩子，- 重置
-        in: formData
-        name: after
         type: string
       produces:
       - application/json
@@ -869,14 +849,6 @@ paths:
       - description: 自定义域名证书私钥路径（与 sslcrt 成对）
         in: formData
         name: sslkey
-        type: string
-      - description: 构建前钩子命令
-        in: formData
-        name: before
-        type: string
-      - description: 构建后钩子命令
-        in: formData
-        name: after
         type: string
       produces:
       - application/json

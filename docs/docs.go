@@ -271,18 +271,6 @@ const docTemplate = `{
                         "description": "自定义域名证书私钥路径（与 sslcrt 成对）",
                         "name": "sslkey",
                         "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "构建前钩子命令",
-                        "name": "before",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "构建后钩子命令",
-                        "name": "after",
-                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -663,7 +651,7 @@ const docTemplate = `{
                         "RtfdSign": []
                     }
                 ],
-                "description": "三种传参方式（按优先级）：text（Field:Value 逗号分隔，sep 可自定义分隔符）、file（服务端 .rtfd.ini 路径，内容未变化则跳过）、\n或直接以字段名传参（如 lang=zh_CN\u0026single=on）。值 - 表示重置为空（requirement/index/secret/before/after）。\n字段名同创建项目；需管理密钥或项目密钥。路径别名：POST /rtfd/update/{name}",
+                "description": "三种传参方式（按优先级）：text（Field:Value 逗号分隔，sep 可自定义分隔符）、file（服务端 .rtfd.ini 路径，内容未变化则跳过）、\n或直接以字段名传参（如 lang=zh_CN\u0026single=on）。值 - 表示重置为空（requirement/index/secret）。\n字段名同创建项目；需管理密钥或项目密钥。路径别名：POST /rtfd/update/{name}",
                 "consumes": [
                     "application/x-www-form-urlencoded"
                 ],
@@ -794,18 +782,6 @@ const docTemplate = `{
                         "type": "string",
                         "description": "直接传字段：是否隐藏git入口",
                         "name": "hidegit",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "直接传字段：构建前钩子，- 重置",
-                        "name": "before",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "直接传字段：构建后钩子，- 重置",
-                        "name": "after",
                         "in": "formData"
                     }
                 ],
@@ -1054,14 +1030,6 @@ const docTemplate = `{
         "lib.Options": {
             "type": "object",
             "properties": {
-                "AfterHook": {
-                    "description": "构建成功后的钩子命令",
-                    "type": "string"
-                },
-                "BeforeHook": {
-                    "description": "构建前的钩子命令",
-                    "type": "string"
-                },
                 "Builder": {
                     "description": "Sphinx构建器，支持html、dirhtml、singlehtml",
                     "allOf": [
@@ -1166,14 +1134,6 @@ const docTemplate = `{
         "lib.OptionsWithResult": {
             "type": "object",
             "properties": {
-                "AfterHook": {
-                    "description": "构建成功后的钩子命令",
-                    "type": "string"
-                },
-                "BeforeHook": {
-                    "description": "构建前的钩子命令",
-                    "type": "string"
-                },
                 "Builder": {
                     "description": "Sphinx构建器，支持html、dirhtml、singlehtml",
                     "allOf": [

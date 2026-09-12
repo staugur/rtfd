@@ -116,10 +116,6 @@ type Options struct {
 	GSP string
 	// 是否为公开仓库（原type，自动填充）
 	IsPublic bool
-	// 构建前的钩子命令
-	BeforeHook string
-	// 构建成功后的钩子命令
-	AfterHook string
 	// 额外配置数据
 	Meta map[string]string
 }
@@ -175,8 +171,6 @@ func projectFromOptions(opt Options) *store.Project {
 		Builder:       string(opt.Builder),
 		GSP:           opt.GSP,
 		IsPublic:      opt.IsPublic,
-		BeforeHook:    opt.BeforeHook,
-		AfterHook:     opt.AfterHook,
 		Meta:          opt.Meta,
 	}
 }
@@ -205,8 +199,6 @@ func optionsFromProject(p *store.Project) Options {
 		Builder:       BuilderType(p.Builder),
 		GSP:           p.GSP,
 		IsPublic:      p.IsPublic,
-		BeforeHook:    p.BeforeHook,
-		AfterHook:     p.AfterHook,
 		Meta:          p.Meta,
 	}
 }
@@ -236,10 +228,6 @@ func OptionKeyMap(key string) string {
 		return "GSP"
 	case "ispublic":
 		return "IsPublic"
-	case "beforehook":
-		return "BeforeHook"
-	case "afterhook":
-		return "AfterHook"
 	default:
 		return util.TitleCase(strings.ToLower(key))
 	}
@@ -363,10 +351,6 @@ func optionAlias(key string) string {
 		return "sslpublic"
 	case "sslkey", "sslpri":
 		return "sslprivate"
-	case "before":
-		return "beforehook"
-	case "after":
-		return "afterhook"
 	default:
 		return key
 	}

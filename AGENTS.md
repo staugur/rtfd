@@ -146,7 +146,7 @@ import (
   builder.sh 独立运行时按项目 Version 从 `rtfd cfg py <version>` 反查，缺省回落到 `py.default`
 - 读取版本列表/解释器/默认版本统一走 `conf` 的 `PyVersions/PyCommand/DefaultPyVersion`，
   不要在业务代码里拼 key
-- 官方镜像基于 `ubuntu:24.04` + deadsnakes PPA 固定预装 `3.10 / 3.11 / 3.12`（系统自带 3.12），
+- 官方镜像基于 `ubuntu:24.04` + deadsnakes PPA 固定预装 `3.10` 与 `3.12`（系统自带 3.12，deadsnakes 补 3.10），
   版本列表写死在 `assets/rtfd.cfg` 的 `[py]` 分区与 Dockerfile 的 apt 安装中（两处须同步）；
   自定义镜像时须保证登记的每个版本都能 `pythonX.Y -m virtualenv`
 
@@ -177,7 +177,7 @@ import (
   覆盖优先级：仓库 `.rtfd.ini` > 项目 Options > 系统 rtfd.cfg
 - 对 `.rtfd.ini` 的读取/回写白名单固定为 `project.latest / sphinx.{sourcedir,lang,builder} /
   python.{version,requirement,install,index}`，回写经 `rtfd project update -f`
-- 涉及路径/命令的字段（latest/sourcedir/requirement/before/after）新增校验时，
+- 涉及路径/命令的字段（latest/sourcedir/requirement）新增校验时，
   保持防 `/`、`..` 前缀穿越与白名单策略
 
 ## 前端（rtfd.js）

@@ -31,7 +31,7 @@ import (
 )
 
 // allowEmptyFields 值可以为 - 表示重置为空的字段
-var allowEmptyFields = []string{"requirement", "index", "secret", "before", "after"}
+var allowEmptyFields = []string{"requirement", "index", "secret"}
 
 // 更新文档项目配置结构体
 type updateHook struct {
@@ -71,10 +71,6 @@ func (u *updateHook) handle(field string) (fn func(value any) error, err error) 
 		fn = u.customDomain
 	case "builder":
 		fn = u.builder
-	case "beforehook", "before":
-		fn = u.beforeHook
-	case "afterhook", "after":
-		fn = u.afterHook
 	case "ssl":
 		fn = u.ssl
 	case "meta":
@@ -237,16 +233,6 @@ func (u *updateHook) builder(value any) error {
 	return errors.New("invalid builder")
 }
 
-func (u *updateHook) beforeHook(value any) error {
-	u.opt.BeforeHook = value.(string)
-	return nil
-}
-
-func (u *updateHook) afterHook(value any) error {
-	u.opt.AfterHook = value.(string)
-	return nil
-}
-
 func (u *updateHook) ssl(value any) error {
 	v := value.(string)
 
@@ -293,7 +279,7 @@ func (u *updateHook) meta(value any) error {
 // ParseUpdateRule 解析text形式的更新规则，返回字段->值的映射（CLI 与 API 共用）。
 // 格式：Field:Value,Field:Value（分隔符由 sep 指定，缺省是英文冒号）；
 // 其中 sslcrt 与 sslpri 合并为 ssl 字段（值以英文逗号分隔），
-// requirement、index、secret、before、after的值可以为 - 表示重置为空。
+// requirement、index、secret 的值可以为 - 表示重置为空。
 func ParseUpdateRule(text, sep string) (rule map[string]any, err error) {
 	if sep == "" {
 		sep = ":"

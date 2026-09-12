@@ -77,8 +77,6 @@ var createCmd = &cobra.Command{
 		sslcrt := cmd.Flag("sslcrt").Value.String()
 		sslkey := cmd.Flag("sslkey").Value.String()
 		builder := cmd.Flag("builder").Value.String()
-		before := cmd.Flag("before").Value.String()
-		after := cmd.Flag("after").Value.String()
 
 		pm, err := lib.New(cfgFile)
 		if err != nil {
@@ -107,8 +105,6 @@ var createCmd = &cobra.Command{
 			"sslcrt":      sslcrt,
 			"sslkey":      sslkey,
 			"builder":     builder,
-			"before":      before,
-			"after":       after,
 		}
 		if _, err = pm.CreateProject(name, rule); err != nil {
 			fmt.Println(err)
@@ -135,6 +131,4 @@ func init() {
 	createCmd.Flags().StringP("domain", "", "", "自定义域名")
 	createCmd.Flags().StringP("sslcrt", "", "", "自定义域名的SSL证书公钥")
 	createCmd.Flags().StringP("sslkey", "", "", "自定义域名的SSL证书私钥")
-	createCmd.Flags().StringP("before", "", "", "构建前的钩子命令")
-	createCmd.Flags().StringP("after", "", "", "执行构建成功后的钩子命令")
 }

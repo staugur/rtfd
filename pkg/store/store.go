@@ -75,8 +75,6 @@ type Project struct {
 	Builder      string `gorm:"size:32;not null"`
 	GSP          string `gorm:"size:32"`
 	IsPublic     bool
-	BeforeHook   string            `gorm:"size:1024"`
-	AfterHook    string            `gorm:"size:1024"`
 	Meta         map[string]string `gorm:"serializer:json;type:text"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time

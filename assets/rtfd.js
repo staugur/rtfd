@@ -3,8 +3,8 @@
 /*
  * rtfd.js —— 文档页面右下角浮动挂件（无第三方依赖）
  *
- * 数据来源：GET {rtfd_api}/rtfd/{name}/desc（原生 fetch）
- * 参数来源：注入脚本的 query（name/branch/rtfd_api），或 id=rtfd-script 的 data 属性
+ * 数据来源：GET {apiServer}/rtfd/{name}/desc（原生 fetch）
+ * 参数来源：注入脚本 URL 的 query（name/branch/rtfd_api），或脚本标签的 data-* 属性（data-name/data-branch/data-api）
  * 交互：默认只显示当前语言与版本，点击后在右下角展开语言列表、版本列表与仓库链接，
  *       再次点击（或点击面板外、按 Esc）收起
  *
@@ -136,28 +136,71 @@
 }
 `
 
-    // 读取注入脚本携带的参数：优先 id=rtfd-script 的 data 属性，其次 script.src 的 query
-    function getUrlQuery(key, acq) {
-        const tag = document.getElementById('rtfd-script')
-        const scripts = document.getElementsByTagName('script')
-        const self = scripts[scripts.length - 1]
-        let str = ''
-        if (tag) {
-            str = tag.getAttribute('data') || ''
-        } else if (self) {
-            const src = self.getAttribute('src') || ''
-            if (src.indexOf('rtfd.js') > -1) {
-                str = src.indexOf('?') > -1 ? src.slice(src.indexOf('?') + 1) : ''
-            }
+    // 取得本脚本节点：优先 document.currentScript（执行期最准确，IIFE 顶层已捕获），
+    // 否则回退到扫描 src 含 rtfd.js 的脚本（兼容异步/延迟加载或旧浏览器）
+    const SELF = document.currentScript || null
+    function currentScript() {
+        if (SELF && SELF.src) {
+            return SELF
         }
-        const query = {}
+        const found = document.querySelectorAll('script[src*="rtfd.js"]')
+        return found.length ? found[found.length - 1] : null
+    }
+
+    // 解析 URL query 为对象
+    function parseQuery(str) {
+        const q = {}
+        if (!str) {
+            return q
+        }
         str.split('&').forEach(function (kv) {
             const i = kv.indexOf('=')
             if (i > -1) {
-                query[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1))
+                const k = decodeURIComponent(kv.slice(0, i))
+                const v = decodeURIComponent(kv.slice(i + 1))
+                if (k) {
+                    q[k] = v
+                }
             }
         })
-        return key ? query[key] || acq : query
+        return q
+    }
+
+    // 统一解析配置：name（项目名）、branch（分支/版本）、apiServer（接口基址）
+    // 取值优先级：脚本标签的 data-* 属性 > 脚本 URL 的 query 参数，
+    // 既兼容现有注入（?name=&branch=&rtfd_api=），也支持更直观的
+    // <script src=".../rtfd.js" data-name="..." data-branch="..." data-api="..."> 写法。
+    function getConfig() {
+        const s = currentScript()
+        const src = s ? (s.getAttribute('src') || '') : ''
+        const q = parseQuery(src.indexOf('?') > -1 ? src.slice(src.indexOf('?') + 1) : '')
+
+        const pick = function (key, attr) {
+            let v = s ? s.getAttribute('data-' + attr) : null
+            if (v == null || v === '') {
+                v = q[key]
+            }
+            return (v || '').trim()
+        }
+
+        let api = pick('rtfd_api', 'api') || pick('api_server', 'api')
+        if (!api && src) {
+            // 由本脚本 URL 反推：脚本由 API 的 /rtfd/assets/rtfd.js 提供，
+            // 去掉该后缀即得服务根地址，无需依赖 server_url 配置
+            try {
+                api = new URL(src, location.href).href
+                    .replace(/\/rtfd\/assets\/rtfd\.js(\?.*)?$/i, '')
+                    .replace(/\/+$/, '')
+            } catch (e) {
+                api = ''
+            }
+        }
+
+        return {
+            name: pick('name', 'name'),
+            branch: pick('branch', 'branch') || 'master',
+            apiServer: (api || '').replace(/\/+$/, '')
+        }
     }
 
     function injectCSS(code) {
@@ -338,12 +381,12 @@
     }
 
     function init() {
-        const name = getUrlQuery('name')
-        if (!name) {
+        const cfg = getConfig()
+        // 缺少项目名或接口基址则静默退出，不渲染挂件
+        if (!cfg.name || !cfg.apiServer) {
             return
         }
-        const api = getUrlQuery('rtfd_api', '')
-        fetch(api + '/rtfd/' + encodeURIComponent(name) + '/desc', { credentials: 'omit' })
+        fetch(cfg.apiServer + '/rtfd/' + encodeURIComponent(cfg.name) + '/desc', { credentials: 'omit' })
             .then(function (resp) { return resp.json() })
             .then(function (res) {
                 // showNav 显式为 false 时不展示挂件

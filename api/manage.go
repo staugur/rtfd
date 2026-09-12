@@ -94,7 +94,7 @@ func apiProjectList(c echo.Context) error {
 
 // apiProjectCreate 创建项目：POST /rtfd/projects
 // 参数与CLI一致（url必需），其余字段如 latest/version/single/sourcedir/lang/
-// requirement/install/index/builder/secret/domain/sslcrt/sslkey/before/after 可选
+// requirement/install/index/builder/secret/domain/sslcrt/sslkey 可选
 // apiProjectCreate 创建项目
 // @Summary 创建项目
 // @Description 参数与 CLI `rtfd project create` 一致：url 必需，其余字段可选、空值沿用系统默认；创建后自动渲染 nginx 配置。
@@ -117,8 +117,6 @@ func apiProjectList(c echo.Context) error {
 // @Param domain formData string false "自定义域名（需已解析到本机）"
 // @Param sslcrt formData string false "自定义域名证书路径（与 sslkey 成对）"
 // @Param sslkey formData string false "自定义域名证书私钥路径（与 sslcrt 成对）"
-// @Param before formData string false "构建前钩子命令"
-// @Param after formData string false "构建后钩子命令"
 // @Security RtfdSign
 // @Success 201 {object} resd{data=lib.Options} "创建成功，data 为项目配置"
 // @Failure default {object} res "参数非法、名称/自定义域名已存在或密钥校验失败"
@@ -191,7 +189,7 @@ func apiProjectInfo(c echo.Context) error {
 // apiProjectUpdate 更新项目配置
 // @Summary 更新项目配置
 // @Description 三种传参方式（按优先级）：text（Field:Value 逗号分隔，sep 可自定义分隔符）、file（服务端 .rtfd.ini 路径，内容未变化则跳过）、
-// @Description 或直接以字段名传参（如 lang=zh_CN&single=on）。值 - 表示重置为空（requirement/index/secret/before/after）。
+// @Description 或直接以字段名传参（如 lang=zh_CN&single=on）。值 - 表示重置为空（requirement/index/secret）。
 // @Description 字段名同创建项目；需管理密钥或项目密钥。路径别名：POST /rtfd/update/{name}
 // @Tags 项目管理
 // @Accept x-www-form-urlencoded
@@ -216,8 +214,6 @@ func apiProjectInfo(c echo.Context) error {
 // @Param sslkey formData string false "直接传字段：证书私钥路径"
 // @Param shownav formData string false "直接传字段：是否显示挂件导航"
 // @Param hidegit formData string false "直接传字段：是否隐藏git入口"
-// @Param before formData string false "直接传字段：构建前钩子，- 重置"
-// @Param after formData string false "直接传字段：构建后钩子，- 重置"
 // @Security RtfdSign
 // @Success 200 {object} resup "更新结果，updated/failed 为字段列表；规则文件内容未变化时 updated/failed 为空且 message=not updated"
 // @Failure default {object} res "项目不存在、规则为空或密钥校验失败"
