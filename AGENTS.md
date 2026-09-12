@@ -146,8 +146,9 @@ import (
   builder.sh 独立运行时按项目 Version 从 `rtfd cfg py <version>` 反查，缺省回落到 `py.default`
 - 读取版本列表/解释器/默认版本统一走 `conf` 的 `PyVersions/PyCommand/DefaultPyVersion`，
   不要在业务代码里拼 key
-- 官方镜像用 uv 预装多版本（构建参数 `python_versions`，默认 `3.10 3.12`），并写入 `/rtfd.cfg` 的
-  `[py]` 分区；自定义镜像时须保证登记的每个版本都能 `pythonX.Y -m virtualenv`
+- 官方镜像基于 `ubuntu:24.04` + deadsnakes PPA 固定预装 `3.10 / 3.11 / 3.12`（系统自带 3.12），
+  版本列表写死在 `assets/rtfd.cfg` 的 `[py]` 分区与 Dockerfile 的 apt 安装中（两处须同步）；
+  自定义镜像时须保证登记的每个版本都能 `pythonX.Y -m virtualenv`
 
 ## CLI / API 扩展约定
 

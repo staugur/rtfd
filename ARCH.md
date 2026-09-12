@@ -471,9 +471,9 @@ rtfd/
 ├── vars/             跨包常量（Sender、GitHub/Gitee 常量、ResetEmpty、默认版本…）
 ├── scripts/          部署：nginx.conf / supervisord.conf / rtfd.service / start.sh
 ├── Makefile          构建/测试/发布目标
-├── Dockerfile        多阶段构建：uv 阶段(取静态二进制，COPY --from 不支持变量展开) →
-│                     golang:1.26-alpine 编译 → python:3.11-slim 运行镜像(+ nginx + supervisor)，
-│                     并用 uv 预装 `python_versions` 指定的额外 Python 版本后登记到 /rtfd.cfg 的 [py] 分区
+├── Dockerfile        多阶段构建：golang:1.26-alpine 编译 → ubuntu:24.04 运行镜像(+ nginx + supervisor)，
+│                     运行镜像用 apt + deadsnakes PPA 固定预装 3.10/3.11/3.12（系统自带 3.12），
+│                     版本列表写死在 assets/rtfd.cfg 的 [py] 分区；不再依赖 uv 动态安装
 └── .github/workflows/ gotest.yml(测试) · publish.yml(镜像 master→latest、dev→dev、release) · goreleaser.yml(tag→多平台二进制)
 ```
 
@@ -491,11 +491,12 @@ rtfd/
 - 版本：版本号存 `assets/VERSION`（当前 1.5.0），`-v` 输出；
   tag `v*` 推送触发 GoReleaser（linux amd64/386/arm64 + checksum）。
 - 镜像：`publish.yml` 在 master→`latest`、dev→`dev`、release published 时构建，
-  运行时镜像内含 nginx + python3.11 + supervisor（supervisord 拉起 `rtfd api` 与 nginx）。
-- 镜像内多版本 Python：基础镜像 `python:3.11-slim` 提供版本号 `3`（`python3`），
-  构建时用 uv 预装 `ARG python_versions`（默认 `3.10 3.12`）的预编译 CPython，
-  为每个版本装上 virtualenv 并以 `版本号 = /usr/local/bin/pythonX.Y` 写入 `/rtfd.cfg` 的 `[py]` 分区，
-  同时固定 `default = 3`；不需要多版本时可 `--build-arg python_versions=""`。
+  运行时镜像内含 nginx + python3(3.12) + supervisor（supervisord 拉起 `rtfd api` 与 nginx）。
+- 镜像内多版本 Python：运行镜像基于 `ubuntu:24.04`，系统自带 `python3`(=3.12，版本号 `3`)；
+  通过 `apt` + deadsnakes PPA 固定预装 `3.10` / `3.11`（`python3.10 -m ensurepip` 自举 pip 后
+  `pip install --break-system-packages virtualenv`，系统 3.12 的 virtualenv 由 apt `python3-virtualenv` 提供），
+  三者均以 `版本号 = /usr/bin/pythonX.Y` 写死在 `assets/rtfd.cfg` 的 `[py]` 分区，`default = 3`；
+  不再使用 uv 动态安装，版本调整需同时改 Dockerfile 的 apt 安装与 rtfd.cfg 的 [py] 分区。
 - 测试：纯单元测试与 sqlite 集成测试（store 连接/迁移、项目 CRUD、conf、nginx 渲染、默认配置），
   不依赖网络与外部数据库服务。
 
