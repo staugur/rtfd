@@ -128,14 +128,14 @@ func initConfig() {
 // 仅当对应环境变量非空时才替换；未提供则保持模板中的空值（需手动补填）。
 //
 //	RTFD_API_SERVER_URL -> [api] server_url（对外服务地址，必填）
-//	RTFD_SWS_DN       -> [sws] dn（文档托管域名后缀，必填）
+//	RTFD_CADDY_DN       -> [caddy] dn（文档托管域名后缀，必填）
 func fillConfigFromEnv(content []byte) ([]byte, string) {
 	replacers := []struct {
 		env string
 		key string
 	}{
 		{"RTFD_API_SERVER_URL", "server_url"},
-		{"RTFD_SWS_DN", "dn"},
+		{"RTFD_CADDY_DN", "dn"},
 	}
 	s := string(content)
 	var filled, missing []string

@@ -314,9 +314,9 @@ func (pm *ProjectManager) GenerateOption(name, url string) (opt Options, err err
 		return
 	}
 
-	dn := pm.cfg.GetKey("sws", "dn")
+	dn := pm.cfg.GetKey("caddy", "dn")
 	if dn == "" {
-		err = errors.New("invalid sws dn")
+		err = errors.New("invalid caddy dn")
 		return
 	}
 	return Options{
@@ -458,8 +458,8 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 		opt.SSL = false
 	}
 
-	// 汇总渲染 SWS 配置并重载
-	err := pm.renderSWS(&opt)
+	// 汇总渲染 Caddy 配置并热加载
+	err := pm.renderCaddy(&opt)
 	if err != nil {
 		return err
 	}
@@ -617,13 +617,13 @@ func resultFromBuildResult(row *store.BuildResult) Result {
 	}
 }
 
-// renderSWS 汇总全部文档项目，渲染并写入 SWS（static-web-server）单实例配置，然后重载 SWS。
+// renderCaddy 汇总全部文档项目，渲染并写入 Caddy 单实例配置（Caddyfile），然后热加载 Caddy。
 // opt 为可选的“待写入/最新”项目配置：Create 场景下项目尚未落库，用它保证被纳入配置。
-func (pm *ProjectManager) renderSWS(opt *Options) error {
+func (pm *ProjectManager) renderCaddy(opt *Options) error {
 	basedir := pm.cfg.BaseDir()
 	DocsDir := filepath.Join(basedir, "docs")
-	dftSWSDir := filepath.Join(basedir, "sws")
-	SWSDir := pm.cfg.MustPath("sws", "conf_dir", dftSWSDir)
+	dftCaddyDir := filepath.Join(basedir, "caddy")
+	CaddyDir := pm.cfg.MustPath("caddy", "conf_dir", dftCaddyDir)
 	if !gtc.IsDir(basedir) {
 		if err := gtc.CreateDir(basedir); err != nil {
 			return err
@@ -634,29 +634,23 @@ func (pm *ProjectManager) renderSWS(opt *Options) error {
 			return err
 		}
 	}
-	if !gtc.IsDir(SWSDir) {
-		if err := gtc.CreateDir(SWSDir); err != nil {
+	if !gtc.IsDir(CaddyDir) {
+		if err := gtc.CreateDir(CaddyDir); err != nil {
 			return err
 		}
 	}
 
 	// 静态资源缓存时间，非正整数表示不设置缓存头
-	staticExpires := pm.cfg.MustKey("sws", "static_expires", "3600")
+	staticExpires := pm.cfg.MustKey("caddy", "static_expires", "3600")
 	if n, e := strconv.Atoi(staticExpires); e != nil || n <= 0 {
 		staticExpires = ""
 	}
-	port := 80
-	if p, e := strconv.Atoi(pm.cfg.MustKey("sws", "port", "80")); e == nil && p > 0 {
-		port = p
-	}
-	swsopt := &swsOptions{
-		Host:          pm.cfg.MustKey("sws", "host", "0.0.0.0"),
-		Port:          uint(port),
-		Root:          DocsDir,
-		TLSCert:       pm.cfg.GetKey("sws", "ssl_crt"),
-		TLSKey:        pm.cfg.GetKey("sws", "ssl_key"),
+	// 自动 HTTPS 开关：关闭时（内网/开发环境）站点地址加 http:// 前缀，仅提供 HTTP
+	autoHTTPS := gtc.IsTrue(pm.cfg.MustKey("caddy", "auto_https", "on"))
+	copt := &caddyOptions{
+		Email:         strings.TrimSpace(pm.cfg.GetKey("caddy", "email")),
 		StaticExpires: staticExpires,
-		HTMLNoCache:   gtc.IsTrue(pm.cfg.MustKey("sws", "html_nocache", "on")),
+		HTMLNoCache:   gtc.IsTrue(pm.cfg.MustKey("caddy", "html_nocache", "on")),
 	}
 
 	// 汇总全部项目（opt 为待写入/最新项目时覆盖同名项，保证未落库的新项目也被纳入）
@@ -683,56 +677,53 @@ func (pm *ProjectManager) renderSWS(opt *Options) error {
 			continue
 		}
 		lang := strings.Split(p.Lang, ",")[0]
-		root := filepath.Join(DocsDir, p.Name)
+		site := caddySite{Root: filepath.Join(DocsDir, p.Name)}
 		if p.Single {
 			// 单版本：根目录即默认语言的 latest
-			root = filepath.Join(root, lang, "latest")
+			site.Root = filepath.Join(site.Root, lang, "latest")
+		} else {
+			// 多版本：访问根路径时固定跳转到默认语言的 latest
+			site.Redirect = "/" + lang + "/latest/"
 		}
-		domains := []string{p.DefaultDomain}
+		// 默认域名与自定义域名同属一个站点块：启用自动 HTTPS 时 Caddy 会为每个域名各自申请证书
+		addrs := []string{caddyAddress(p.DefaultDomain, autoHTTPS)}
 		if util.IsDomain(p.CustomDomain) {
-			domains = append(domains, p.CustomDomain)
+			addrs = append(addrs, caddyAddress(strings.ToLower(p.CustomDomain), autoHTTPS))
 		}
-		for _, d := range domains {
-			swsopt.VHosts = append(swsopt.VHosts, swsVHost{Host: d, Root: root})
-			if !p.Single {
-				// 多版本：访问根路径时固定跳转到默认语言的 latest
-				swsopt.Redirects = append(swsopt.Redirects, swsRedirect{
-					Host: d, Source: "/", Destination: "/" + lang + "/latest/", Kind: 302,
-				})
-			}
-		}
+		site.Address = strings.Join(addrs, ", ")
+		copt.Sites = append(copt.Sites, site)
 	}
 
-	conf, err := swsopt.render()
+	conf, err := copt.render()
 	if err != nil {
 		return err
 	}
-	swsFile := filepath.Join(SWSDir, "config.toml")
-	if err := os.WriteFile(swsFile, []byte(conf), 0644); err != nil {
+	caddyFile := filepath.Join(CaddyDir, "Caddyfile")
+	if err := os.WriteFile(caddyFile, []byte(conf), 0644); err != nil {
 		return err
 	}
-	return pm.reloadSWS()
+	return pm.reloadCaddy(caddyFile)
 }
 
-// reloadSWS 执行配置重载命令，使新生成的 SWS 配置生效。
-// 命令来自 [sws] exec（通过 shell 执行，如 `supervisorctl restart sws`），为空则跳过。
-func (pm *ProjectManager) reloadSWS() error {
-	cmd := strings.TrimSpace(pm.cfg.GetKey("sws", "exec"))
-	if cmd == "" {
-		return nil
+// reloadCaddy 让新生成的 Caddyfile 生效，执行 `caddy reload --config <file>`（优雅热加载，无需重启）。
+// 可执行文件来自 [caddy] exec（默认 caddy），是否 sudo 由 [caddy] sudo 控制。
+func (pm *ProjectManager) reloadCaddy(confFile string) error {
+	bin := strings.TrimSpace(pm.cfg.GetKey("caddy", "exec"))
+	if bin == "" {
+		bin = "caddy"
 	}
-	name := "sh"
-	args := []string{"-c", cmd}
-	if gtc.IsTrue(pm.cfg.GetKey("sws", "sudo")) {
+	name := bin
+	args := []string{"reload", "--config", confFile, "--adapter", "caddyfile"}
+	if gtc.IsTrue(pm.cfg.GetKey("caddy", "sudo")) {
 		name = "sudo"
-		args = []string{"sh", "-c", cmd}
+		args = append([]string{bin}, args...)
 	}
 	exitCode, out, err := util.RunCmd(name, args...)
 	if err != nil {
 		return err
 	}
 	if exitCode != 0 {
-		return fmt.Errorf("sws reload failed: %s", strings.TrimSpace(out))
+		return fmt.Errorf("caddy reload failed: %s", strings.TrimSpace(out))
 	}
 	return nil
 }
@@ -805,9 +796,9 @@ func (pm *ProjectManager) Remove(name string) error {
 	if err != nil {
 		return err
 	}
-	// 项目已删除，重新汇总渲染 SWS 配置并重载（失败仅告警，不回滚已删除的数据）
-	if e := pm.renderSWS(nil); e != nil {
-		fmt.Printf("failed to reload sws config: %s\n", e)
+	// 项目已删除，重新汇总渲染 Caddy 配置并热加载（失败仅告警，不回滚已删除的数据）
+	if e := pm.renderCaddy(nil); e != nil {
+		fmt.Printf("failed to reload caddy config: %s\n", e)
 	}
 	return nil
 }
@@ -841,7 +832,7 @@ func (pm *ProjectManager) Update(opt *Options, rule map[string]any) (ok []string
 	}
 
 	if uh.render {
-		err = pm.renderSWS(opt)
+		err = pm.renderCaddy(opt)
 		if err != nil {
 			return
 		}

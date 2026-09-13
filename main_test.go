@@ -32,12 +32,12 @@ func TestDefaultConf(t *testing.T) {
 		t.Fatal("no database.dsn")
 	}
 
-	swsSec := cfg.Section("sws")
-	if !swsSec.HasKey("dn") {
-		t.Fatal("no sws.dn")
+	caddySec := cfg.Section("caddy")
+	if !caddySec.HasKey("dn") {
+		t.Fatal("no caddy.dn")
 	}
-	if !swsSec.HasKey("exec") {
-		t.Fatal("no sws.exec")
+	if !caddySec.HasKey("exec") {
+		t.Fatal("no caddy.exec")
 	}
 
 	pySec := cfg.Section("py")

@@ -70,9 +70,9 @@ func (pm *ProjectManager) Import(opt Options, name string) (string, error) {
 		name = opt.Name
 	}
 	name = strings.ToLower(name)
-	dn := pm.cfg.GetKey("sws", "dn")
+	dn := pm.cfg.GetKey("caddy", "dn")
 	if dn == "" {
-		return name, errors.New("invalid sws dn")
+		return name, errors.New("invalid caddy dn")
 	}
 	if pm.HasName(name) {
 		return name, errors.New("the name already exists")

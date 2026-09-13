@@ -37,7 +37,7 @@ var allowEmptyFields = []string{"requirement", "index", "secret"}
 type updateHook struct {
 	pm     *ProjectManager
 	opt    *Options
-	render bool // 重新渲染 SWS 配置
+	render bool // 重新渲染 Caddy 配置
 }
 
 // 根据要更新的字段选择对应处理函数

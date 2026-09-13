@@ -35,7 +35,7 @@ base_dir = %s
 type = sqlite
 dsn = %s/rtfd.db
 
-[sws]
+[caddy]
 dn = example.com
 exec = true
 

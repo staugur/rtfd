@@ -97,7 +97,7 @@ func apiProjectList(c echo.Context) error {
 // requirement/install/index/builder/secret/domain/sslcrt/sslkey 可选
 // apiProjectCreate 创建项目
 // @Summary 创建项目
-// @Description 参数与 CLI `rtfd project create` 一致：url 必需，其余字段可选、空值沿用系统默认；创建后自动汇总渲染 SWS 配置。
+// @Description 参数与 CLI `rtfd project create` 一致：url 必需，其余字段可选、空值沿用系统默认；创建后自动汇总渲染 Caddy 配置。
 // @Description 参数可放在表单、query 或 JSON body（键不区分大小写）；需管理密钥。
 // @Tags 项目管理
 // @Accept x-www-form-urlencoded
@@ -271,7 +271,7 @@ func apiProjectUpdate(c echo.Context) error {
 // apiProjectRemove 删除项目：POST|DELETE /rtfd/:name/remove
 // apiProjectRemove 删除项目
 // @Summary 删除项目
-// @Description 删除项目配置与构建结果，并从 SWS 配置中移除对应虚拟主机。需管理密钥或项目密钥。
+// @Description 删除项目配置与构建结果，并从 Caddy 配置中移除对应站点。需管理密钥或项目密钥。
 // @Description 路径别名：/rtfd/remove/{name}（POST 与 DELETE 均可）
 // @Tags 项目管理
 // @Produce json
@@ -329,7 +329,7 @@ func apiProjectExport(c echo.Context) error {
 // apiProjectImport 导入项目配置
 // @Summary 导入项目配置
 // @Description 导入 base64 编码的项目配置（由导出接口或 CLI `rtfd project transfer -e` 生成）；
-// @Description name 可选，用于改名导入（缺省取配置中的名称）；导入走创建流程，会重新校验并渲染 SWS 配置。需管理密钥。
+// @Description name 可选，用于改名导入（缺省取配置中的名称）；导入走创建流程，会重新校验并渲染 Caddy 配置。需管理密钥。
 // @Tags 项目管理
 // @Accept x-www-form-urlencoded
 // @Produce json
