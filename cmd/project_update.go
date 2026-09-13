@@ -21,8 +21,8 @@ import (
 	"os"
 	"strings"
 
-	"pkg/tcw.im/rtfd/pkg/lib"
-	"pkg/tcw.im/rtfd/vars"
+	"pkg.tcw.im/rtfd/v2/pkg/lib"
+	"pkg.tcw.im/rtfd/v2/vars"
 
 	"github.com/spf13/cobra"
 )

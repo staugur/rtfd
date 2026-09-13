@@ -23,12 +23,12 @@ GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 
 ### 技术栈
 
-- 语言/工程：Go 1.26，module `pkg/tcw.im/rtfd`，单二进制
+- 语言/工程：Go 1.26，module `pkg.tcw.im/rtfd/v2`，单二进制
 - CLI：`spf13/cobra v1.10`；Web：`labstack/echo/v4`
 - 存储：`gorm.io/gorm` + 驱动 `glebarez/sqlite`（纯Go，保持 `CGO_ENABLED=0` 交叉编译）、
   `gorm.io/driver/mysql`、`gorm.io/driver/postgres`
 - 配置：`gopkg.in/ini.v1`（INI 插值支持 `%(key)s`）
-- 静态资源打包：`go:embed`（builder.sh / rtfd.js / rtfd.cfg / VERSION）
+- 静态资源打包：`go:embed`（builder.sh / rtfd.js / rtfd.cfg / VERSION / swagger.html）
 - 其它：`pkg.tcw.im/gtc`（通用工具库）、`golang-jwt/jwt/v5`（GitHub App 身份）
 
 ---
@@ -344,7 +344,7 @@ docs/{name}/
 |---|---|---|---|
 | `/:name/desc`、`/desc/:name` | GET | 项目描述 | 返回 URL、langs、latest、versions、builder、showNav 等，供 rtfd.js 渲染 |
 | `/:name/badge`、`/badge/:name` | GET | 文档状态徽章 SVG | `?branch=`，默认 Latest；passing/failing/unknown |
-| `/:name/build`、`/build/:name` | POST | 触发构建 | Header `X-Rtfd-Sign=MD5(secret)`（空 secret 免鉴权）；参数 branch、debug；异步执行返回 201 |
+| `/:name/build`、`/build/:name` | POST | 触发构建 | 动态签名（X-Rtfd-Ts/Nonce/Sign，HMAC-SHA256，密钥为项目 secret；空 secret 免鉴权）；参数 branch、debug；异步执行返回 201 |
 | `/:name/webhook`、`/webhook/:name` | POST | git webhook | 校验 GitHub `X-Hub-Signature`(sha1=HMAC) / Gitee `X-Gitee-Token`；识别 UA 分派；ping→pong；排除 `excluded_branch` |
 | `/assets/rtfd.js` | GET/HEAD | 静态挂件脚本 | 内嵌 assets.RtfdJS |
 | `/github/app` | POST | GitHub App 事件 | `installation`/`installation_repositories`，校验 App ID 后 `Dispatch` |
@@ -361,10 +361,11 @@ docs/{name}/
 | `/:name/export`、`/export/:name` | GET | 导出 base64 配置 | `sysmeta=1` 保留内置 meta |
 | `/import` | POST | 导入 base64 配置 | `export` 必需、`name` 可选（别名覆盖） |
 
-管理接口鉴权：Header `X-Rtfd-Sign=MD5(secret)`，密钥取自配置 `[api] secret`；
+管理接口鉴权：动态签名，随请求携带 `X-Rtfd-Ts`（Unix 秒）、`X-Rtfd-Nonce`（随机串）、`X-Rtfd-Sign`（HMAC-SHA256），
+签名串 = `ts + "\n" + nonce + "\n" + METHOD(大写) + "\n" + path + "\n" + sha256hex(body)`，密钥取自配置 `[api] secret`；
 项目级接口（info/update/remove/export）同时接受项目自身密钥。`[api] secret` 未配置时
 管理接口一律拒绝（`api secret is not configured`），避免 Web 管理能力被意外暴露；
-构建与 webhook 仍按项目密钥的原逻辑运行（空 secret 免鉴权）。
+构建与 webhook 仍按项目密钥的原逻辑运行（空 secret 免鉴权）。可用 `rtfd sign` 生成签名，Swagger UI 首页填入密钥后自动签名。
 
 统一响应：`{"success": bool, "message": string, "data": any}`；错误由 `customHTTPErrorHandler`
 输出（默认 HTTP 200，echo.HTTPError 除外）。
@@ -406,6 +407,7 @@ rtfd  [-c/--config 文件]  [-v 版本]  [-i 构建信息]  [--init 生成默认
 `Export/Import`、`Update`），保证两种入口行为一致。
 
 根命令 `initConfig`：除 `-h/-v/-i/--init` 外，所有子命令要求配置文件存在，否则打印提示并 `os.Exit(127)`。
+`rtfd --init` 生成默认配置时会读取环境变量预填两个必填项：`RTFD_API_SERVER_URL`→`[api] server_url`、`RTFD_NGINX_DN`→`[nginx] dn`；未提供则留空并在输出中提示需手动设置。
 错误处理约定：cmd 层 `fmt.Println(err)` + `os.Exit`，退出码大致分为
 127（配置/项目不可用）、128（项目/域名已存在）、129（参数非法）、130（操作失败），
 含义有一定重叠，新命令保持一致风格即可。
@@ -431,11 +433,11 @@ rtfd  [-c/--config 文件]  [-v 版本]  [-i 构建信息]  [--init 生成默认
 | 分区 | 关键项 | 说明 |
 |---|---|---|
 | （default） | base_dir* / default_branch / unallowed_name / log_level | 数据根目录（初始化后勿改，否则丢数据）等 |
-| [database] | type* / dsn* / debug | 数据库类型 `sqlite`/`mysql`/`pgsql`（默认sqlite）、连接串（sqlite为文件路径，支持 `%(base_dir)s` 插值）、是否打印SQL |
-| [nginx] | dn* / exec / sudo / ssl_crt / ssl_key / conf_dir / conf_ext_dir | 托管域名后缀；nginx 路径与是否 sudo；SSL 与配置目录 |
+| [database] | type* / dsn* | 数据库类型 `sqlite`/`mysql`/`pgsql`（默认sqlite）、连接串（sqlite为文件路径，支持 `%(base_dir)s` 插值）；是否打印SQL 由顶层 `log_level = debug` 控制（不再单独提供 `database.debug`） |
+| [nginx] | dn* / exec / sudo / ssl_crt / ssl_key / conf_dir / conf_ext_dir | 托管域名后缀（必填）；nginx 路径与是否 sudo；SSL 与配置目录；`dn` 可由 `rtfd --init` 读取 `RTFD_NGINX_DN` 环境变量自动填入 |
 | [nginx] | static_expires / html_nocache / open_file_cache | 静态资源缓存秒数（默认3600）、HTML 协商缓存（默认on）、文件元数据缓存（默认on），详见 6.1 |
 | [py] | `<版本号>`* / default / index | 可用 Python 版本映射（至少一项，键为版本号如 3、3.10、3.12，值为程序路径，要求带 pip+virtualenv）、默认版本（缺省取第一个可用版本）、pip 源 |
-| [api] | host / port / server_url* / secret | 监听与对外服务地址（webhook 回跳用）、管理接口密钥（见第7节） |
+| [api] | host / port / server_url* / secret | 监听；`server_url` 为**必填**项（rtfd.cfg 默认留空），供 webhook 回跳、文档挂件脚本注入，须配置为对外可达地址；`rtfd --init` 会读取 `RTFD_API_SERVER_URL` 环境变量自动填入，未设置则留空需手动补填；配置若为 `0.0.0.0`/`::` 等不可路由地址会归一化为 `127.0.0.1` 并告警、管理接口密钥（见第7节） |
 | [ghapp] | app_id / private_key | GitHub Apps 凭据（两者同时有效即启用，无独立开关） |
 
 > * = 必需。conf_dir 默认 `%(base_dir)s/nginx`，conf_ext_dir 默认 `%(conf_dir)s/ext`。
@@ -452,7 +454,7 @@ rtfd/
 ├── api/              API 层：api.go(路由注册/New/Start) · view.go(挂件/构建/webhook处理器)
 │                     · manage.go(项目管理处理器) · tool.go(参数解析/密钥校验等公共函数)
 ├── docs/             swag 生成的接口文档（make docs）：docs.go · swagger.json · swagger.yaml
-├── assets/           静态资源(go:embed)：rtfd.cfg · builder.sh · rtfd.js · VERSION · rtfd.ini(样例)
+├── assets/           静态资源(go:embed)：rtfd.cfg · builder.sh · rtfd.js · VERSION · swagger.html · rtfd.ini(样例)
 ├── cmd/              cobra 命令层：root/api/cfg/build/project(+create/get/list/remove/transfer/update)
 ├── pkg/
 │   ├── build/        构建编排：Builder + builder.sh 落盘与输出流解析
@@ -474,7 +476,7 @@ rtfd/
 ```
 
 代码风格要点：每个 `.go` 文件带 Apache-2.0 License 头；导入分组
-标准库 / 项目内部（`pkg/tcw.im/rtfd/*`）/ 外部依赖（`github.com`、`pkg.tcw.im`）；
+标准库 / 项目内部（`pkg.tcw.im/rtfd/v2/*`）/ 外部依赖（`github.com`、`pkg.tcw.im`）；
 注释与用户提示以中文为主；全局常量集中在 `vars`。
 
 ---
@@ -503,14 +505,14 @@ rtfd/
 | 风险面 | 防护 |
 |---|---|
 | 私有仓库 | URL 内嵌凭据仅 http(s) 的 github.com/gitee.com；对外接口经 `PublicGitURL` 剥敏 |
-| 构建/Webhook 伪造 | build API：`X-Rtfd-Sign=MD5(secret)`；GitHub：`X-Hub-Signature` HMAC-SHA1；Gitee：`X-Gitee-Token` 比对；`ping` 仅回 pong |
-| 管理接口滥用 | 管理接口需 `[api] secret`（未配置则直接拒绝），项目级接口额外接受项目密钥；CORS 仅放开必要方法与 `X-Rtfd-Sign` 头 |
+| 构建/Webhook 伪造 | build API：HMAC-SHA256 动态签名（密钥为项目 secret，空 secret 免鉴权）；GitHub：`X-Hub-Signature` HMAC-SHA1；Gitee：`X-Gitee-Token` 比对；`ping` 仅回 pong |
+| 管理接口滥用 | 管理接口需 `[api] secret`（未配置则直接拒绝），项目级接口额外接受项目密钥；CORS 仅放开必要方法与 `X-Rtfd-Ts/Nonce/Sign` 头 |
 | 路径穿越 | `latest/sourcedir/requirement` 禁以 `/`、`..` 开头；meta key 白名单正则 |
 | 名称/域名注入 | name 正则、域名 `IsDomain` 校验、自定义域名占用检查（`HasCustomDomain`） |
 | GitHub App | 事件类型/目标类型白名单、installation App ID 与 header 强校验；webhook 仅 push/release |
 | 保留名 | `www` 及 `unallowed_name` 列表内名称禁止创建 |
 | 存储敏感信息 | secret 存 projects 表，日志不输出明文；导出时默认剔除系统 meta |
-| 数据库连接串 | dsn 含账号密码，配置文件权限应收敛（建议 0600）；`[database] debug = on` 时 SQL 会入日志，勿在生产开启 |
+| 数据库连接串 | dsn 含账号密码，配置文件权限应收敛（建议 0600）；`log_level = debug` 时 SQL 会入日志，勿在生产开启 |
 
 ---
 

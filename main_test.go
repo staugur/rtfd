@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"pkg/tcw.im/rtfd/pkg/conf"
+	"pkg.tcw.im/rtfd/v2/pkg/conf"
 
 	"gopkg.in/ini.v1"
 )

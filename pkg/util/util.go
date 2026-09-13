@@ -22,6 +22,7 @@ import (
 	"bufio"
 	"crypto/hmac"
 	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -37,7 +38,7 @@ import (
 	"time"
 	"unicode"
 
-	"pkg/tcw.im/rtfd/vars"
+	"pkg.tcw.im/rtfd/v2/vars"
 
 	"pkg.tcw.im/gtc"
 )
@@ -253,4 +254,24 @@ func HMACSha1Byte(key, text []byte) string {
 	mac := hmac.New(sha1.New, key)
 	mac.Write(text)
 	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// HMACSha256 以 hmac 加盐方式计算字符串 sha256 值（十六进制小写）
+func HMACSha256(key, text string) string {
+	return HMACSha256Byte([]byte(key), []byte(text))
+}
+
+// HMACSha256Byte 同 HMACSha256
+func HMACSha256Byte(key, text []byte) string {
+	mac := hmac.New(sha256.New, key)
+	mac.Write(text)
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// SignAPIRequest 计算 rtfd 管理/项目接口的 HMAC-SHA256 动态签名，供服务端校验与客户端生成共用。
+// 签名串 = ts + "\n" + nonce（以 secret 为 HMAC 密钥），与 api 服务端校验逻辑（api/tool.go verifyAPISign）保持一致。
+// 调用方需随请求携带头 X-Rtfd-Ts、X-Rtfd-Nonce、X-Rtfd-Sign。
+func SignAPIRequest(secret, ts, nonce string) string {
+	msg := ts + "\n" + nonce
+	return HMACSha256(secret, msg)
 }

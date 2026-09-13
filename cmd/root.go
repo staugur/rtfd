@@ -19,9 +19,11 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 
-	"pkg/tcw.im/rtfd/assets"
-	"pkg/tcw.im/rtfd/pkg/util"
+	"pkg.tcw.im/rtfd/v2/assets"
+	"pkg.tcw.im/rtfd/v2/pkg/util"
 
 	"github.com/spf13/cobra"
 	"pkg.tcw.im/gtc"
@@ -51,12 +53,16 @@ var rootCmd = &cobra.Command{
 		} else if showVersion {
 			fmt.Println(assets.AppVersion)
 		} else if newInit {
-			//新增rtfd配置文件
+			// 初始化 rtfd 配置文件；可用环境变量预填必填项
 			if !gtc.IsFile(cfgFile) {
-				err := os.WriteFile(cfgFile, assets.RtfdCFG, 0644)
-				if err != nil {
+				content, notes := fillConfigFromEnv(assets.RtfdCFG)
+				if err := os.WriteFile(cfgFile, content, 0644); err != nil {
 					fmt.Println("failed to generate configuration file")
 					os.Exit(129)
+				}
+				fmt.Printf("Generated rtfd config file: %s\n", cfgFile)
+				if notes != "" {
+					fmt.Print(notes)
 				}
 			} else {
 				fmt.Printf("The rtfd config file(%s) already exists\n", cfgFile)
@@ -102,6 +108,12 @@ func initConfig() {
 	if showVersion || showVerbose || newInit {
 		return
 	}
+	// sign 子命令可不依赖配置文件（直接 --secret 传入密钥）
+	for _, a := range os.Args[1:] {
+		if a == "sign" {
+			return
+		}
+	}
 	// 除 -h/help 和根命令 -v/-i/--init 选项外，其他子命令均需配置文件存在
 	if cfgFile == "" || !gtc.IsFile(cfgFile) {
 		fmt.Printf(
@@ -110,4 +122,39 @@ func initConfig() {
 		)
 		os.Exit(127)
 	}
+}
+
+// fillConfigFromEnv 依据环境变量预填配置模板中的必填项，返回填充后的内容与提示信息。
+// 仅当对应环境变量非空时才替换；未提供则保持模板中的空值（需手动补填）。
+//
+//	RTFD_API_SERVER_URL -> [api] server_url（对外服务地址，必填）
+//	RTFD_NGINX_DN       -> [nginx] dn（文档托管域名后缀，必填）
+func fillConfigFromEnv(content []byte) ([]byte, string) {
+	replacers := []struct {
+		env string
+		key string
+	}{
+		{"RTFD_API_SERVER_URL", "server_url"},
+		{"RTFD_NGINX_DN", "dn"},
+	}
+	s := string(content)
+	var filled, missing []string
+	for _, r := range replacers {
+		v := strings.TrimSpace(os.Getenv(r.env))
+		if v == "" {
+			missing = append(missing, r.key)
+			continue
+		}
+		re := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(r.key) + `\s*=.*$`)
+		s = re.ReplaceAllString(s, r.key+" = "+v)
+		filled = append(filled, r.key)
+	}
+	notes := ""
+	if len(filled) > 0 {
+		notes += "已从环境变量填入: " + strings.Join(filled, ", ") + "\n"
+	}
+	if len(missing) > 0 {
+		notes += "以下必填项未提供环境变量，请在配置文件中手动设置: " + strings.Join(missing, ", ") + "\n"
+	}
+	return []byte(s), notes
 }

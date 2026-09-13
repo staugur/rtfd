@@ -19,8 +19,8 @@ package cmd
 import (
 	"fmt"
 
-	"pkg/tcw.im/rtfd/pkg/build"
-	"pkg/tcw.im/rtfd/vars"
+	"pkg.tcw.im/rtfd/v2/pkg/build"
+	"pkg.tcw.im/rtfd/v2/vars"
 
 	"github.com/spf13/cobra"
 )

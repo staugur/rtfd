@@ -37,3 +37,8 @@ var BuiderSH []byte
 //
 //go:embed VERSION
 var AppVersion string
+
+// SwaggerIndexHTML 自定义 Swagger UI 首页（注入请求签名逻辑），由 /rtfd/docs/index.html 提供
+//
+//go:embed swagger.html
+var SwaggerIndexHTML []byte

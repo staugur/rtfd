@@ -23,9 +23,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"pkg/tcw.im/rtfd/pkg/conf"
-	"pkg/tcw.im/rtfd/pkg/util"
-	"pkg/tcw.im/rtfd/vars"
+	"pkg.tcw.im/rtfd/v2/pkg/conf"
+	"pkg.tcw.im/rtfd/v2/pkg/util"
+	"pkg.tcw.im/rtfd/v2/vars"
 
 	"pkg.tcw.im/gtc"
 )

@@ -19,11 +19,13 @@
 package conf
 
 import (
+	"log"
+	"net/url"
 	"regexp"
 	"strings"
 
-	"pkg/tcw.im/rtfd/pkg/util"
-	"pkg/tcw.im/rtfd/vars"
+	"pkg.tcw.im/rtfd/v2/pkg/util"
+	"pkg.tcw.im/rtfd/v2/vars"
 
 	"gopkg.in/ini.v1"
 )
@@ -167,15 +169,46 @@ func (c Config) DatabaseDSN() string {
 	return c.GetKey("database", "dsn")
 }
 
-// DatabaseDebug 是否打印SQL
+// DatabaseDebug 是否打印SQL：当全局 log_level = debug 时开启
+// （不再单独提供 database.debug 选项，由日志级别统一控制）
 func (c Config) DatabaseDebug() bool {
-	return strings.EqualFold(c.MustKey("database", "debug", "off"), "on")
+	return strings.EqualFold(c.MustKey("default", "log_level", ""), "debug")
 }
 
 // APISecret 获取API管理密钥（[api] secret），为空表示未配置，
 // 此时管理类接口不可用（构建触发、webhook等按项目密钥走原有逻辑）
 func (c Config) APISecret() string {
 	return c.GetKey("api", "secret")
+}
+
+// ServerURL 获取对外可达的 API 基址（scheme://host:port），该值为必填项（rtfd.cfg 默认留空）。
+// 供 GitHub App / webhook 回跳、文档挂件脚本注入使用。server_url 缺省为空，需手动配置，
+// 或由 `rtfd --init` 读取环境变量 RTFD_SERVER_URL 填入。若配置的是 0.0.0.0 / :: 等"仅绑定不可路由"
+// 的地址，会归一化为 127.0.0.1 以便本机访问并打印告警；生产环境须配置为对外可达地址。
+func (c Config) ServerURL() string {
+	u := strings.TrimSpace(c.GetKey("api", "server_url"))
+	if u == "" {
+		return ""
+	}
+	parsed, err := url.Parse(u)
+	if err != nil || parsed.Host == "" {
+		log.Printf("[warn] api.server_url 非法（%q），外部回调/挂件注入可能失效", u)
+		return u
+	}
+	host := parsed.Hostname()
+	var bad string
+	if host == "0.0.0.0" {
+		bad = "0.0.0.0"
+	} else if host == "::" {
+		bad = "[::]"
+	}
+	if bad != "" {
+		parsed.Host = strings.Replace(parsed.Host, bad, "127.0.0.1", 1)
+		u = parsed.String()
+		log.Printf("[warn] api.server_url 使用了不可路由的绑定地址 %q，已临时替换为 127.0.0.1；"+
+			"若启用 GitHub App / webhook 等外部回调，请在 rtfd.cfg 的 [api] server_url 配置为对外可达地址", host)
+	}
+	return u
 }
 
 // DefaultPyVersion 获取默认的Python版本：

@@ -22,7 +22,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"pkg/tcw.im/rtfd/pkg/lib"
+	"pkg.tcw.im/rtfd/v2/pkg/lib"
 )
 
 var transferDesc = `转储（导入、导出）文档项目

@@ -4,7 +4,7 @@
  * rtfd.js —— 文档页面右下角浮动挂件（无第三方依赖）
  *
  * 数据来源：GET {apiServer}/rtfd/{name}/desc（原生 fetch）
- * 参数来源：注入脚本 URL 的 query（name/branch/rtfd_api），或脚本标签的 data-* 属性（data-name/data-branch/data-api）
+ * 参数来源：脚本标签的 data-* 属性（data-name/data-branch/data-api）
  * 交互：默认只显示当前语言与版本，点击后在右下角展开语言列表、版本列表与仓库链接，
  *       再次点击（或点击面板外、按 Esc）收起
  *
@@ -95,26 +95,38 @@
     text-transform: uppercase;
 }
 #rtfd-widget .rtfd-list {
-    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 4px 12px 8px;
     padding: 0;
     list-style: none;
 }
+#rtfd-widget .rtfd-list li {
+    display: inline-flex;
+}
 #rtfd-widget .rtfd-list a {
-    display: block;
-    padding: 5px 12px;
+    display: inline-block;
+    padding: 4px 10px;
     overflow: hidden;
     color: #2c3e50;
     text-decoration: none;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: 12px;
+    background-color: #f0f4f7;
+    border: 1px solid #d9dde1;
+    border-radius: 4px;
 }
 #rtfd-widget .rtfd-list a:hover {
-    background-color: #f0f4f7;
+    background-color: #e2e9ef;
+    border-color: #b9c2ca;
 }
 #rtfd-widget .rtfd-active > a {
-    color: #2980b9;
+    color: #fff;
     font-weight: 700;
-    background-color: #eef6fc;
+    background-color: #2980b9;
+    border-color: #2980b9;
 }
 #rtfd-widget .rtfd-footer {
     margin-top: 4px;
@@ -147,43 +159,18 @@
         return found.length ? found[found.length - 1] : null
     }
 
-    // 解析 URL query 为对象
-    function parseQuery(str) {
-        const q = {}
-        if (!str) {
-            return q
-        }
-        str.split('&').forEach(function (kv) {
-            const i = kv.indexOf('=')
-            if (i > -1) {
-                const k = decodeURIComponent(kv.slice(0, i))
-                const v = decodeURIComponent(kv.slice(i + 1))
-                if (k) {
-                    q[k] = v
-                }
-            }
-        })
-        return q
-    }
-
     // 统一解析配置：name（项目名）、branch（分支/版本）、apiServer（接口基址）
-    // 取值优先级：脚本标签的 data-* 属性 > 脚本 URL 的 query 参数，
-    // 既兼容现有注入（?name=&branch=&rtfd_api=），也支持更直观的
-    // <script src=".../rtfd.js" data-name="..." data-branch="..." data-api="..."> 写法。
+    // 取脚本标签的 data-* 属性（data-name/data-branch/data-api）。
     function getConfig() {
         const s = currentScript()
         const src = s ? (s.getAttribute('src') || '') : ''
-        const q = parseQuery(src.indexOf('?') > -1 ? src.slice(src.indexOf('?') + 1) : '')
 
-        const pick = function (key, attr) {
-            let v = s ? s.getAttribute('data-' + attr) : null
-            if (v == null || v === '') {
-                v = q[key]
-            }
+        const pick = function (attr) {
+            const v = s ? s.getAttribute('data-' + attr) : null
             return (v || '').trim()
         }
 
-        let api = pick('rtfd_api', 'api') || pick('api_server', 'api')
+        let api = pick('api')
         if (!api && src) {
             // 由本脚本 URL 反推：脚本由 API 的 /rtfd/assets/rtfd.js 提供，
             // 去掉该后缀即得服务根地址，无需依赖 server_url 配置
@@ -197,8 +184,8 @@
         }
 
         return {
-            name: pick('name', 'name'),
-            branch: pick('branch', 'branch') || 'master',
+            name: pick('name'),
+            branch: pick('branch') || 'master',
             apiServer: (api || '').replace(/\/+$/, '')
         }
     }

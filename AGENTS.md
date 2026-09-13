@@ -20,7 +20,7 @@ rtfd/
 ├── main.go             入口（空白导入 assets 激活 embed + cmd.Execute）
 ├── main_test.go        默认配置结构断言（新增配置项需同步）
 ├── api/                echo API 层：api.go(路由/Start) view.go(处理) tool.go(公共)
-├── assets/             go:embed 资源：rtfd.cfg / builder.sh / rtfd.js / VERSION / rtfd.ini(样例)
+├── assets/             go:embed 资源：rtfd.cfg / builder.sh / rtfd.js / VERSION / swagger.html / rtfd.ini(样例)
 ├── cmd/                cobra 命令：root/api/cfg/build/project(+create/get/list/remove/transfer/update)
 ├── pkg/
 │   ├── build/          Builder：bash 调用、输出流解析、结果入库
@@ -60,7 +60,7 @@ rtfd/
 按三组排列，组间空行（此为仓库主导风格，个别旧文件有偏差，新代码遵循）：
 
 1. 标准库
-2. 项目内部：`pkg/tcw.im/rtfd/...`
+2. 项目内部：`pkg.tcw.im/rtfd/v2/...`
 3. 外部依赖：`github.com/*`、`pkg.tcw.im/*`
 
 ```go
@@ -69,9 +69,9 @@ import (
 	"fmt"
 	"os"
 
-	"pkg/tcw.im/rtfd/pkg/conf"
-	"pkg/tcw.im/rtfd/pkg/lib"
-	"pkg/tcw.im/rtfd/vars"
+	"pkg.tcw.im/rtfd/v2/pkg/conf"
+	"pkg.tcw.im/rtfd/v2/pkg/lib"
+	"pkg.tcw.im/rtfd/v2/vars"
 
 	"github.com/labstack/echo/v4"
 	"pkg.tcw.im/gtc"
@@ -99,7 +99,8 @@ import (
 - 不要再引入 Redis 等 KV 存储；项目名统一小写后查询（`strings.ToLower`）
 - 多库兼容：SQL 只用 GORM 表达，不写方言专属语法；sqlite 驱动为纯 Go（`glebarez/sqlite`），
   以便 `CGO_ENABLED=0` 交叉编译
-- 配置只从 `[database]` 分区读取（`conf.DatabaseType/DatabaseDSN/DatabaseDebug`）
+- 数据库配置从 `[database]` 分区读取（`conf.DatabaseType/DatabaseDSN`）；是否打印 SQL 由 `conf.DatabaseDebug()`
+  决定，而它不再读 `[database] debug`，改为读取顶层（default）`log_level`，值为 `debug` 时开启
 
 ### 结构体与类型
 
@@ -160,6 +161,7 @@ import (
   `{"success":bool,"message":string,"data":any}` 风格
 - 管理类接口（项目增删改查、配置查询、导入导出）必须调用 `checkAPISecret`（全局，
   配置 `[api] secret`）或 `checkProjectSecret`（全局或项目密钥），未配置 `[api] secret` 时拒绝；
+  鉴权为 HMAC-SHA256 动态签名（`verifyAPISign`：X-Rtfd-Ts/X-Rtfd-Nonce/X-Rtfd-Sign，含时间戳窗口与 nonce 防重放）；
   项目相关入参用 `getFormParams` 解析（表单/query/JSON 通吃），值统一经 `util.ParamString/ParamBool` 转换
 - 接口文档由代码注解生成（swaggo）：新增/修改接口需在 handler 上方补
   `@Summary/@Tags/@Param/@Success/@Failure/@Security/@Router` 注解，业务错误统一写

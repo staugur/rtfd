@@ -21,8 +21,8 @@ import (
 	"os"
 	"strconv"
 
-	"pkg/tcw.im/rtfd/api"
-	"pkg/tcw.im/rtfd/pkg/conf"
+	"pkg.tcw.im/rtfd/v2/api"
+	"pkg.tcw.im/rtfd/v2/pkg/conf"
 
 	"github.com/spf13/cobra"
 )

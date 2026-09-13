@@ -31,8 +31,8 @@ import (
 	"strings"
 	"time"
 
-	"pkg/tcw.im/rtfd/pkg/util"
-	"pkg/tcw.im/rtfd/vars"
+	"pkg.tcw.im/rtfd/v2/pkg/util"
+	"pkg.tcw.im/rtfd/v2/vars"
 
 	jwt "github.com/golang-jwt/jwt/v5"
 	"pkg.tcw.im/gtc"
@@ -148,7 +148,7 @@ func NewGHApp(pm *ProjectManager) (gh *GHApp, err error) {
 	if err != nil {
 		return
 	}
-	baseURL := cfg.GetKey("api", "server_url")
+	baseURL := cfg.ServerURL()
 	gh = &GHApp{
 		AppId: appId, privateKey: pkey, pm: pm, baseURL: baseURL,
 	}

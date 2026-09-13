@@ -17,6 +17,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,11 +26,13 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
+	"strconv"
 	"testing"
+	"time"
+
+	"pkg.tcw.im/rtfd/v2/pkg/util"
 
 	"github.com/labstack/echo/v4"
-	"pkg.tcw.im/gtc"
 )
 
 const testAPISecret = "testsecret"
@@ -66,19 +69,31 @@ exec = true
 	return e
 }
 
-// doReq 发起请求并返回状态码与JSON响应体
+// doReq 发起请求并返回状态码与JSON响应体。
+// 参数 sign 为用于签名的密钥（非空时按动态签名规则生成 X-Rtfd-Ts/Nonce/Sign 头）；
+// 为空表示不携带任何鉴权头（用于测试未鉴权/错误鉴权场景）。
 func doReq(t *testing.T, e *echo.Echo, method, target string, form url.Values, sign string) (int, map[string]any) {
 	t.Helper()
-	var body io.Reader
+	var bodyBytes []byte
 	if form != nil {
-		body = strings.NewReader(form.Encode())
+		bodyBytes = []byte(form.Encode())
+	}
+	var body io.Reader
+	if bodyBytes != nil {
+		body = bytes.NewReader(bodyBytes)
 	}
 	req := httptest.NewRequest(method, target, body)
 	if form != nil {
 		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationForm)
 	}
 	if sign != "" {
-		req.Header.Set("X-Rtfd-Sign", sign)
+		ts := strconv.FormatInt(time.Now().Unix(), 10)
+		// 每条用例使用唯一 nonce，避免命中防重放缓存
+		nonce := "test-nonce-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		sig := util.SignAPIRequest(sign, ts, nonce)
+		req.Header.Set("X-Rtfd-Ts", ts)
+		req.Header.Set("X-Rtfd-Nonce", nonce)
+		req.Header.Set("X-Rtfd-Sign", sig)
 	}
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -92,7 +107,7 @@ func doReq(t *testing.T, e *echo.Echo, method, target string, form url.Values, s
 
 func TestManageAPI(t *testing.T) {
 	e := newTestEcho(t)
-	sign := gtc.MD5(testAPISecret)
+	sign := testAPISecret
 
 	// 未携带密钥与错误密钥均应被拒绝
 	if _, data := doReq(t, e, http.MethodGet, "/rtfd/projects", nil, ""); data["success"] == true {
@@ -173,7 +188,7 @@ func TestManageAPI(t *testing.T) {
 		url.Values{"secret": {"ownsecret"}}, sign); data["success"] != true {
 		t.Fatalf("set project secret error: %v", data)
 	}
-	if _, data = doReq(t, e, http.MethodGet, "/rtfd/demo/info", nil, gtc.MD5("ownsecret")); data["success"] != true {
+	if _, data = doReq(t, e, http.MethodGet, "/rtfd/demo/info", nil, "ownsecret"); data["success"] != true {
 		t.Fatalf("project secret should be accepted: %v", data)
 	}
 

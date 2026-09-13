@@ -20,15 +20,20 @@ import (
 	"fmt"
 	"net/http"
 
-	"pkg/tcw.im/rtfd/assets"
-	_ "pkg/tcw.im/rtfd/docs" // swag 生成的接口文档（注册到 swag 注册表，由 /rtfd/docs 提供）
-	"pkg/tcw.im/rtfd/pkg/build"
-	"pkg/tcw.im/rtfd/pkg/lib"
+	"pkg.tcw.im/rtfd/v2/assets"
+	_ "pkg.tcw.im/rtfd/v2/docs" // swag 生成的接口文档（注册到 swag 注册表，由 /rtfd/docs 提供）
+	"pkg.tcw.im/rtfd/v2/pkg/build"
+	"pkg.tcw.im/rtfd/v2/pkg/lib"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
+
+// swaggerIndex 提供自定义 Swagger UI 首页：注入 requestInterceptor 自动为请求签名
+func swaggerIndex(c echo.Context) error {
+	return c.HTML(http.StatusOK, string(assets.SwaggerIndexHTML))
+}
 
 var (
 	pm      *lib.ProjectManager
@@ -57,7 +62,7 @@ func New(cfg string) (*echo.Echo, error) {
 
 	g := e.Group("/rtfd", middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
-		AllowHeaders: []string{"X-Rtfd-Sign", "X-RTFD-SIGN", echo.HeaderContentType},
+		AllowHeaders: []string{"X-Rtfd-Sign", "X-Rtfd-Ts", "X-Rtfd-Nonce", "X-RTFD-SIGN", echo.HeaderContentType},
 		AllowMethods: []string{
 			http.MethodGet, http.MethodHead, http.MethodPost,
 			http.MethodPut, http.MethodDelete, http.MethodOptions,
@@ -122,5 +127,7 @@ func registerRoutes(g *echo.Group) {
 	g.GET("/docs", func(c echo.Context) error {
 		return c.Redirect(http.StatusMovedPermanently, "/rtfd/docs/index.html")
 	})
+	// 自定义 index：注入 requestInterceptor，按 rtfd 动态签名规则自动为请求签名（便于调试）
+	g.GET("/docs/index.html", swaggerIndex)
 	g.GET("/docs/*", echoSwagger.WrapHandler)
 }

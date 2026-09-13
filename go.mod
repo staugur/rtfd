@@ -1,4 +1,4 @@
-module pkg/tcw.im/rtfd
+module pkg.tcw.im/rtfd/v2
 
 go 1.26
 

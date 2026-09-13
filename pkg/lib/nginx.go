@@ -21,7 +21,7 @@ import (
 	"errors"
 	"text/template"
 
-	"pkg/tcw.im/rtfd/pkg/util"
+	"pkg.tcw.im/rtfd/v2/pkg/util"
 
 	"pkg.tcw.im/gtc"
 )
@@ -105,8 +105,8 @@ server {
     index index.html master.html;
     set $home /{{ .Lang }}/latest;
     error_page 403 =404 /404.html;
-    {{- if .SSL -}}
-        {{ .SSLCFG }}
+    {{- if .SSL }}
+    {{ .SSLCFG }}
     {{- end }}
     {{- if .OpenFileCache }}
     #: 缓存文件元数据，降低大量静态文档的 stat/open 开销
@@ -148,8 +148,8 @@ server {
     charset utf-8;
     root {{ .DocsDir }}/{{ .Name }}/{{ .Lang }}/latest/;
     index index.html master.html;
-    {{- if .SSL -}}
-        {{ .SSLCFG }}
+    {{- if .SSL }}
+    {{ .SSLCFG }}
     {{- end }}
     {{- if .OpenFileCache }}
     #: 缓存文件元数据，降低大量静态文档的 stat/open 开销
@@ -177,21 +177,29 @@ server {
 }
 
 func nginxSSLTPL() string {
-	// SSL模板，需要传递证书、私钥三个参数
-	return `
+	// SSL 片段：由主模板在 {{ .SSLCFG }} 处插入 server 块内，需传入证书(SSLCrt)、私钥(SSLKey)。
+	// 已做现代安全加固：禁用 TLS1.0/1.1、采用前向安全加密套件、共享会话缓存、HSTS。
+	return `#: http 强制跳转 https
     if ($scheme = http) {
         return 301 https://$server_name$request_uri;
     }
+    #: 证书与私钥
     ssl_certificate {{ .SSLCrt }};
     ssl_certificate_key {{ .SSLKey }};
+    #: OCSP 装订（verify 需 ssl_trusted_certificate 指向 CA 链）
     ssl_stapling on;
     ssl_stapling_verify on;
     resolver 8.8.8.8 114.114.114.114 valid=300s;
     resolver_timeout 5s;
-    ssl_session_tickets on;
-    ssl_session_timeout  10m;
-    ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
-    ssl_ciphers TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-128-GCM-SHA256:TLS13-AES-128-CCM-8-SHA256:TLS13-AES-128-CCM-SHA256:EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
+    #: 会话复用：多 worker 共享缓存，优于默认 session tickets
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    #: 仅启用 TLS1.2/1.3，禁用已废弃且不安全的 TLS1.0/1.1
+    ssl_protocols TLSv1.2 TLSv1.3;
+    #: 现代加密套件（ECDHE 前向安全，已移除 3DES/RC4 等弱套件）
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
     ssl_prefer_server_ciphers on;
-    add_header Strict-Transport-Security "max-age=31536000;preload";`
+    #: HSTS（含 preload，按需要调整 max-age）
+    add_header Strict-Transport-Security "max-age=31536000;preload";
+    `
 }

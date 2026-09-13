@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>rtfd API Docs</title>
+  <link rel="stylesheet" type="text/css" href="./swagger-ui.css">
+  <link rel="icon" type="image/png" href="./favicon-32x32.png">
+  <style>
+    html { box-sizing: border-box; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin: 0; background: #fafafa; }
+    #rtfd-secret-bar {
+      position: fixed; top: 0; right: 0; z-index: 2147483000;
+      background: #2c3e50; color: #fcfcfc; padding: 6px 10px;
+      font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    }
+    #rtfd-secret-bar input {
+      border: 1px solid #d9dde1; border-radius: 3px; padding: 3px 6px; font-size: 12px; width: 180px;
+    }
+    #rtfd-secret-bar button {
+      border: none; border-radius: 3px; padding: 4px 8px; cursor: pointer;
+      background: #2980b9; color: #fff; font-size: 12px;
+    }
+    #swagger-ui { margin-top: 40px; }
+  </style>
+</head>
+<body>
+<div id="rtfd-secret-bar">
+  <label for="rtfd-secret-input">API 密钥</label>
+  <input id="rtfd-secret-input" type="password" placeholder="[api] secret（用于自动签名）" autocomplete="off">
+  <button id="rtfd-secret-save" type="button">保存</button>
+</div>
+<div id="swagger-ui"></div>
+<script src="./swagger-ui-bundle.js"></script>
+<script src="./swagger-ui-standalone-preset.js"></script>
+<script>
+window.onload = function () {
+  var STORE_KEY = 'rtfd_api_secret';
+  var input = document.getElementById('rtfd-secret-input');
+  var saved = localStorage.getItem(STORE_KEY) || '';
+  input.value = saved;
+  document.getElementById('rtfd-secret-save').addEventListener('click', function () {
+    var v = input.value;
+    if (v) { localStorage.setItem(STORE_KEY, v); } else { localStorage.removeItem(STORE_KEY); }
+    alert('已' + (v ? '保存' : '清除') + ' API 密钥（仅存于本浏览器 localStorage）');
+  });
+
+  function getSecret() { return localStorage.getItem(STORE_KEY) || ''; }
+  function toHex(buf) {
+    return Array.prototype.map.call(new Uint8Array(buf), function (b) {
+      return ('0' + b.toString(16)).slice(-2);
+    }).join('');
+  }
+
+  // 为请求注入 X-Rtfd-Ts / X-Rtfd-Nonce / X-Rtfd-Sign（HMAC-SHA256 动态签名）
+  function signRequest(req) {
+    var secret = getSecret();
+    if (!secret) { return req; } // 未配置密钥则不签名，便于发现需鉴权的接口
+    if (!window.crypto || !window.crypto.subtle) {
+      console.warn('[rtfd] 当前非安全上下文（需 https 或 localhost），无法自动签名；请改用 `rtfd sign` / curl。');
+      return req;
+    }
+    var ts = Math.floor(Date.now() / 1000).toString();
+    var nonce = toHex(crypto.getRandomValues(new Uint8Array(8)));
+    // 签名仅由 secret + 时间戳 + nonce 决定，与 method/path/body 无关
+    var msg = ts + '\n' + nonce;
+    return crypto.subtle.importKey('raw', new TextEncoder().encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']).then(function (key) {
+      return crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
+    }).then(function (sig) {
+      req.headers['X-Rtfd-Ts'] = ts;
+      req.headers['X-Rtfd-Nonce'] = nonce;
+      req.headers['X-Rtfd-Sign'] = toHex(sig);
+      return req;
+    });
+  }
+
+  window.ui = SwaggerUIBundle({
+    url: './doc.json',
+    dom_id: '#swagger-ui',
+    deepLinking: true,
+    presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+    plugins: [SwaggerUIStandalonePreset.plugins.DownloadUrl],
+    layout: 'StandaloneLayout',
+    requestInterceptor: function (req) { return signRequest(req); }
+  });
+};
+</script>
+</body>
+</html>

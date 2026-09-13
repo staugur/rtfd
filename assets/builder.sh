@@ -98,7 +98,7 @@ _envManager() {
     local rtfd_server=$(_getRtfdConf api server_url)
     local default_index=$(_getRtfdConf py index https://pypi.org/simple)
 
-    #: 校验参数
+    #: 校验参数（server_url 必须已配置，由 rtfd 服务端统一负责归一化/告警）
     checkExitParam _envManager_project_runtime_dir $project_runtime_dir
     checkExitParam _envManager_project_docs_dir $project_docs_dir
     checkExitParam _envManager_branch $branch
@@ -322,7 +322,7 @@ main() {
     local runtimes_tmp=$(mktemp -d -p $runtimes_dir)
     RTFD_RUNTIME_TMP=$runtimes_tmp
 
-    _codeManager $project_name $branch $runtimes_dir
+    _codeManager $project_name $branch $runtimes_tmp
     checkExitRetcode
 
     local project_docs_dir=$(_joinPath $docs_dir $project_name)

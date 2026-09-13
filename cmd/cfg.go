@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"pkg/tcw.im/rtfd/pkg/conf"
+	"pkg.tcw.im/rtfd/v2/pkg/conf"
 
 	"github.com/spf13/cobra"
 )

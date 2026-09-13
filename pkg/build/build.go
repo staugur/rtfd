@@ -25,10 +25,10 @@ import (
 	"strconv"
 	"strings"
 
-	"pkg/tcw.im/rtfd/assets"
-	"pkg/tcw.im/rtfd/pkg/lib"
-	"pkg/tcw.im/rtfd/pkg/util"
-	"pkg/tcw.im/rtfd/vars"
+	"pkg.tcw.im/rtfd/v2/assets"
+	"pkg.tcw.im/rtfd/v2/pkg/lib"
+	"pkg.tcw.im/rtfd/v2/pkg/util"
+	"pkg.tcw.im/rtfd/v2/vars"
 )
 
 // Builder 构建器

@@ -4,7 +4,7 @@ BINARY=rtfd
 CommitID=$(shell git log --pretty=format:"%h" -1)
 Built=$(shell date -u "+%Y-%m-%dT%H:%M:%SZ")
 Version=$(shell cat assets/VERSION)
-LDFLAGS=-ldflags "-s -w -X pkg/tcw.im/rtfd/cmd.commitID=${CommitID} -X pkg/tcw.im/rtfd/cmd.built=${Built}"
+LDFLAGS=-ldflags "-s -w -X pkg.tcw.im/rtfd/v2/cmd.commitID=${CommitID} -X pkg.tcw.im/rtfd/v2/cmd.built=${Built}"
 SWAG=github.com/swaggo/swag/cmd/swag@v1.16.2
 
 help:

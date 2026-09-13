@@ -22,9 +22,9 @@ import (
 	"errors"
 	"strings"
 
-	"pkg/tcw.im/rtfd/pkg/lib"
-	"pkg/tcw.im/rtfd/pkg/util"
-	"pkg/tcw.im/rtfd/vars"
+	"pkg.tcw.im/rtfd/v2/pkg/lib"
+	"pkg.tcw.im/rtfd/v2/pkg/util"
+	"pkg.tcw.im/rtfd/v2/vars"
 
 	"github.com/labstack/echo/v4"
 	"pkg.tcw.im/gtc"

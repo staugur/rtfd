@@ -2,7 +2,7 @@
 
 Build, read your exclusive and fuck docs.
 
-[![Go Reference](https://pkg.go.dev/badge/pkg/tcw.im/rtfd.svg)](https://pkg.go.dev/pkg/tcw.im/rtfd)
+[![Go Reference](https://pkg.go.dev/badge/pkg.tcw.im/rtfd/v2.svg)](https://pkg.go.dev/pkg.tcw.im/rtfd/v2)
 [![Documentation Status](https://open.saintic.com/rtfd/saintic-docs/badge)](https://docs.saintic.com/rtfd/)
 [![Go test](https://github.com/staugur/rtfd/actions/workflows/gotest.yml/badge.svg)](https://github.com/staugur/rtfd/actions/workflows/gotest.yml)
 
@@ -45,8 +45,8 @@ rtfd -v
     2.2 使用`go get`命令：
 
     ```bash
-    go get -u pkg.pkg/tcw.im/rtfd      # 可使用 @tag 安装某个正式版本，如 @v1.3.3
-    mv ~/go/bih/rtfd ~/bin/
+    go get -u pkg.tcw.im/rtfd/v2      # 可使用 @tag 安装某个正式版本，如 @v2.0.0
+    mv ~/go/bin/rtfd ~/bin/
     rtfd -v
     ```
 
