@@ -65,7 +65,7 @@ type Project struct {
 	ShowNav     bool
 	HideGit     bool
 	Secret      string `gorm:"size:128"`
-	// DefaultDomain 默认域名，{name}.{nginx.dn}
+	// DefaultDomain 默认域名，{name}.{sws.dn}
 	DefaultDomain string `gorm:"size:255;not null"`
 	// CustomDomain 自定义域名，空表示未设置
 	CustomDomain string `gorm:"index:idx_custom_domain;size:255"`

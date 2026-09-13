@@ -9,7 +9,7 @@
  *       再次点击（或点击面板外、按 Esc）收起
  *
  * 多版本模式：文档路径形如 /{lang}/{branch}/...
- * 单版本模式：Nginx 根目录即 {lang}/latest，路径中不含 lang/branch 前缀
+ * 单版本模式：static-web-server 根目录即 {lang}/latest，路径中不含 lang/branch 前缀
  */
 ;(function () {
     const DEFAULT_ICON =

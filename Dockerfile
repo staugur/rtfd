@@ -1,5 +1,7 @@
 ARG buildos=golang:1.26-alpine
 ARG runos=ubuntu:24.04
+# static-web-server 官方镜像（仅用于提取二进制）；升级时调整标签即可
+ARG sws=joseluisq/static-web-server:3.0.0-beta.1-alpine
 
 # -- build dependencies with alpine --
 FROM $buildos AS builder
@@ -10,6 +12,9 @@ ARG TARGETARCH
 RUN if [ "x$goproxy" != "x" ]; then go env -w GOPROXY=${goproxy},direct; fi ;\
     CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH go build -ldflags "-s -w -X pkg.tcw.im/rtfd/v2/cmd.built=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" .
 
+# -- static-web-server 二进制（从官方镜像提取） --
+FROM $sws AS swsbinary
+
 # -- run application with a small image --
 FROM $runos
 
@@ -19,7 +24,7 @@ FROM $runos
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
         software-properties-common ca-certificates curl git procps tzdata \
-        gcc g++ make nginx supervisor && \
+        gcc g++ make supervisor && \
     add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update -y && \
     apt-get install -y --no-install-recommends \
@@ -41,8 +46,8 @@ RUN set -eux; \
     done
 
 COPY --from=builder /build/rtfd /bin/
+COPY --from=swsbinary /usr/local/bin/static-web-server /usr/local/bin/static-web-server
 COPY scripts/supervisord.conf /etc/
-COPY scripts/nginx.conf /etc/nginx/
 COPY assets/rtfd.cfg /
 
 ENV RTFD_CFG=/rtfd.cfg \

@@ -35,7 +35,7 @@ base_dir = %s
 type = sqlite
 dsn = %s/rtfd.db
 
-[nginx]
+[sws]
 dn = example.com
 exec = true
 

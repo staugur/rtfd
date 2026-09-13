@@ -6,7 +6,7 @@
 
 rtfd 是一个**自托管的 Sphinx 文档构建与托管服务**（类 Read the Docs 精简实现）。
 用户提供一个 git 仓库（GitHub/Gitee）地址，rtfd 拉取源码、按语言/分支（版本）用
-Sphinx 构建 HTML 文档，交由 Nginx 静态托管，并提供 API / Webhook / 状态徽章等能力。
+Sphinx 构建 HTML 文档，交由 static-web-server（SWS）静态托管，并提供 API / Webhook / 状态徽章等能力。
 
 | 组成 | 技术 | 职责 |
 |---|---|---|
@@ -14,11 +14,11 @@ Sphinx 构建 HTML 文档，交由 Nginx 静态托管，并提供 API / Webhook 
 | API 服务 | Go + echo v4 | desc / badge / build / webhook / GitHub App 回调 |
 | 构建器 | bash 脚本 `assets/builder.sh` | git clone → virtualenv → pip → sphinx-build |
 | 元数据存储 | 关系型数据库 + GORM（sqlite / mysql / pgsql） | 项目配置、自定义域名、构建结果 |
-| 文档托管 | Nginx | 静态托管 `{base_dir}/docs/` 下生成的 HTML，并负责域名/SSL |
+| 文档托管 | static-web-server（SWS） | 单实例 + 虚拟主机静态托管 `{base_dir}/docs/` 下生成的 HTML，并负责域名/HTTPS |
 | 前端挂件 | `assets/rtfd.js`（原生 JS，零依赖） | 注入生成文档，右下角浮动面板提供语言/版本/编辑链接切换 |
 
 **运行环境**：仅支持 Linux；构建期依赖 bash、git、python3（含 pip、virtualenv，支持配置多版本）、
-nginx；元数据存储使用 sqlite / mysql / pgsql（默认 sqlite，无需外部服务）；
+static-web-server；元数据存储使用 sqlite / mysql / pgsql（默认 sqlite，无需外部服务）；
 GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 
 ### 技术栈
@@ -56,12 +56,12 @@ GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 │    git clone(branch) → virtualenv → pip install → conf.py 注入 →             │
 │    sphinx-build ×(lang × branch) → latest 软链 → .rtfd.ini 回写              │
 └───────┬──────────────────────────────────────────────────────────────────────┘
-        │ 读写（GORM）                              │ 生成/重载配置 (nginx -t / reload)
+        │ 读写（GORM）                              │ 生成/重载配置 (renderSWS + reload)
         ▼                                        ▼
 ┌────────────────────────────┐  ┌─────────────────────────────────────────────┐
-│ 数据库 (sqlite/mysql/pgsql) │  │ Nginx                                       │
-│  projects      项目配置     │  │ base/nginx/{name}.conf     默认域名 {n}.{dn} │
-│  build_results 构建结果     │  │ base/nginx/ext/{name}.conf 自定义域名(SSL)   │
+│ 数据库 (sqlite/mysql/pgsql) │  │ SWS                                         │
+│  projects      项目配置     │  │ base/sws/config.toml       默认域名 {n}.{dn} │
+│  build_results 构建结果     │  │ （单实例：全部域名共用一份配置与证书）        │
 └────────────────────────────┘  │ root: base/docs/{name}/{lang}/{version}      │
                                 └─────────────────────────────────────────────┘
 ```
@@ -71,7 +71,7 @@ GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 - **构建与托管分离**：Go 只负责状态编排与参数化，真正的构建在 bash 脚本内完成；
   `builder.sh` 在构建期反查 `rtfd` CLI（`rtfd project get <name>:<key>`）获取配置，
   形成「Go → bash → Go」的回环协作。
-- **项目配置收敛于数据库**，本地文件系统只放构建产物与 nginx conf，
+- **项目配置收敛于数据库**，本地文件系统只放构建产物与 SWS 配置，
   便于迁移（`rtfd project transfer` 可 base64 导入/导出，也是跨存储迁移的手段）。
 - **webhook 自动构建**：GitHub/Gitee 推送事件打到 API，校验签名后异步触发构建。
 
@@ -91,7 +91,7 @@ GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 | single / install / show_nav / hide_git / ssl / is_public | bool | 各类开关 |
 | source_dir / lang / requirement / index | varchar | 文档目录、语言、依赖文件、pip源 |
 | secret | varchar | build/webhook 校验密钥 |
-| default_domain | varchar | `{name}.{nginx.dn}` |
+| default_domain | varchar | `{name}.{sws.dn}` |
 | custom_domain | varchar(255) | 自定义域名，**普通索引**（唯一性由 `HasCustomDomain` 校验） |
 | ssl_public / ssl_private | varchar | 自定义域名证书 |
 | builder / gsp | varchar | 构建器、git服务商 |
@@ -121,7 +121,7 @@ GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 | URL | git 地址 | 仅 http(s)，私有仓在协议后携带编码的 `username:password` |
 | Latest | 分支 | latest 软链指向的分支（系统默认 `default_branch`） |
 | Version | Python 版本 | 字符串，如 3、3.10、3.12，需在配置 `[py]` 分区中定义 |
-| Single | 是否单版本 | true 时 nginx 用单版本模板 |
+| Single | 是否单版本 | true 时虚拟主机根目录指向 {lang}/latest |
 | SourceDir | 文档目录 | 相对仓库根，如 `docs`、`.` |
 | Lang | 语言列表 | 逗号分隔，如 `en,zh_CN` |
 | Requirement | 依赖文件 | 逗号分隔多个，相对仓库根 |
@@ -129,7 +129,7 @@ GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 | Index | pip 源 | 默认官方源 |
 | ShowNav / HideGit | 导航开关 | 决定 rtfd.js 是否展示及 git 链接 |
 | Secret | 密钥 | build/webhook 校验用 |
-| DefaultDomain | 默认域名 | `{name}.{nginx.dn}`（只读，自动生成） |
+| DefaultDomain | 默认域名 | `{name}.{sws.dn}`（只读，自动生成） |
 | CustomDomain / SSL / SSLPublic / SSLPrivate | 自定义域名 | 支持 HTTPS |
 | Builder | 构建器 | `html` / `dirhtml` / `singlehtml` |
 | GSP / IsPublic | git 服务商 | `GitHub` / `Gitee` / `N/A` 及公私有 |
@@ -174,13 +174,13 @@ Meta key 需匹配 `^[a-z_][0-9a-z_]{1,63}$`，取值 `-`（`vars.ResetEmpty`）
 ```
 cli create → GenerateOption(name, url) 生成默认 Options
   ├─ 校验 name / git URL（仅 github.com、gitee.com，判定 public/private）
-  ├─ 识别 GSP，去 .git 后缀，拼默认域名 {name}.{nginx.dn}
+  ├─ 识别 GSP，去 .git 后缀，拼默认域名 {name}.{sws.dn}
   → SetOption 逐项覆盖 CLI 入参（reflect 赋值）
   → Create:
       ├─ 排除保留名 www 与 default.unallowed_name
       ├─ 校验必填项；校验 python 版本已在 [py] 分区定义；自定义域名校验且须未占用；SSL 证书文件须存在
-      ├─ renderNginx：渲染 {base}/nginx/{name}.conf（默认域）与 ext 目录（自定义域）
-      │    → nginx -t 通过后 -s reload
+      ├─ renderSWS：汇总全部项目渲染 {base}/sws/config.toml（虚拟主机 + latest 跳转 + 缓存）
+      │    → 执行 [sws] exec 重载命令使其生效
       └─ 写入 projects 表（GORM Create；GitHub 项目再异步创建仓库 webhook，失败仅告警不阻断）
 ```
 
@@ -194,7 +194,7 @@ cli create → GenerateOption(name, url) 生成默认 Options
 
 1. `-t "Field:Value,..."`：`updateHook.handle()` 按字段分发到处理函数，逐字段
    校验/落 Options，设置 `render` 标志；收集 ok/fail 列表逐个打印；
-   完成后整体写回 projects 表（`SaveOptions`），`render=true` 字段（lang/single/domain/ssl…）重渲染 nginx。
+   完成后整体写回 projects 表（`SaveOptions`），`render=true` 字段（lang/single/domain/ssl…）重渲染 SWS 配置。
 2. `-f .rtfd.ini`：构建期自动回写，白名单抽取 `latest` 等字段，比对 meta
    `_update_file_md5` 未变化则跳过（输出 `not updated`）。
 
@@ -202,7 +202,7 @@ cli create → GenerateOption(name, url) 生成默认 Options
 
 ### 4.4 删除 remove
 
-按 name 清理：`docs/{name}` 目录、默认/扩展 nginx conf（删除后 reload）、
+按 name 清理：`docs/{name}` 目录，删除后重新汇总渲染 SWS 配置并重载、
 GitHub webhook（若 GSP=GitHub），最后在一个事务内删除 projects 记录及其 build_results 记录。
 
 ### 4.5 转储 transfer
@@ -269,7 +269,7 @@ builder.sh 通过 `_getDocsConf`（`rtfd project get`）与 `_getRtfdConf`（`rt
 
 ---
 
-## 6. 托管与 URL 布局（Nginx）
+## 6. 托管与 URL 布局（static-web-server）
 
 生成的文档目录布局（`{base_dir}/docs/{name}/`）：
 
@@ -281,12 +281,12 @@ docs/{name}/
     └── v1.0/ …          ← tag/release 构建的版本目录
 ```
 
-每个项目渲染两套 server 配置（text/template，`pkg/lib/nginx.go`）：
+汇总全部项目渲染为一份 SWS 配置（text/template，`pkg/lib/sws.go`）：
 
 | 配置 | 位置 | 域名 | SSL |
 |---|---|---|---|
-| 默认 | `{nginx.conf_dir}/{name}.conf` | `{name}.{nginx.dn}` | 系统级 `ssl_crt/ssl_key` |
-| 自定义 | `{nginx.conf_ext_dir}/{name}.conf` | 项目 CustomDomain | 项目级 SSLPublic/SSLPrivate |
+| 默认域名 | `{sws.conf_dir}/config.toml` 内一条虚拟主机 | `{name}.{sws.dn}` | 系统级 `ssl_crt/ssl_key` |
+| 自定义域名 | 同一份配置内再加一条虚拟主机 | 项目 CustomDomain | 不单独支持（单实例单证书） |
 
 模板特性：
 
@@ -294,7 +294,7 @@ docs/{name}/
   对未带版本前缀的 URL，若在 latest 路径下存在则 `302 → $home$document_uri`。
 - **单版本**（Single=true）：`root {docs}/{name}/{lang}/latest/`。
 - **SSL**：`listen 443 ssl http2` + http→https 301 + 完整 TLS 配置（TLS1.0~1.3、HSTS）。
-- 渲染后统一执行 `nginx -t && nginx -s reload`（是否 sudo 由 `nginx.sudo` 控制）。
+- 渲染后执行 `[sws] exec`（默认 `supervisorctl restart sws`，是否 sudo 由 `sws.sudo` 控制）。
 
 ### 6.1 性能与缓存
 
@@ -306,13 +306,13 @@ docs/{name}/
 | HTML | `Cache-Control: no-cache`（仍可 304 协商，依赖 ETag/Last-Modified） | 重建后同 URL 内容变化，不能复用过期副本 |
 | 所有文件 | `open_file_cache`（缓存 fd 与 stat 结果，`valid 30s`） | 降低大量小文件的 open/stat 系统调用 |
 
-**主配置（`scripts/nginx.conf`，http 级，Docker 镜像使用）** 已包含：
+**通用设置（`[general]` 监听/根目录/HTTPS；Docker 镜像由 supervisord 托管 `static-web-server`）**：
 `sendfile + tcp_nopush/nodelay`、`keepalive_requests 1000`、`gzip`（含 `gzip_types/js/css/svg`、`gzip_min_length`、
 `gzip_static`）、`open_file_cache`、`etag on`、`if_modified_since before`、access_log 缓冲
-（`buffer=64k flush=5s`）、多项目域名所需的 `server_names_hash_*`，并 `include /rtfd/nginx/*.conf`
+（SWS 由 Hyper/Tokio 处理，连接与压缩无需手工调优）。
 （否则生成的配置不会被加载）。
 
-**项目模板（`pkg/lib/nginx.go`）** 按上述分级缓存渲染，开关来自 `[nginx]` 分区：
+**模板（`pkg/lib/sws.go`）** 按上述分级缓存渲染，开关来自 `[sws]` 分区：
 
 | 配置键 | 默认 | 说明 |
 |---|---|---|
@@ -357,7 +357,7 @@ docs/{name}/
 | `/projects` | POST | 创建项目 | `name`、`url` 必需，其余同 CLI create（`latest/version/single/sourcedir/lang/requirement/install/index/builder/secret/domain/sslcrt/sslkey`），空值沿用系统默认 |
 | `/:name/info`、`/info/:name` | GET | 项目详情 | `key=Field` 返回单字段、`build=1` 附带构建集，否则返回 Options 结构体（字段名为结构体字段名） |
 | `/:name/update`、`/update/:name` | POST | 更新配置 | `text=Field:Value,…`（`sep` 可自定义分隔符）、`file=服务端规则文件路径`、或直接以字段名传参；响应含 `updated/failed` 字段列表 |
-| `/:name/remove`、`/remove/:name` | POST/DELETE | 删除项目 | 同时清理构建结果与 nginx 配置 |
+| `/:name/remove`、`/remove/:name` | POST/DELETE | 删除项目 | 同时清理构建结果并从 SWS 配置移除虚拟主机 |
 | `/:name/export`、`/export/:name` | GET | 导出 base64 配置 | `sysmeta=1` 保留内置 meta |
 | `/import` | POST | 导入 base64 配置 | `export` 必需、`name` 可选（别名覆盖） |
 
@@ -407,7 +407,7 @@ rtfd  [-c/--config 文件]  [-v 版本]  [-i 构建信息]  [--init 生成默认
 `Export/Import`、`Update`），保证两种入口行为一致。
 
 根命令 `initConfig`：除 `-h/-v/-i/--init` 外，所有子命令要求配置文件存在，否则打印提示并 `os.Exit(127)`。
-`rtfd --init` 生成默认配置时会读取环境变量预填两个必填项：`RTFD_API_SERVER_URL`→`[api] server_url`、`RTFD_NGINX_DN`→`[nginx] dn`；未提供则留空并在输出中提示需手动设置。
+`rtfd --init` 生成默认配置时会读取环境变量预填两个必填项：`RTFD_API_SERVER_URL`→`[api] server_url`、`RTFD_SWS_DN`→`[sws] dn`；未提供则留空并在输出中提示需手动设置。
 错误处理约定：cmd 层 `fmt.Println(err)` + `os.Exit`，退出码大致分为
 127（配置/项目不可用）、128（项目/域名已存在）、129（参数非法）、130（操作失败），
 含义有一定重叠，新命令保持一致风格即可。
@@ -434,13 +434,13 @@ rtfd  [-c/--config 文件]  [-v 版本]  [-i 构建信息]  [--init 生成默认
 |---|---|---|
 | （default） | base_dir* / default_branch / unallowed_name / log_level | 数据根目录（初始化后勿改，否则丢数据）等 |
 | [database] | type* / dsn* | 数据库类型 `sqlite`/`mysql`/`pgsql`（默认sqlite）、连接串（sqlite为文件路径，支持 `%(base_dir)s` 插值）；是否打印SQL 由顶层 `log_level = debug` 控制（不再单独提供 `database.debug`） |
-| [nginx] | dn* / exec / sudo / ssl_crt / ssl_key / conf_dir / conf_ext_dir | 托管域名后缀（必填）；nginx 路径与是否 sudo；SSL 与配置目录；`dn` 可由 `rtfd --init` 读取 `RTFD_NGINX_DN` 环境变量自动填入 |
-| [nginx] | static_expires / html_nocache / open_file_cache | 静态资源缓存秒数（默认3600）、HTML 协商缓存（默认on）、文件元数据缓存（默认on），详见 6.1 |
+| [sws] | dn* / host / port / exec / sudo / ssl_crt / ssl_key / conf_dir | 托管域名后缀（必填）；监听地址与端口；重载命令与是否 sudo；HTTPS 证书；配置目录；`dn` 可由 `rtfd --init` 读取 `RTFD_SWS_DN` 环境变量自动填入 |
+| [sws] | static_expires / html_nocache | 静态资源缓存秒数（默认3600）、HTML 协商缓存（默认on），详见 6.1 |
 | [py] | `<版本号>`* / default / index | 可用 Python 版本映射（至少一项，键为版本号如 3、3.10、3.12，值为程序路径，要求带 pip+virtualenv）、默认版本（缺省取第一个可用版本）、pip 源 |
 | [api] | host / port / server_url* / secret | 监听；`server_url` 为**必填**项（rtfd.cfg 默认留空），供 webhook 回跳、文档挂件脚本注入，须配置为对外可达地址；`rtfd --init` 会读取 `RTFD_API_SERVER_URL` 环境变量自动填入，未设置则留空需手动补填；配置若为 `0.0.0.0`/`::` 等不可路由地址会归一化为 `127.0.0.1` 并告警、管理接口密钥（见第7节） |
 | [ghapp] | app_id / private_key | GitHub Apps 凭据（两者同时有效即启用，无独立开关） |
 
-> * = 必需。conf_dir 默认 `%(base_dir)s/nginx`，conf_ext_dir 默认 `%(conf_dir)s/ext`。
+> * = 必需。conf_dir 默认 `%(base_dir)s/sws`。
 > 配置默认值同步维护于 `assets/rtfd.cfg`（`rtfd --init` 写入），变更需同步 `main_test.go` 断言。
 
 ---
@@ -450,7 +450,7 @@ rtfd  [-c/--config 文件]  [-v 版本]  [-i 构建信息]  [--init 生成默认
 ```
 rtfd/
 ├── main.go           程序入口，仅空白导入 assets（embed 生效）+ 执行 cmd.Execute
-├── main_test.go      默认配置结构断言（base_dir/nginx/py/api 分区完整性）
+├── main_test.go      默认配置结构断言（base_dir/sws/py/api 分区完整性）
 ├── api/              API 层：api.go(路由注册/New/Start) · view.go(挂件/构建/webhook处理器)
 │                     · manage.go(项目管理处理器) · tool.go(参数解析/密钥校验等公共函数)
 ├── docs/             swag 生成的接口文档（make docs）：docs.go · swagger.json · swagger.yaml
@@ -460,16 +460,16 @@ rtfd/
 │   ├── build/        构建编排：Builder + builder.sh 落盘与输出流解析
 │   ├── conf/         ini 配置封装（SecHash/GetKey/BaseDir/DefaultBranch…）
 │   ├── lib/          ★ 核心业务：
-│   │   ├── lib.go     ProjectManager 项目 CRUD（含 CreateProject 参数入口）、模型转换、nginx 渲染调度
-│   │   ├── nginx.go   nginx server 配置模板渲染（multi/single/ssl）
+│   │   ├── lib.go     ProjectManager 项目 CRUD（含 CreateProject 参数入口）、模型转换、SWS 配置汇总渲染调度
+│   │   ├── sws.go     SWS 单实例配置模板渲染（虚拟主机/跳转/缓存/TLS）
 │   │   ├── update.go  更新字段分派（updateHook）、规则解析（ParseUpdateRule/ParseUpdateFile）与安全校验
 │   │   ├── transfer.go 项目配置导出/导入（Export/DecodeExport/Import）
 │   │   └── app.go     GitHub App（JWT/installation token/webhook 同步）
 │   └── util/         纯工具：命令执行、正则校验、git URL/域名解析、HMAC-SHA1
 ├── vars/             跨包常量（Sender、GitHub/Gitee 常量、ResetEmpty、默认版本…）
-├── scripts/          部署：nginx.conf / supervisord.conf / rtfd.service / start.sh
+├── scripts/          部署：supervisord.conf / rtfd.service / start.sh
 ├── Makefile          构建/测试/发布目标
-├── Dockerfile        多阶段构建：golang:1.26-alpine 编译 → ubuntu:24.04 运行镜像(+ nginx + supervisor)，
+├── Dockerfile        多阶段构建：golang:1.26-alpine 编译 → ubuntu:24.04 运行镜像(+ static-web-server + supervisor)，
 │                     运行镜像用 apt + deadsnakes PPA 固定预装 3.10/3.12（系统自带 3.12，deadsnakes 补 3.10），
 │                     版本列表写死在 assets/rtfd.cfg 的 [py] 分区；不再依赖 uv 动态安装
 └── .github/workflows/ gotest.yml(测试) · publish.yml(镜像 master→latest、dev→dev、release) · goreleaser.yml(tag→多平台二进制)
@@ -489,13 +489,13 @@ rtfd/
 - 版本：版本号存 `assets/VERSION`（当前 1.5.0），`-v` 输出；
   tag `v*` 推送触发 GoReleaser（linux amd64/386/arm64 + checksum）。
 - 镜像：`publish.yml` 在 master→`latest`、dev→`dev`、release published 时构建，
-  运行时镜像内含 nginx + python3(3.12) + supervisor（supervisord 拉起 `rtfd api` 与 nginx）。
+  运行时镜像内含 static-web-server + python3(3.12) + supervisor（supervisord 拉起 `rtfd api` 与 static-web-server）。
 - 镜像内多版本 Python：运行镜像基于 `ubuntu:24.04`，系统自带 `python3`(=3.12，版本号 `3`)；
   通过 `apt` + deadsnakes PPA 固定预装 `3.10`（`python3.10 -m ensurepip` 自举 pip 后
   `pip install --break-system-packages virtualenv`，系统 3.12 的 virtualenv 由 apt `python3-virtualenv` 提供），
   三者均以 `版本号 = /usr/bin/pythonX.Y` 写死在 `assets/rtfd.cfg` 的 `[py]` 分区，`default = 3`；
   不再使用 uv 动态安装，版本调整需同时改 Dockerfile 的 apt 安装与 rtfd.cfg 的 [py] 分区。
-- 测试：纯单元测试与 sqlite 集成测试（store 连接/迁移、项目 CRUD、conf、nginx 渲染、默认配置），
+- 测试：纯单元测试与 sqlite 集成测试（store 连接/迁移、项目 CRUD、conf、SWS 渲染、默认配置），
   不依赖网络与外部数据库服务。
 
 ---
@@ -532,8 +532,8 @@ rtfd p t -i <BASE64> [新名称]
 
 要点：
 
-- 导入走的是 `Create`，会重新校验名称/域名/python 版本并渲染 nginx 配置，因此**需先确认新环境的
-  `[py]` 版本、`[nginx] dn` 等与旧环境一致**
+- 导入走的是 `Create`，会重新校验名称/域名/python 版本并渲染 SWS 配置，因此**需先确认新环境的
+  `[py]` 版本、`[sws] dn` 等与旧环境一致**
 - `Meta` 中的系统字段（`_webhook_id`、`_installation_id`）默认不导出（`--export-sys-meta` 可含），
   GitHub App 项目导入后可重新触发 webhook 同步
 - 构建结果（Redis 中的 `builder:{name}`）不迁移，迁移后重新构建即可生成

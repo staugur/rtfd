@@ -32,16 +32,12 @@ func TestDefaultConf(t *testing.T) {
 		t.Fatal("no database.dsn")
 	}
 
-	ngxSec := cfg.Section("nginx")
-	if !ngxSec.HasKey("dn") {
-		t.Fatal("no nginx.dn")
+	swsSec := cfg.Section("sws")
+	if !swsSec.HasKey("dn") {
+		t.Fatal("no sws.dn")
 	}
-	if !ngxSec.HasKey("exec") {
-		t.Fatal("no nginx.exec")
-	}
-	ssl := ngxSec.Key("ssl").MustBool()
-	if ssl != false {
-		t.Fatal("the nginx.ssl should be off")
+	if !swsSec.HasKey("exec") {
+		t.Fatal("no sws.exec")
 	}
 
 	pySec := cfg.Section("py")

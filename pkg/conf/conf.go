@@ -197,9 +197,10 @@ func (c Config) ServerURL() string {
 	}
 	host := parsed.Hostname()
 	var bad string
-	if host == "0.0.0.0" {
+	switch host {
+	case "0.0.0.0":
 		bad = "0.0.0.0"
-	} else if host == "::" {
+	case "::":
 		bad = "[::]"
 	}
 	if bad != "" {

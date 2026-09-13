@@ -2,13 +2,13 @@
 
 rtfd 是一个自托管的 **Sphinx 文档构建与托管服务**（单二进制 Go 程序）：
 用户提供 git 仓库（GitHub/Gitee），rtfd 按语言/分支用 Sphinx 构建 HTML，
-写回数据库元数据并交由 Nginx 静态托管；支持 CLI、HTTP API、Git 仓库 Webhook、
+写回数据库元数据并交由 static-web-server 静态托管；支持 CLI、HTTP API、Git 仓库 Webhook、
 GitHub App 自动注册 webhook 与文档状态徽章。
 
 技术栈：Go 1.26，spf13/cobra（CLI）、labstack/echo v4（API）、GORM（存储，支持 sqlite/mysql/pgsql）、
 gopkg.in/ini.v1（配置）、go:embed（assets 打包）、
 golang-jwt/jwt/v5（GitHub App 身份）。
-运行时依赖（仅 Linux）：bash、git、python3（含 pip、virtualenv，支持配置多版本，已移除 python2）、nginx；
+运行时依赖（仅 Linux）：bash、git、python3（含 pip、virtualenv，支持配置多版本，已移除 python2）、static-web-server；
 元数据存储使用 sqlite / mysql / pgsql（默认 sqlite，纯 Go 驱动，无需外部服务）。
 核心构建逻辑在 bash 脚本（`assets/builder.sh`）；生成文档页注入 `assets/rtfd.js` 浮动导航挂件。
 详细架构见 `ARCH.md`。
@@ -25,11 +25,11 @@ rtfd/
 ├── pkg/
 │   ├── build/          Builder：bash 调用、输出流解析、结果入库
 │   ├── conf/           ini 配置封装
-│   ├── lib/            核心业务：lib.go(ProjectManager/CRUD) nginx.go(模板) update.go(更新钩子) app.go(GitHub App)
+│   ├── lib/            核心业务：lib.go(ProjectManager/CRUD) sws.go(SWS 模板) update.go(更新钩子) app.go(GitHub App)
 │   ├── store/          ★ 存储层：GORM 模型(Project/BuildResult) 与多方言连接、自动迁移
 │   └── util/           纯工具（命令执行/校验/git url/hmac）
 ├── vars/               跨包常量与全局类型
-├── scripts/            部署脚本（supervisord/nginx/systemd）
+├── scripts/            部署脚本（supervisord/systemd）
 └── Makefile / Dockerfile / .github/workflows/
 ```
 
@@ -82,7 +82,7 @@ import (
 
 | 类型 | 风格 | 示例 |
 |---|---|---|
-| 包/文件 | 小写单词（多词不强制） | `pkg/build`、`nginx.go` |
+| 包/文件 | 小写单词（多词不强制） | `pkg/build`、`sws.go` |
 | 导出类型/函数 | PascalCase | `ProjectManager`、`OptionKeyMap` |
 | 非导出函数/变量 | camelCase | `genBuilderScript`、`updateHook` |
 | 方法接收者 | 单字母缩写 | `pm *ProjectManager`、`u *updateHook` |
@@ -114,7 +114,7 @@ import (
 
 - 导出标识符加注释且**以标识符名开头**；项目内注释与提示文案以**中文**为主（与现有代码一致）
 - 模块职责用文件顶部包注释或文件注释说明（如 `pkg/lib/lib.go` 顶部"对项目管理的封装"）
-- 复杂逻辑（如 Options→nginx 渲染、builder 参数回查）写清"为什么"，不逐行翻译代码
+- 复杂逻辑（如 Options→SWS 配置渲染、builder 参数回查）写清"为什么"，不逐行翻译代码
 - 敏感数据（secret、私有仓库密码）禁止写入注释与日志
 
 ### 错误处理
@@ -124,16 +124,16 @@ import (
   新命令保持相似语义即可（个别处 1）
 - API 层返回 echo `error`，由 `customHTTPErrorHandler` 统一转
   `{"success":false,"message":"..."}`；空 secret 视为免鉴权通道，勿改变
-- 对外部命令/网络调用（git、nginx、GitHub API）须检查 error 与 exit code
+- 对外部命令/网络调用（git、static-web-server、GitHub API）须检查 error 与 exit code
 
 ### 配置读取
 
 - 一律通过 `conf.New(path)` 后使用 `GetKey/SecHash/GetPath/BaseDir/MustPath` 等方法，
   禁止直接读 ini 文件；新增系统配置分区/键时同步维护 `assets/rtfd.cfg`
   与 `main_test.go` 断言
-- nginx 模板（`pkg/lib/nginx.go`）的缓存开关来自 `[nginx]` 分区的
-  `static_expires / html_nocache / open_file_cache`，由 `renderNginx` 读取；
-  **改动模板需同步 `pkg/lib/nginx_test.go` 中的 location 数量与缓存指令断言**
+- SWS 配置模板（`pkg/lib/sws.go`）的缓存开关来自 `[sws]` 分区的
+  `static_expires / html_nocache`，由 `renderSWS` 读取；
+  **改动模板需同步 `pkg/lib/sws_test.go` 中的表名与缓存指令断言**
 
 ### Python 版本约定
 

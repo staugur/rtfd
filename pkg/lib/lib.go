@@ -314,9 +314,9 @@ func (pm *ProjectManager) GenerateOption(name, url string) (opt Options, err err
 		return
 	}
 
-	dn := pm.cfg.GetKey("nginx", "dn")
+	dn := pm.cfg.GetKey("sws", "dn")
 	if dn == "" {
-		err = errors.New("invalid nginx dn")
+		err = errors.New("invalid sws dn")
 		return
 	}
 	return Options{
@@ -458,8 +458,8 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 		opt.SSL = false
 	}
 
-	// 生成nginx配置并重载
-	err := pm.renderNginx(&opt)
+	// 汇总渲染 SWS 配置并重载
+	err := pm.renderSWS(&opt)
 	if err != nil {
 		return err
 	}
@@ -617,130 +617,122 @@ func resultFromBuildResult(row *store.BuildResult) Result {
 	}
 }
 
-func (pm *ProjectManager) renderNginx(opt *Options) error {
-	name := opt.Name
-	if opt.Lang == "" {
-		return errors.New("empty language cannot render nginx")
-	}
+// renderSWS 汇总全部文档项目，渲染并写入 SWS（static-web-server）单实例配置，然后重载 SWS。
+// opt 为可选的“待写入/最新”项目配置：Create 场景下项目尚未落库，用它保证被纳入配置。
+func (pm *ProjectManager) renderSWS(opt *Options) error {
 	basedir := pm.cfg.BaseDir()
 	DocsDir := filepath.Join(basedir, "docs")
-	dftNginxDir := filepath.Join(basedir, "nginx")
-	NginxDir := pm.cfg.MustPath("nginx", "conf_dir", dftNginxDir)
-	NginxExtDir := pm.cfg.MustPath("nginx", "conf_ext_dir", dftNginxDir)
+	dftSWSDir := filepath.Join(basedir, "sws")
+	SWSDir := pm.cfg.MustPath("sws", "conf_dir", dftSWSDir)
 	if !gtc.IsDir(basedir) {
-		err := gtc.CreateDir(basedir)
-		if err != nil {
+		if err := gtc.CreateDir(basedir); err != nil {
 			return err
 		}
 	}
 	if !gtc.IsDir(DocsDir) {
-		err := gtc.CreateDir(DocsDir)
-		if err != nil {
+		if err := gtc.CreateDir(DocsDir); err != nil {
 			return err
 		}
 	}
-	if !gtc.IsDir(NginxDir) {
-		err := gtc.CreateDir(NginxDir)
-		if err != nil {
+	if !gtc.IsDir(SWSDir) {
+		if err := gtc.CreateDir(SWSDir); err != nil {
 			return err
 		}
 	}
-	if !gtc.IsDir(NginxExtDir) {
-		err := gtc.CreateDir(NginxExtDir)
-		if err != nil {
-			return err
-		}
-	}
-	// 渲染默认域名的nginx配置
-	dftLang := strings.Split(opt.Lang, ",")[0]
-	dftNgxFile := filepath.Join(NginxDir, fmt.Sprintf("%s.conf", name))
-	cstNgxFile := filepath.Join(NginxExtDir, fmt.Sprintf("%s.conf", name))
-	dftSSLCrt := pm.cfg.GetKey("nginx", "ssl_crt")
-	dftSSLKey := pm.cfg.GetKey("nginx", "ssl_key")
-	// 兼容旧版本的配置，如果渲染时存在则自动删除
-	dftNgxFileOld := filepath.Join(dftNginxDir, fmt.Sprintf("%s.conf", name))
-	cstNgxFileOld := filepath.Join(dftNginxDir, fmt.Sprintf("%s.ext.conf", name))
-	if gtc.IsFile(dftNgxFileOld) {
-		os.Remove(dftNgxFileOld)
-	}
-	if gtc.IsFile(cstNgxFileOld) {
-		os.Remove(cstNgxFileOld)
-	}
+
 	// 静态资源缓存时间，非正整数表示不设置缓存头
-	staticExpires := pm.cfg.MustKey("nginx", "static_expires", "3600")
+	staticExpires := pm.cfg.MustKey("sws", "static_expires", "3600")
 	if n, e := strconv.Atoi(staticExpires); e != nil || n <= 0 {
 		staticExpires = ""
 	}
-	ngxopt := &nginxOptions{
-		Name: name, Lang: dftLang, Domain: opt.DefaultDomain, DocsDir: DocsDir,
-		Single: opt.Single, SSLCrt: dftSSLCrt, SSLKey: dftSSLKey,
+	port := 80
+	if p, e := strconv.Atoi(pm.cfg.MustKey("sws", "port", "80")); e == nil && p > 0 {
+		port = p
+	}
+	swsopt := &swsOptions{
+		Host:          pm.cfg.MustKey("sws", "host", "0.0.0.0"),
+		Port:          uint(port),
+		Root:          DocsDir,
+		TLSCert:       pm.cfg.GetKey("sws", "ssl_crt"),
+		TLSKey:        pm.cfg.GetKey("sws", "ssl_key"),
 		StaticExpires: staticExpires,
-		HTMLNoCache:   gtc.IsTrue(pm.cfg.MustKey("nginx", "html_nocache", "on")),
-		OpenFileCache: gtc.IsTrue(pm.cfg.MustKey("nginx", "open_file_cache", "on")),
+		HTMLNoCache:   gtc.IsTrue(pm.cfg.MustKey("sws", "html_nocache", "on")),
 	}
-	dftConf, err := ngxopt.render()
+
+	// 汇总全部项目（opt 为待写入/最新项目时覆盖同名项，保证未落库的新项目也被纳入）
+	list, err := pm.ListFullProject()
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(dftNgxFile, []byte(dftConf), 0644)
-	if err != nil {
-		return err
+	if opt != nil {
+		name := strings.ToLower(opt.Name)
+		replaced := false
+		for i := range list {
+			if strings.ToLower(list[i].Name) == name {
+				list[i] = *opt
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			list = append(list, *opt)
+		}
 	}
-	// 渲染自定义域名的nginx配置
-	if util.IsDomain(opt.CustomDomain) {
-		ngxopt.Domain = opt.CustomDomain
-		ngxopt.SSLCrt = opt.SSLPublic
-		ngxopt.SSLKey = opt.SSLPrivate
-		cstConf, err := ngxopt.render()
-		if err != nil {
-			return err
+	for _, p := range list {
+		if p.Lang == "" || p.DefaultDomain == "" {
+			continue
 		}
-		err = os.WriteFile(cstNgxFile, []byte(cstConf), 0644)
-		if err != nil {
-			return err
+		lang := strings.Split(p.Lang, ",")[0]
+		root := filepath.Join(DocsDir, p.Name)
+		if p.Single {
+			// 单版本：根目录即默认语言的 latest
+			root = filepath.Join(root, lang, "latest")
 		}
-	} else {
-		// conf_ext_dir 未单独配置时与默认配置同路径，此时不能删除
-		if cstNgxFile != dftNgxFile && gtc.IsFile(cstNgxFile) {
-			os.Remove(cstNgxFile)
+		domains := []string{p.DefaultDomain}
+		if util.IsDomain(p.CustomDomain) {
+			domains = append(domains, p.CustomDomain)
+		}
+		for _, d := range domains {
+			swsopt.VHosts = append(swsopt.VHosts, swsVHost{Host: d, Root: root})
+			if !p.Single {
+				// 多版本：访问根路径时固定跳转到默认语言的 latest
+				swsopt.Redirects = append(swsopt.Redirects, swsRedirect{
+					Host: d, Source: "/", Destination: "/" + lang + "/latest/", Kind: 302,
+				})
+			}
 		}
 	}
 
-	err = pm.reloadNginx()
+	conf, err := swsopt.render()
 	if err != nil {
 		return err
 	}
-	return nil
+	swsFile := filepath.Join(SWSDir, "config.toml")
+	if err := os.WriteFile(swsFile, []byte(conf), 0644); err != nil {
+		return err
+	}
+	return pm.reloadSWS()
 }
 
-func (pm *ProjectManager) reloadNginx() error {
-	cmd := pm.cfg.GetKey("nginx", "exec")
-	sudo := gtc.IsTrue(pm.cfg.GetKey("nginx", "sudo"))
-	var (
-		name       string
-		testArgs   []string
-		reloadArgs []string
-	)
-	if sudo {
-		name = "sudo"
-		testArgs = []string{cmd, "-t"}
-		reloadArgs = []string{cmd, "-s", "reload"}
-	} else {
-		name = cmd
-		testArgs = []string{"-t"}
-		reloadArgs = []string{"-s", "reload"}
+// reloadSWS 执行配置重载命令，使新生成的 SWS 配置生效。
+// 命令来自 [sws] exec（通过 shell 执行，如 `supervisorctl restart sws`），为空则跳过。
+func (pm *ProjectManager) reloadSWS() error {
+	cmd := strings.TrimSpace(pm.cfg.GetKey("sws", "exec"))
+	if cmd == "" {
+		return nil
 	}
-
-	exitCode, _, err := util.RunCmd(name, testArgs...)
+	name := "sh"
+	args := []string{"-c", cmd}
+	if gtc.IsTrue(pm.cfg.GetKey("sws", "sudo")) {
+		name = "sudo"
+		args = []string{"sh", "-c", cmd}
+	}
+	exitCode, out, err := util.RunCmd(name, args...)
 	if err != nil {
 		return err
 	}
 	if exitCode != 0 {
-		return errors.New("nginx test configuration failed")
-	}
-	exitCode, _, err = util.RunCmd(name, reloadArgs...)
-	if exitCode != 0 || err != nil {
-		return errors.New("nginx reload service failed")
+		return fmt.Errorf("sws reload failed: %s", strings.TrimSpace(out))
 	}
 	return nil
 }
@@ -785,32 +777,10 @@ func (pm *ProjectManager) Remove(name string) error {
 
 	basedir := pm.cfg.BaseDir()
 	DocsDir := filepath.Join(basedir, "docs", name)
-	dftNginxDir := filepath.Join(basedir, "nginx")
-	NginxDir := pm.cfg.MustPath("nginx", "conf_dir", dftNginxDir)
-	NginxExtDir := pm.cfg.MustPath("nginx", "conf_ext_dir", dftNginxDir)
-	dftNgxFile := filepath.Join(NginxDir, fmt.Sprintf("%s.conf", name))
-	cstNgxFile := filepath.Join(NginxExtDir, fmt.Sprintf("%s.conf", name))
-	// 兼容旧版本的扩展配置，如果渲染时存在则自动删除
-	dftNgxFileOld := filepath.Join(dftNginxDir, fmt.Sprintf("%s.conf", name))
-	cstNgxFileOld := filepath.Join(dftNginxDir, fmt.Sprintf("%s.ext.conf", name))
-	if gtc.IsFile(dftNgxFileOld) {
-		os.Remove(dftNgxFileOld)
-	}
-	if gtc.IsFile(cstNgxFileOld) {
-		os.Remove(cstNgxFileOld)
-	}
 	if gtc.IsDir(DocsDir) {
 		err = os.RemoveAll(DocsDir)
 		if err != nil {
 			return err
-		}
-	}
-	if gtc.IsFile(dftNgxFile) || gtc.IsFile(cstNgxFile) || gtc.IsFile(cstNgxFileOld) || gtc.IsFile(dftNgxFileOld) {
-		os.Remove(dftNgxFile)
-		os.Remove(cstNgxFile)
-		err = pm.reloadNginx()
-		if err != nil {
-			fmt.Printf("failed to automatically remove webhook: %s\n", err)
 		}
 	}
 
@@ -832,7 +802,14 @@ func (pm *ProjectManager) Remove(name string) error {
 		}
 		return tx.Where("project = ?", name).Delete(&store.BuildResult{}).Error
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	// 项目已删除，重新汇总渲染 SWS 配置并重载（失败仅告警，不回滚已删除的数据）
+	if e := pm.renderSWS(nil); e != nil {
+		fmt.Printf("failed to reload sws config: %s\n", e)
+	}
+	return nil
 }
 
 // Update 更新文档项目配置
@@ -864,7 +841,7 @@ func (pm *ProjectManager) Update(opt *Options, rule map[string]any) (ok []string
 	}
 
 	if uh.render {
-		err = pm.renderNginx(opt)
+		err = pm.renderSWS(opt)
 		if err != nil {
 			return
 		}
