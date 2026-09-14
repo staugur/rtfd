@@ -48,11 +48,16 @@ RUN set -eux; \
 COPY --from=builder /build/rtfd /bin/
 COPY --from=caddybinary /usr/bin/caddy /usr/bin/caddy
 COPY scripts/supervisord.conf /etc/
-COPY assets/rtfd.cfg /
+# 配置文件放进 base_dir 内，与数据（docs/db/caddy）同处一个数据卷
+COPY assets/rtfd.cfg /rtfd/rtfd.cfg
+COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
-ENV RTFD_CFG=/rtfd.cfg \
+ENV RTFD_CFG=/rtfd/rtfd.cfg \
     TZ=Asia/Shanghai \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 EXPOSE 80 443 5000
-ENTRYPOINT ["supervisord"]
+# 入口脚本兜底生成缺失的配置（卷挂载遮住镜像内文件时），再交由 supervisord 拉起 rtfd api 与 caddy
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["supervisord"]

@@ -181,6 +181,7 @@ cli create → GenerateOption(name, url) 生成默认 Options
       ├─ 校验必填项；校验 python 版本已在 [py] 分区定义；自定义域名校验且须未占用；SSL 证书文件须存在
       ├─ renderCaddy：汇总全部项目渲染 {base}/caddy/Caddyfile（站点块 + latest 跳转 + 缓存，自动 HTTPS）
       │    → 执行 `caddy reload` 热加载（无需重启）
+      └─ API 启动时（InitCaddy）也会生成一次 Caddyfile，避免暂无项目时 Caddy 反复启动失败
       └─ 写入 projects 表（GORM Create；GitHub 项目再异步创建仓库 webhook，失败仅告警不阻断）
 ```
 
@@ -329,7 +330,7 @@ docs/{name}/
 
 ## 7. 对外 API（`api` 包，均挂 `/rtfd` 前缀）
 
-路由注册集中在 `api.registerRoutes`（`api.New` 供启动与测试复用），兼容两种路径风格
+路由注册集中在 `api.registerRoutes`（`api.New` 供启动与测试复用；启动时会调用 `InitCaddy` 生成 Caddyfile，确保暂无项目时 Caddy 也能加载配置），兼容两种路径风格
 （`:name` 在前或在后），新增接口建议同时注册两种。
 
 **公开接口**（无需密钥）：
@@ -461,7 +462,7 @@ rtfd/
 │   │   └── app.go     GitHub App（JWT/installation token/webhook 同步）
 │   └── util/         纯工具：命令执行、正则校验、git URL/域名解析、HMAC-SHA1
 ├── vars/             跨包常量（Sender、GitHub/Gitee 常量、ResetEmpty、默认版本…）
-├── scripts/          部署：supervisord.conf / rtfd.service / start.sh
+├── scripts/          部署：supervisord.conf / rtfd.service / start.sh / docker-entrypoint.sh
 ├── Makefile          构建/测试/发布目标
 ├── Dockerfile        多阶段构建：golang:1.26-alpine 编译 → ubuntu:24.04 运行镜像(+ caddy + supervisor)，
 │                     运行镜像用 apt + deadsnakes PPA 固定预装 3.10/3.12（系统自带 3.12，deadsnakes 补 3.10），
@@ -484,6 +485,7 @@ rtfd/
   tag `v*` 推送触发 GoReleaser（linux amd64/386/arm64 + checksum）。
 - 镜像：`publish.yml` 在 master→`latest`、dev→`dev`、release published 时构建，
   运行时镜像内含 caddy + python3(3.12) + supervisor（supervisord 拉起 `rtfd api` 与 caddy）。
+- 镜像内路径：配置文件放在 **base_dir 内**（`RTFD_CFG=/rtfd/rtfd.cfg`），与数据（`docs/`、`rtfd.db`、`caddy/`）同处 `/rtfd`，只需挂载一个数据卷；入口脚本 `scripts/docker-entrypoint.sh` 在配置缺失时（如卷挂载遮住镜像内文件）用内置模板 `rtfd --init` 补生成，再 `exec supervisord`。
 - 镜像内多版本 Python：运行镜像基于 `ubuntu:24.04`，系统自带 `python3`(=3.12，版本号 `3`)；
   通过 `apt` + deadsnakes PPA 固定预装 `3.10`（`python3.10 -m ensurepip` 自举 pip 后
   `pip install --break-system-packages virtualenv`，系统 3.12 的 virtualenv 由 apt `python3-virtualenv` 提供），

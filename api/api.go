@@ -49,6 +49,8 @@ func New(cfg string) (*echo.Echo, error) {
 	}
 	pm = ipm
 	cfgFile = cfg
+	// 启动即生成 Caddyfile（暂无项目时也生成），避免 Caddy 因配置缺失反复启动失败
+	ipm.InitCaddy()
 	// 构建器复用同一个项目管理器，避免每次构建都新建数据库连接
 	bld, err = build.NewFromPM(cfg, ipm)
 	if err != nil {

@@ -222,3 +222,12 @@ func TestProjectCustomDomain(t *testing.T) {
 		t.Fatal("custom domain should be released")
 	}
 }
+
+func TestInitCaddy(t *testing.T) {
+	pm, dir := newTestPM(t)
+	// 即使没有任何项目，启动初始化也应生成 Caddyfile
+	pm.InitCaddy()
+	if _, err := os.Stat(filepath.Join(dir, "caddy", "Caddyfile")); err != nil {
+		t.Fatal("caddyfile should be created on init:", err)
+	}
+}

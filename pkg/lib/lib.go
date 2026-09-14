@@ -617,28 +617,30 @@ func resultFromBuildResult(row *store.BuildResult) Result {
 	}
 }
 
-// renderCaddy 汇总全部文档项目，渲染并写入 Caddy 单实例配置（Caddyfile），然后热加载 Caddy。
-// opt 为可选的“待写入/最新”项目配置：Create 场景下项目尚未落库，用它保证被纳入配置。
-func (pm *ProjectManager) renderCaddy(opt *Options) error {
+// caddyConfPath 返回 Caddyfile 路径，并确保所需目录存在
+func (pm *ProjectManager) caddyConfPath() (string, error) {
 	basedir := pm.cfg.BaseDir()
-	DocsDir := filepath.Join(basedir, "docs")
 	dftCaddyDir := filepath.Join(basedir, "caddy")
 	CaddyDir := pm.cfg.MustPath("caddy", "conf_dir", dftCaddyDir)
-	if !gtc.IsDir(basedir) {
-		if err := gtc.CreateDir(basedir); err != nil {
-			return err
+	for _, d := range []string{basedir, filepath.Join(basedir, "docs"), CaddyDir} {
+		if !gtc.IsDir(d) {
+			if err := gtc.CreateDir(d); err != nil {
+				return "", err
+			}
 		}
 	}
-	if !gtc.IsDir(DocsDir) {
-		if err := gtc.CreateDir(DocsDir); err != nil {
-			return err
-		}
+	return filepath.Join(CaddyDir, "Caddyfile"), nil
+}
+
+// writeCaddyConfig 汇总全部文档项目并写入 Caddyfile，返回配置文件路径。
+// opt 为可选的“待写入/最新”项目配置：Create 场景下项目尚未落库，用它保证被纳入配置。
+func (pm *ProjectManager) writeCaddyConfig(opt *Options) (string, error) {
+	caddyFile, err := pm.caddyConfPath()
+	if err != nil {
+		return "", err
 	}
-	if !gtc.IsDir(CaddyDir) {
-		if err := gtc.CreateDir(CaddyDir); err != nil {
-			return err
-		}
-	}
+	basedir := pm.cfg.BaseDir()
+	DocsDir := filepath.Join(basedir, "docs")
 
 	// 静态资源缓存时间，非正整数表示不设置缓存头
 	staticExpires := pm.cfg.MustKey("caddy", "static_expires", "3600")
@@ -656,7 +658,7 @@ func (pm *ProjectManager) renderCaddy(opt *Options) error {
 	// 汇总全部项目（opt 为待写入/最新项目时覆盖同名项，保证未落库的新项目也被纳入）
 	list, err := pm.ListFullProject()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if opt != nil {
 		name := strings.ToLower(opt.Name)
@@ -696,13 +698,39 @@ func (pm *ProjectManager) renderCaddy(opt *Options) error {
 
 	conf, err := copt.render()
 	if err != nil {
-		return err
+		return "", err
 	}
-	caddyFile := filepath.Join(CaddyDir, "Caddyfile")
 	if err := os.WriteFile(caddyFile, []byte(conf), 0644); err != nil {
+		return "", err
+	}
+	return caddyFile, nil
+}
+
+// renderCaddy 重新生成并写入 Caddyfile，然后热加载 Caddy。
+// 写入失败返回错误（确定性错误，需中止）；热加载失败仅告警——配置已落盘，
+// 项目仍应正常落库，待 Caddy 就绪后可再次触发生效，避免因 Caddy 未运行而无法创建项目。
+func (pm *ProjectManager) renderCaddy(opt *Options) error {
+	caddyFile, err := pm.writeCaddyConfig(opt)
+	if err != nil {
 		return err
 	}
-	return pm.reloadCaddy(caddyFile)
+	if e := pm.reloadCaddy(caddyFile); e != nil {
+		fmt.Printf("warning: %s\n", e)
+	}
+	return nil
+}
+
+// InitCaddy 服务启动时生成一次 Caddy 配置：确保 Caddyfile 存在（即使暂无任何项目），
+// 避免 Caddy 因配置文件缺失而反复启动失败；Caddy 尚未就绪时重载失败仅告警，不影响启动。
+func (pm *ProjectManager) InitCaddy() {
+	caddyFile, err := pm.writeCaddyConfig(nil)
+	if err != nil {
+		fmt.Printf("failed to write caddy config: %s\n", err)
+		return
+	}
+	if e := pm.reloadCaddy(caddyFile); e != nil {
+		fmt.Printf("skip caddy reload on startup: %s\n", e)
+	}
 }
 
 // reloadCaddy 让新生成的 Caddyfile 生效，执行 `caddy reload --config <file>`（优雅热加载，无需重启）。
@@ -718,12 +746,13 @@ func (pm *ProjectManager) reloadCaddy(confFile string) error {
 		name = "sudo"
 		args = append([]string{bin}, args...)
 	}
-	exitCode, out, err := util.RunCmd(name, args...)
+	_, out, err := util.RunCmd(name, args...)
 	if err != nil {
-		return err
-	}
-	if exitCode != 0 {
-		return fmt.Errorf("caddy reload failed: %s", strings.TrimSpace(out))
+		msg := strings.TrimSpace(out)
+		if msg == "" {
+			msg = err.Error()
+		}
+		return fmt.Errorf("caddy reload failed (%s), config=%s: %s", bin, confFile, msg)
 	}
 	return nil
 }

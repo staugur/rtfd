@@ -57,14 +57,16 @@ func IsProjectName(name string) bool {
 	return false
 }
 
-// RunCmd 封装命令执行方法
+// RunCmd 封装命令执行方法，返回退出码与合并后的输出；
+// 命令执行失败（非零退出或无法启动）时也会返回已捕获的输出与退出码，便于调用方定位原因。
 func RunCmd(name string, args ...string) (exitCode int, out string, err error) {
 	cmd := exec.Command(name, args...)
 	data, err := cmd.CombinedOutput()
-	if err != nil {
-		return
+	out = string(data)
+	if cmd.ProcessState != nil {
+		exitCode = cmd.ProcessState.ExitCode()
 	}
-	return cmd.ProcessState.ExitCode(), string(data), nil
+	return
 }
 
 // RunCmdStream 在控制台实时输出命令返回信息
