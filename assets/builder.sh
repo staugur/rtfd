@@ -199,6 +199,35 @@ def setup(app):
         _rtfd_orig_setup(app)
     _rtfd_add_widget(app)
 EOF
+    #: 编译 gettext 翻译目录：Sphinx 仅读取编译后的 .mo 才能应用翻译，
+    #: 而仓库通常只提交 .po（源码目录），故在此把 .po 编译为同目录 .mo。
+    #: 仅当存在 locale/ 且对应语言子目录存在时才处理；编译失败不阻断构建。
+    #: 注意：locale 子目录名必须与 sphinx 的 language 值一致（如 zh_CN，含下划线），
+    #: 否则此处不会命中、sphinx 也找不到 .mo，翻译依旧不生效。
+    local locale_dir=$(_joinPath $project_runtime_dir $(_joinPath $sphinx_sourcedir locale))
+    if [ -d "$locale_dir" ]; then
+        for lang in ${sphinx_languages//,/ }; do
+            local lang_locale=$(_joinPath $locale_dir ${lang})
+            if [ -d "$lang_locale" ]; then
+                local compiled=0
+                if [ -x "$project_runtime_dir/$vd/bin/sphinx-intl" ]; then
+                    "$project_runtime_dir/$vd/bin/sphinx-intl" build -d "$locale_dir" -l "$lang" && compiled=1
+                fi
+                if [ "$compiled" -ne 1 ]; then
+                    #: 兜底：用 Babel（Sphinx 依赖，纯 Python）编译，避免依赖系统 gettext(msgfmt)
+                    for po in $(find "$lang_locale" -type f -name '*.po'); do
+                        mo="${po%.po}.mo"
+                        "$venv_py" - "$po" "$mo" <<'PY'
+import sys
+from babel.messages.pofile import read_po
+from babel.messages.mofile import write_mo
+write_mo(open(sys.argv[2], 'wb'), read_po(open(sys.argv[1], 'rb')))
+PY
+                    done
+                fi
+            fi
+        done
+    fi
     #: 构建
     local sphinx_build=$(_joinPath $project_runtime_dir ${vd}/bin/sphinx-build)
     for lang in ${sphinx_languages//,/ }; do
