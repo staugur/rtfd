@@ -176,7 +176,7 @@ func apiDesc(c echo.Context) error {
 // @Param name path string true "项目名称"
 // @Param branch query string false "分支或tag，缺省用项目最新版本"
 // @Param debug query string false "为 true/on/1 时输出完整构建日志（BuildWithAll）"
-// @Security RtfdSign
+// @Security RtfdTs || RtfdNonce || RtfdSign
 // @Success 201 {object} resb "已异步启动，branch 回显实际分支"
 // @Failure default {object} res "项目不存在或签名校验失败"
 // @Router /rtfd/{name}/build [post]

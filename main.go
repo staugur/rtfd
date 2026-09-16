@@ -31,17 +31,23 @@ import (
 // @description 鉴权：管理接口（项目管理、配置查询、导入导出）与项目级接口（详情/更新/删除/导出）采用 HMAC-SHA256 动态签名，
 // @description 需随请求携带 X-Rtfd-Ts（Unix 秒）、X-Rtfd-Nonce（随机串）、X-Rtfd-Sign（HMAC-SHA256 签名）三个头；
 // @description 签名串 = ts + "\n" + nonce（以 secret 为 HMAC 密钥，与 method/path/body 无关），密钥为 [api] secret 或项目 secret（二者其一即可）。
-// @description 可使用 `rtfd sign` 命令生成签名，或在 Swagger UI 首页填入密钥后自动签名；构建与 webhook 接口使用项目 secret（HMAC/Token）。
+// @description 可用 `rtfd sign` 生成三个头，并在 Swagger UI 右上角 Authorize 中分别填入 X-Rtfd-Ts / X-Rtfd-Nonce / X-Rtfd-Sign；构建与 webhook 接口使用项目 secret（HMAC/Token）。
 // @description 多数接口兼容两种路径风格：/rtfd/{name}/xxx 与 /rtfd/xxx/{name}（文档只列出前者）。
 // @license.name Apache-2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0
-// @host localhost:5000
 // @BasePath /
-// @schemes http https
+// @securityDefinitions.apikey RtfdTs
+// @in header
+// @name X-Rtfd-Ts
+// @description 动态签名时间戳（Unix 秒），须与 X-Rtfd-Nonce、X-Rtfd-Sign 三者同时携带
+// @securityDefinitions.apikey RtfdNonce
+// @in header
+// @name X-Rtfd-Nonce
+// @description 动态签名随机串，须与 X-Rtfd-Ts、X-Rtfd-Sign 三者同时携带
 // @securityDefinitions.apikey RtfdSign
 // @in header
 // @name X-Rtfd-Sign
-// @description 动态签名：随请求同时携带 X-Rtfd-Ts、X-Rtfd-Nonce、X-Rtfd-Sign（HMAC-SHA256，密钥为 [api] secret 或项目 secret）
+// @description 动态签名 HMAC-SHA256(secret, ts+"\n"+nonce)，须与 X-Rtfd-Ts、X-Rtfd-Nonce 三者同时携带
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }

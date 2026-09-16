@@ -129,7 +129,7 @@ func registerRoutes(g *echo.Group) {
 	g.GET("/docs", func(c echo.Context) error {
 		return c.Redirect(http.StatusMovedPermanently, "/rtfd/docs/index.html")
 	})
-	// 自定义 index：注入 requestInterceptor，按 rtfd 动态签名规则自动为请求签名（便于调试）
+	// 自定义 index：使用项目自有的 Swagger UI 首页（签名头经 Authorize 填入三个 apiKey）
 	g.GET("/docs/index.html", swaggerIndex)
 	g.GET("/docs/*", echoSwagger.WrapHandler)
 }

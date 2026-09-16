@@ -52,7 +52,9 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "RtfdSign": []
+                        "RtfdNonce": [],
+                        "RtfdSign": [],
+                        "RtfdTs": []
                     }
                 ],
                 "description": "导入 base64 编码的项目配置（由导出接口或 CLI ` + "`" + `rtfd project transfer -e` + "`" + ` 生成）；\nname 可选，用于改名导入（缺省取配置中的名称）；导入走创建流程，会重新校验并渲染 Caddy 配置。需管理密钥。",
@@ -113,7 +115,9 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "RtfdSign": []
+                        "RtfdNonce": [],
+                        "RtfdSign": [],
+                        "RtfdTs": []
                     }
                 ],
                 "description": "返回全部项目名称；verbose=1 时返回完整项目配置数组。需管理密钥。",
@@ -165,7 +169,9 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "RtfdSign": []
+                        "RtfdNonce": [],
+                        "RtfdSign": [],
+                        "RtfdTs": []
                     }
                 ],
                 "description": "参数与 CLI ` + "`" + `rtfd project create` + "`" + ` 一致：url 必需，其余字段可选、空值沿用系统默认；创建后自动汇总渲染 Caddy 配置。\n参数可放在表单、query 或 JSON body（键不区分大小写）；需管理密钥。",
@@ -346,7 +352,9 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "RtfdSign": []
+                        "RtfdNonce": [],
+                        "RtfdSign": [],
+                        "RtfdTs": []
                     }
                 ],
                 "description": "异步触发指定项目的文档构建，接口立即返回 201，构建结果可经项目详情（build=1）查询。\n路径别名：POST /rtfd/build/{name}；鉴权：项目 secret（未设置则免鉴权）",
@@ -448,7 +456,9 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "RtfdSign": []
+                        "RtfdNonce": [],
+                        "RtfdSign": [],
+                        "RtfdTs": []
                     }
                 ],
                 "description": "返回 base64 编码的项目配置，可通过导入接口或 CLI 在其它 rtfd 实例中还原。\nsysmeta=1 时保留系统 meta（如 _installation_id、_webhook_id）。需管理密钥或项目密钥。\n路径别名：GET /rtfd/export/{name}",
@@ -506,7 +516,9 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "RtfdSign": []
+                        "RtfdNonce": [],
+                        "RtfdSign": [],
+                        "RtfdTs": []
                     }
                 ],
                 "description": "默认返回项目完整配置；key 指定单个字段；build=1 时附带构建集。需管理密钥或项目密钥。\n路径别名：GET /rtfd/info/{name}",
@@ -570,7 +582,9 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "RtfdSign": []
+                        "RtfdNonce": [],
+                        "RtfdSign": [],
+                        "RtfdTs": []
                     }
                 ],
                 "description": "删除项目配置与构建结果，并从 Caddy 配置中移除对应站点。需管理密钥或项目密钥。\n路径别名：/rtfd/remove/{name}（POST 与 DELETE 均可）",
@@ -608,7 +622,9 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "RtfdSign": []
+                        "RtfdNonce": [],
+                        "RtfdSign": [],
+                        "RtfdTs": []
                     }
                 ],
                 "description": "删除项目配置与构建结果，并从 Caddy 配置中移除对应站点。需管理密钥或项目密钥。\n路径别名：/rtfd/remove/{name}（POST 与 DELETE 均可）",
@@ -648,7 +664,9 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "RtfdSign": []
+                        "RtfdNonce": [],
+                        "RtfdSign": [],
+                        "RtfdTs": []
                     }
                 ],
                 "description": "三种传参方式（按优先级）：text（Field:Value 逗号分隔，sep 可自定义分隔符）、file（服务端 .rtfd.ini 路径，内容未变化则跳过）、\n或直接以字段名传参（如 lang=zh_CN\u0026single=on）。值 - 表示重置为空（requirement/index/secret）。\n字段名同创建项目；需管理密钥或项目密钥。路径别名：POST /rtfd/update/{name}",
@@ -1290,10 +1308,22 @@ const docTemplate = `{
         }
     },
     "securityDefinitions": {
+        "RtfdNonce": {
+            "description": "动态签名随机串，须与 X-Rtfd-Ts、X-Rtfd-Sign 三者同时携带",
+            "type": "apiKey",
+            "name": "X-Rtfd-Nonce",
+            "in": "header"
+        },
         "RtfdSign": {
-            "description": "动态签名：随请求同时携带 X-Rtfd-Ts、X-Rtfd-Nonce、X-Rtfd-Sign（HMAC-SHA256，密钥为 [api] secret 或项目 secret）",
+            "description": "动态签名 HMAC-SHA256(secret, ts+\"\\n\"+nonce)，须与 X-Rtfd-Ts、X-Rtfd-Nonce 三者同时携带",
             "type": "apiKey",
             "name": "X-Rtfd-Sign",
+            "in": "header"
+        },
+        "RtfdTs": {
+            "description": "动态签名时间戳（Unix 秒），须与 X-Rtfd-Nonce、X-Rtfd-Sign 三者同时携带",
+            "type": "apiKey",
+            "name": "X-Rtfd-Ts",
             "in": "header"
         }
     }
@@ -1302,11 +1332,11 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "2.0.0",
-	Host:             "localhost:5000",
+	Host:             "",
 	BasePath:         "/",
-	Schemes:          []string{"http", "https"},
+	Schemes:          []string{},
 	Title:            "Rtfd API",
-	Description:      "rtfd 是自托管的 Sphinx 文档构建与托管服务，本文档描述其 HTTP API（版本号与 assets/VERSION 保持一致）。\n所有接口挂 /rtfd 前缀，响应统一为 {\"success\":bool,\"message\":string,\"data\":any}，\n业务错误同样以该结构返回（HTTP 200），由 customHTTPErrorHandler 统一处理。\n鉴权：管理接口（项目管理、配置查询、导入导出）与项目级接口（详情/更新/删除/导出）采用 HMAC-SHA256 动态签名，\n需随请求携带 X-Rtfd-Ts（Unix 秒）、X-Rtfd-Nonce（随机串）、X-Rtfd-Sign（HMAC-SHA256 签名）三个头；\n签名串 = ts + \"\\n\" + nonce（以 secret 为 HMAC 密钥，与 method/path/body 无关），密钥为 [api] secret 或项目 secret（二者其一即可）。\n可使用 `rtfd sign` 命令生成签名，或在 Swagger UI 首页填入密钥后自动签名；构建与 webhook 接口使用项目 secret（HMAC/Token）。\n多数接口兼容两种路径风格：/rtfd/{name}/xxx 与 /rtfd/xxx/{name}（文档只列出前者）。",
+	Description:      "rtfd 是自托管的 Sphinx 文档构建与托管服务，本文档描述其 HTTP API（版本号与 assets/VERSION 保持一致）。\n所有接口挂 /rtfd 前缀，响应统一为 {\"success\":bool,\"message\":string,\"data\":any}，\n业务错误同样以该结构返回（HTTP 200），由 customHTTPErrorHandler 统一处理。\n鉴权：管理接口（项目管理、配置查询、导入导出）与项目级接口（详情/更新/删除/导出）采用 HMAC-SHA256 动态签名，\n需随请求携带 X-Rtfd-Ts（Unix 秒）、X-Rtfd-Nonce（随机串）、X-Rtfd-Sign（HMAC-SHA256 签名）三个头；\n签名串 = ts + \"\\n\" + nonce（以 secret 为 HMAC 密钥，与 method/path/body 无关），密钥为 [api] secret 或项目 secret（二者其一即可）。\n可用 `rtfd sign` 生成三个头，并在 Swagger UI 右上角 Authorize 中分别填入 X-Rtfd-Ts / X-Rtfd-Nonce / X-Rtfd-Sign；构建与 webhook 接口使用项目 secret（HMAC/Token）。\n多数接口兼容两种路径风格：/rtfd/{name}/xxx 与 /rtfd/xxx/{name}（文档只列出前者）。",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

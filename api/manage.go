@@ -70,7 +70,7 @@ type importData struct {
 // @Tags 项目管理
 // @Produce json
 // @Param verbose query string false "为 true/on/1 时返回完整配置（[]lib.OptionsWithResult）"
-// @Security RtfdSign
+// @Security RtfdTs || RtfdNonce || RtfdSign
 // @Success 200 {object} resd{data=[]string} "项目名称数组；verbose 时为完整配置数组"
 // @Failure default {object} res "密钥未配置或校验失败"
 // @Router /rtfd/projects [get]
@@ -117,7 +117,7 @@ func apiProjectList(c echo.Context) error {
 // @Param domain formData string false "自定义域名（需已解析到本机）"
 // @Param sslcrt formData string false "自定义域名证书路径（与 sslkey 成对）"
 // @Param sslkey formData string false "自定义域名证书私钥路径（与 sslcrt 成对）"
-// @Security RtfdSign
+// @Security RtfdTs || RtfdNonce || RtfdSign
 // @Success 201 {object} resd{data=lib.Options} "创建成功，data 为项目配置"
 // @Failure default {object} res "参数非法、名称/自定义域名已存在或密钥校验失败"
 // @Router /rtfd/projects [post]
@@ -150,7 +150,7 @@ func apiProjectCreate(c echo.Context) error {
 // @Param name path string true "项目名称"
 // @Param key query string false "字段名，如 lang、secret、url，返回 data.{key,value}"
 // @Param build query string false "为 true/on/1 时附带构建集（data.buildset）"
-// @Security RtfdSign
+// @Security RtfdTs || RtfdNonce || RtfdSign
 // @Success 200 {object} resd{data=lib.OptionsWithResult} "项目配置（key 时为 data.{key,value}）"
 // @Failure default {object} res "项目不存在或密钥校验失败"
 // @Router /rtfd/{name}/info [get]
@@ -214,7 +214,7 @@ func apiProjectInfo(c echo.Context) error {
 // @Param sslkey formData string false "直接传字段：证书私钥路径"
 // @Param shownav formData string false "直接传字段：是否显示挂件导航"
 // @Param hidegit formData string false "直接传字段：是否隐藏git入口"
-// @Security RtfdSign
+// @Security RtfdTs || RtfdNonce || RtfdSign
 // @Success 200 {object} resup "更新结果，updated/failed 为字段列表；规则文件内容未变化时 updated/failed 为空且 message=not updated"
 // @Failure default {object} res "项目不存在、规则为空或密钥校验失败"
 // @Router /rtfd/{name}/update [post]
@@ -276,7 +276,7 @@ func apiProjectUpdate(c echo.Context) error {
 // @Tags 项目管理
 // @Produce json
 // @Param name path string true "项目名称"
-// @Security RtfdSign
+// @Security RtfdTs || RtfdNonce || RtfdSign
 // @Success 200 {object} res "删除成功"
 // @Failure default {object} res "项目不存在或密钥校验失败"
 // @Router /rtfd/{name}/remove [delete]
@@ -305,7 +305,7 @@ func apiProjectRemove(c echo.Context) error {
 // @Produce json
 // @Param name path string true "项目名称"
 // @Param sysmeta query string false "为 true/on/1 时保留系统 meta"
-// @Security RtfdSign
+// @Security RtfdTs || RtfdNonce || RtfdSign
 // @Success 200 {object} resd{data=exportData} "data.export 为 base64 配置"
 // @Failure default {object} res "项目不存在或密钥校验失败"
 // @Router /rtfd/{name}/export [get]
@@ -335,7 +335,7 @@ func apiProjectExport(c echo.Context) error {
 // @Produce json
 // @Param export formData string true "base64 编码的项目配置"
 // @Param name formData string false "新项目名称，缺省用配置中的名称"
-// @Security RtfdSign
+// @Security RtfdTs || RtfdNonce || RtfdSign
 // @Success 201 {object} resd{data=importData} "data.name 为导入后的项目名"
 // @Failure default {object} res "配置非法、名称已存在或密钥校验失败"
 // @Router /rtfd/import [post]

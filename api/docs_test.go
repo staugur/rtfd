@@ -83,8 +83,10 @@ func TestSwaggerDocs(t *testing.T) {
 			t.Fatalf("swagger path missing: %s", path)
 		}
 	}
-	if _, ok := spec.SecurityDefinitions["RtfdSign"]; !ok {
-		t.Fatal("swagger securityDefinitions missing: RtfdSign")
+	for _, name := range []string{"RtfdTs", "RtfdNonce", "RtfdSign"} {
+		if _, ok := spec.SecurityDefinitions[name]; !ok {
+			t.Fatalf("swagger securityDefinitions missing: %s", name)
+		}
 	}
 	// Options 未定义 json tag，字段名应与实际响应保持一致（首字母大写）
 	if _, ok := spec.Definitions["lib.Options"]; !ok {
