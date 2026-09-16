@@ -869,10 +869,6 @@ const docTemplate = `{
                     "description": "是否隐藏git入口（非html构建器时恒为true）",
                     "type": "boolean"
                 },
-                "icon": {
-                    "description": "站点图标（base64 data uri）",
-                    "type": "string"
-                },
                 "lang": {
                     "description": "语言列表",
                     "type": "array",

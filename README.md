@@ -3,12 +3,12 @@
 Build, read your exclusive and fuck docs.
 
 [![Go Reference](https://pkg.go.dev/badge/pkg.tcw.im/rtfd/v2.svg)](https://pkg.go.dev/pkg.tcw.im/rtfd/v2)
-[![Documentation Status](https://open.saintic.com/rtfd/saintic-docs/badge)](https://docs.saintic.com/rtfd/)
+[![Documentation Status](https://hub.saintic.com/rtfd/saintic-docs/badge)](https://docs.saintic.com/rtfd/)
 [![Go test](https://github.com/staugur/rtfd/actions/workflows/gotest.yml/badge.svg)](https://github.com/staugur/rtfd/actions/workflows/gotest.yml)
 
 ### 依赖
 
-rtfd 仅支持 linux 操作系统！
+理论上 rtfd 仅支持 linux 操作系统！
 
 构建脚本还需要 bash 运行环境，git命令，python3.10+环境（并安装了pip、virtualenv模块），Caddy 服务。
 

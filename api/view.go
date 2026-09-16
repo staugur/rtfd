@@ -73,8 +73,6 @@ type descData struct {
 	DefaultBranch string `json:"defaultBranch"`
 	// 是否隐藏git入口（非html构建器时恒为true）
 	HideGit bool `json:"hideGit"`
-	// 站点图标（base64 data uri）
-	Icon string `json:"icon"`
 	// 是否公开仓库
 	Public bool `json:"public"`
 	// git 服务商（GitHub/Gitee）
@@ -127,7 +125,6 @@ func apiDesc(c echo.Context) error {
 		ShowNav:       opt.ShowNav,
 		DefaultBranch: pm.CFG().DefaultBranch(),
 		HideGit:       opt.HideGit,
-		Icon:          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAlUlEQVQ4T92S0Q0CMQxDnydBtwEbABvcRjAKK7DBscGNwCZGRbSKDigB/uhv4lc7svjxqeptj8AeWL9hTpJ2dScCLsAqY0hS00WA7+ITcJA0p2AhQgUMwBHYdAAtxoODYs92hb1k1BhdQMy6hKYAvRukANHB8lYpwB84+DTCVMrzdQ/ib7ZvsI6Ds6RtmbciZXr/bOcKjCNuESAd+XoAAAAASUVORK5CYII=",
 		Public:        opt.IsPublic,
 		GSP:           opt.GSP,
 		Versions:      make(map[string][]string),

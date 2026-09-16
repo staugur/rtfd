@@ -7,22 +7,52 @@ SaintIC (https://www.saintic.com).
 
 This product relies on the following software:
 
-jwt-go
-https://github.com/dgrijalva/jwt-go
+golang-jwt/jwt
+https://github.com/golang-jwt/jwt
 Copyright (c) 2012 Dave Grijalva
+Copyright (c) 2021 golang-jwt maintainers
 Licensed under the MIT License
+
+echo
+https://github.com/labstack/echo
+Copyright (c) 2021 LabStack
+Licensed under the MIT License
+
+cobra
+https://github.com/spf13/cobra
+Licensed under the Apache License 2.0
+
+ini
+https://github.com/go-ini/ini
+Copyright 2014 Unknwon
+Licensed under the Apache License 2.0
 
 GORM
 https://github.com/go-gorm/gorm
 Copyright (c) 2013-present Jinzhu
 Licensed under the MIT License
 
-echo
-https://github.com/labstack/echo
-Copyright (c) 2017 LabStack
+GORM MySQL driver
+https://github.com/go-gorm/mysql
+Copyright (c) 2013-present Jinzhu
 Licensed under the MIT License
 
-go-homedir
-https://github.com/mitchellh/go-homedir
-Copyright (c) 2013 Mitchell Hashimoto
+GORM PostgreSQL driver
+https://github.com/go-gorm/postgres
+Copyright (c) 2013-present Jinzhu
+Licensed under the MIT License
+
+glebarez/sqlite
+https://github.com/glebarez/sqlite
+Copyright (c) 2013-present Jinzhu
+Licensed under the MIT License
+
+swag
+https://github.com/swaggo/swag
+Copyright (c) 2017 Eason Lin
+Licensed under the MIT License
+
+echo-swagger
+https://github.com/swaggo/echo-swagger
+Copyright (c) 2018 Swaggo
 Licensed under the MIT License
