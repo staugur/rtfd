@@ -141,7 +141,7 @@ GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 
 **Meta 系统保留字段**（定义于 `vars`）：`_webhook_id`、`_installation_id`、
 `_update_file_md5`（`.rtfd.ini` 文件 MD5，未变更时跳过回写）。
-用户常用 meta：`excluded_branch`（webhook 排除的分支，`_sep` 指定分隔符，默认 `|`）。
+用户常用 meta：`excluded_branch`（排除的分支：webhook 忽略其构建，且不出现在 `desc.versions`；分隔符取 `excluded_sep`，缺省回退 `_sep`，再缺省 `|`）。
 Meta key 需匹配 `^[a-z_][0-9a-z_]{1,63}$`，取值 `-`（`vars.ResetEmpty`）表示清空。
 
 ### 3.3 Result —— 构建结果（hash 的 value）
@@ -337,7 +337,7 @@ docs/{name}/
 
 | 路由 | 方法 | 功能 | 说明 |
 |---|---|---|---|
-| `/:name/desc`、`/desc/:name` | GET | 项目描述 | 返回 URL、langs、latest、versions、builder、showNav 等，供 rtfd.js 渲染 |
+| `/:name/desc`、`/desc/:name` | GET | 项目描述 | 返回 URL、langs、latest、versions、builder、showNav 等，供 rtfd.js 渲染；versions 已排除 `excluded_branch` |
 | `/:name/badge`、`/badge/:name` | GET | 文档状态徽章 SVG | `?branch=`，默认 Latest；passing/failing/unknown |
 | `/:name/build`、`/build/:name` | POST | 触发构建 | 动态签名（X-Rtfd-Ts/Nonce/Sign，HMAC-SHA256，密钥为项目 secret；空 secret 免鉴权）；参数 branch、debug；异步执行返回 201 |
 | `/:name/webhook`、`/webhook/:name` | POST | git webhook | 校验 GitHub `X-Hub-Signature`(sha1=HMAC) / Gitee `X-Gitee-Token`；识别 UA 分派；ping→pong；排除 `excluded_branch` |

@@ -238,3 +238,26 @@ func TestTransfer(t *testing.T) {
 		t.Fatal("unknown project should raise error")
 	}
 }
+
+func TestExcludedBranches(t *testing.T) {
+	// 未设置：返回 [""]，不会命中任何非空分支
+	opt := Options{Meta: map[string]string{}}
+	if got := opt.ExcludedBranches(); len(got) != 1 || got[0] != "" {
+		t.Fatalf("empty excluded_branch error: %v", got)
+	}
+	// 单个分支
+	opt = Options{Meta: map[string]string{"excluded_branch": "master"}}
+	if got := opt.ExcludedBranches(); len(got) != 1 || got[0] != "master" {
+		t.Fatalf("single excluded_branch error: %v", got)
+	}
+	// 默认分隔符 |
+	opt = Options{Meta: map[string]string{"excluded_branch": "master|dev"}}
+	if got := opt.ExcludedBranches(); len(got) != 2 || got[0] != "master" || got[1] != "dev" {
+		t.Fatalf("default sep error: %v", got)
+	}
+	// 自定义分隔符
+	opt = Options{Meta: map[string]string{"excluded_branch": "master,dev", "excluded_sep": ","}}
+	if got := opt.ExcludedBranches(); len(got) != 2 || got[0] != "master" || got[1] != "dev" {
+		t.Fatalf("custom sep error: %v", got)
+	}
+}

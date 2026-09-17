@@ -142,6 +142,8 @@ func apiDesc(c echo.Context) error {
 		data.HideGit = true
 	}
 
+	// 已排除的分支（meta excluded_branch）不计入可用版本，界面/挂件据此隐藏
+	excludedBranches := opt.ExcludedBranches()
 	for _, lang := range strings.Split(opt.Lang, ",") {
 		langDir := filepath.Join(basedir, "docs", name, lang)
 		if !gtc.IsDir(langDir) {
@@ -154,7 +156,7 @@ func apiDesc(c echo.Context) error {
 		vs := []string{"latest"}
 		for _, f := range ifs {
 			fname := f.Name()
-			if f.IsDir() && fname != "" && fname != "." && fname != ".." {
+			if f.IsDir() && fname != "" && fname != "." && fname != ".." && !gtc.StrInSlice(fname, excludedBranches) {
 				vs = append(vs, fname)
 			}
 		}
@@ -289,11 +291,7 @@ func webhookBuild(c echo.Context) error {
 		return errors.New("unsupported git service provider")
 	}
 
-	sep := opt.GetMeta("excluded_sep")
-	if sep == "" {
-		sep = opt.MustMeta("_sep", "|")
-	}
-	if gtc.StrInSlice(branch, strings.Split(opt.GetMeta("excluded_branch"), sep)) {
+	if gtc.StrInSlice(branch, opt.ExcludedBranches()) {
 		return c.JSON(200, resb{res{false, "excluded branch"}, branch})
 	}
 

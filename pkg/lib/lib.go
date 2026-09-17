@@ -884,6 +884,17 @@ func (opt Options) MustMeta(key, defaultValue string) string {
 	return val
 }
 
+// ExcludedBranches 返回需要排除的分支集合（meta: excluded_branch）。
+// 分隔符取 meta excluded_sep，缺省回退 _sep，再缺省为 "|"；
+// 未设置 excluded_branch 时返回 [""]（不会命中任何非空分支）。
+func (opt Options) ExcludedBranches() []string {
+	sep := opt.GetMeta("excluded_sep")
+	if sep == "" {
+		sep = opt.MustMeta("_sep", "|")
+	}
+	return strings.Split(opt.GetMeta("excluded_branch"), sep)
+}
+
 // UpdateMeta 专门更新 Meta 字段 （如果key以下划线开头表示系统数据）
 func (opt *Options) UpdateMeta(key, val string) error {
 	if key == "" || val == "" {

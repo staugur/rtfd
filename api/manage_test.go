@@ -224,3 +224,67 @@ func TestManageAPI(t *testing.T) {
 		t.Fatalf("project list error: %v", data)
 	}
 }
+
+// TestAPIDescExcludesBranch 校验 desc.versions 会排除 meta excluded_branch 指定的分支
+func TestAPIDescExcludesBranch(t *testing.T) {
+	e := newTestEcho(t)
+	sign := testAPISecret
+
+	form := url.Values{
+		"name": {"demo"}, "url": {"https://github.com/staugur/rtfd"},
+		"lang": {"zh_CN"}, "latest": {"v1"},
+	}
+	if code, data := doReq(t, e, http.MethodPost, "/rtfd/projects", form, sign); code != 201 {
+		t.Fatalf("create project failed: %v", data)
+	}
+
+	// 构造两种"已构建版本"目录：master 与 v1
+	base := pm.CFG().BaseDir()
+	for _, br := range []string{"master", "v1"} {
+		if err := os.MkdirAll(filepath.Join(base, "docs", "demo", "zh_CN", br), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	getVersions := func() []string {
+		_, data := doReq(t, e, http.MethodGet, "/rtfd/demo/desc", nil, "")
+		d := data["data"].(map[string]any)
+		vs := d["versions"].(map[string]any)["zh_CN"].([]any)
+		out := make([]string, 0, len(vs))
+		for _, v := range vs {
+			out = append(out, v.(string))
+		}
+		return out
+	}
+	has := func(list []string, s string) bool {
+		for _, v := range list {
+			if v == s {
+				return true
+			}
+		}
+		return false
+	}
+
+	// 未设置排除时，master 应在列表中
+	if got := getVersions(); !has(got, "master") {
+		t.Fatalf("master should be listed before exclusion: %v", got)
+	}
+
+	// 设置 excluded_branch=master 后，master 应被排除，latest/v1 保留
+	opt, err := pm.GetName("demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = opt.UpdateMeta("excluded_branch", "master"); err != nil {
+		t.Fatal(err)
+	}
+	if err = pm.SaveOptions(&opt); err != nil {
+		t.Fatal(err)
+	}
+	got := getVersions()
+	if has(got, "master") {
+		t.Fatalf("master should be excluded from desc.versions: %v", got)
+	}
+	if !has(got, "latest") || !has(got, "v1") {
+		t.Fatalf("latest/v1 should remain: %v", got)
+	}
+}
