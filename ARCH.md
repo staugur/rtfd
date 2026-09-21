@@ -88,7 +88,7 @@ GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 | id | 主键 | 自增 |
 | name | varchar(100) | 项目名，唯一索引，统一小写 |
 | url / latest / version | varchar | git地址、默认分支、python版本（如 3.10） |
-| single / install / show_nav / hide_git / ssl / is_public | bool | 各类开关 |
+| single / install / show_nav / hide_git / is_public | bool | 各类开关 |
 | source_dir / lang / requirement / index | varchar | 文档目录、语言、依赖文件、pip源 |
 | secret | varchar | build/webhook 校验密钥 |
 | default_domain | varchar | `{name}.{caddy.dn}` |
@@ -130,7 +130,7 @@ GitHub App 功能需能访问 GitHub API。**不再支持 Python 2**。
 | ShowNav / HideGit | 导航开关 | 决定 rtfd.js 是否展示及 git 链接 |
 | Secret | 密钥 | build/webhook 校验用 |
 | DefaultDomain | 默认域名 | `{name}.{caddy.dn}`（只读，自动生成） |
-| CustomDomain / SSL / SSLPublic / SSLPrivate | 自定义域名 | 支持 HTTPS |
+| CustomDomain | 自定义域名 | 支持 HTTPS（由 Caddy 自动申请证书） |
 | Builder | 构建器 | `html` / `dirhtml` / `singlehtml` |
 | GSP / IsPublic | git 服务商 | `GitHub` / `Gitee` / `N/A` 及公私有 |
 | Meta | 扩展 KV | map，以下划线开头为系统保留 |
@@ -178,7 +178,7 @@ cli create → GenerateOption(name, url) 生成默认 Options
   → SetOption 逐项覆盖 CLI 入参（reflect 赋值）
   → Create:
       ├─ 排除保留名 www 与 default.unallowed_name
-      ├─ 校验必填项；校验 python 版本已在 [py] 分区定义；自定义域名校验且须未占用；SSL 证书文件须存在
+      ├─ 校验必填项；校验 python 版本已在 [py] 分区定义；自定义域名校验且须未占用
       ├─ renderCaddy：汇总全部项目渲染 {base}/caddy/Caddyfile（站点块 + latest 跳转 + 缓存，自动 HTTPS）
       │    → 执行 `caddy reload` 热加载（无需重启）
       └─ API 启动时（InitCaddy）也会生成一次 Caddyfile，避免暂无项目时 Caddy 反复启动失败
@@ -195,7 +195,7 @@ cli create → GenerateOption(name, url) 生成默认 Options
 
 1. `-t "Field:Value,..."`：`updateHook.handle()` 按字段分发到处理函数，逐字段
    校验/落 Options，设置 `render` 标志；收集 ok/fail 列表逐个打印；
-   完成后整体写回 projects 表（`SaveOptions`），`render=true` 字段（lang/single/domain/ssl…）重渲染 Caddy 配置。
+   完成后整体写回 projects 表（`SaveOptions`），`render=true` 字段（lang/single/domain…）重渲染 Caddy 配置。
 2. `-f .rtfd.ini`：构建期自动回写，白名单抽取 `latest` 等字段，比对 meta
    `_update_file_md5` 未变化则跳过（输出 `not updated`）。
 
@@ -284,17 +284,17 @@ docs/{name}/
 
 汇总全部项目渲染为一份 Caddyfile（text/template，`pkg/lib/caddy.go`）：
 
-| 配置 | 位置 | 域名 | SSL |
+| 配置 | 位置 | 域名 | 自动 HTTPS |
 |---|---|---|---|
-| 默认域名 | `{caddy.conf_dir}/Caddyfile` 内一个站点块 | `{name}.{caddy.dn}` | Caddy 自动申请 |
-| 自定义域名 | 同站点块的第二个地址（共用根目录） | 项目 CustomDomain | Caddy 自动申请 |
+| 默认域名 | `{caddy.conf_dir}/Caddyfile` 内一个站点块 | `{name}.{caddy.dn}` | `caddy.auto_https` |
+| 自定义域名 | 模式与默认域名相同时并入同一站点块，否则独立站点块（共用根目录） | 项目 CustomDomain | `caddy.custom_auto_https`（留空跟随 `auto_https`） |
 
 模板特性：
 
 - **多版本**（Single=false）：`root {docs}/{name}/`，`set $home /{lang}/latest;`
   对未带版本前缀的 URL，若在 latest 路径下存在则 `302 → $home$document_uri`。
 - **单版本**（Single=true）：`root {docs}/{name}/{lang}/latest/`。
-- **SSL**：`listen 443 ssl http2` + http→https 301 + 完整 TLS 配置（TLS1.0~1.3、HSTS）。
+- **HTTPS**：默认域名由 `caddy.auto_https` 控制，自定义域名由 `caddy.custom_auto_https` 控制（留空跟随 `auto_https`）。开启时由 Caddy 对该域名自动申请/续期证书，关闭时以 `http://` 提供（内网，或上游已终止 TLS）；两者模式不同时，同一项目会拆成默认域名、自定义域名两个站点块。
 - 渲染后执行 `caddy reload --config <file>`（优雅热加载；是否 sudo 由 `caddy.sudo` 控制）。
 
 ### 6.1 性能与缓存
@@ -349,7 +349,7 @@ docs/{name}/
 | 路由 | 方法 | 功能 | 参数（支持表单/query/JSON） |
 |---|---|---|---|
 | `/projects` | GET | 项目列表 | `verbose=1` 返回完整 Options 数组，否则仅名称数组 |
-| `/projects` | POST | 创建项目 | `name`、`url` 必需，其余同 CLI create（`latest/version/single/sourcedir/lang/requirement/install/index/builder/secret/domain/sslcrt/sslkey`），空值沿用系统默认 |
+| `/projects` | POST | 创建项目 | `name`、`url` 必需，其余同 CLI create（`latest/version/single/sourcedir/lang/requirement/install/index/builder/secret/domain`），空值沿用系统默认 |
 | `/:name/info`、`/info/:name` | GET | 项目详情 | `key=Field` 返回单字段、`build=1` 附带构建集，否则返回 Options 结构体（字段名为结构体字段名） |
 | `/:name/update`、`/update/:name` | POST | 更新配置 | `text=Field:Value,…`（`sep` 可自定义分隔符）、`file=服务端规则文件路径`、或直接以字段名传参；响应含 `updated/failed` 字段列表 |
 | `/:name/remove`、`/remove/:name` | POST/DELETE | 删除项目 | 同时清理构建结果并从 Caddy 配置移除站点 |

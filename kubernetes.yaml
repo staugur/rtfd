@@ -1,0 +1,160 @@
+---
+# rtfd 2.0 Kubernetes 部署示例
+# 变化要点（相对 v1.x）：nginx → Caddy；去掉 redis（改为关系型数据库 [database]）；
+# Python 版本键改为版本号（[py] 3 / 3.10 / 3.12）；API 默认端口 5000；
+# 配置分区为 [caddy]/[py]/[database]/[api]/[ghapp]，不再有 favicon_url、server_static_url。
+# 镜像内 supervisord 的 caddy 路径固定为 /rtfd/caddy/Caddyfile，故容器内 base_dir 必须为 /rtfd。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rtfd-cfg
+data:
+  rtfd.cfg: |+
+    ; rtfd 2.0 配置
+    base_dir = /rtfd
+    unallowed_name = www
+    default_branch = master
+    ; log_level = debug
+
+    [caddy]
+    ; 文档托管域名后缀：各项目文档域名为 "<项目名>.<dn>"
+    dn = rtfd.vip
+    exec = caddy
+    sudo = off
+    ; ACME 账户邮箱（auto_https=on 时用于自动申请证书）
+    email =
+    ; 由 Traefik 等入口终止 TLS 时设为 off（Caddy 仅以 http 提供服务）；
+    ; 若直接暴露容器 80/443（LoadBalancer/NodePort）并让 Caddy 自动申请证书，则设为 on 并填 email
+    auto_https = off
+    conf_dir = %(base_dir)s/caddy
+    static_expires = 3600
+    html_nocache = on
+
+    [py]
+    ; 镜像内置多版本 Python（键为版本号）；3 即系统 python3(=3.12)
+    3 = python3
+    3.10 = /usr/bin/python3.10
+    3.12 = /usr/bin/python3.12
+    default = 3
+    index = https://pypi.tuna.tsinghua.edu.cn/simple
+
+    [database]
+    type = sqlite
+    dsn = %(base_dir)s/rtfd.db
+
+    [api]
+    host = 0.0.0.0
+    port = 5000
+    ; 对外可达地址（供 webhook 回跳、文档挂件脚本注入），须与下方 Ingress 的 API 域名一致
+    server_url = https://api.rtfd.vip
+    ; 管理密钥（HMAC-SHA256 动态签名）；留空则管理类接口不可用
+    secret =
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rtfd-deploy
+  labels:
+    app: rtfd
+spec:
+  replicas: 1
+  # 单副本 + 单写数据卷：滚动更新会因 RWO 卷冲突卡住，故用 Recreate
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: rtfd
+  template:
+    metadata:
+      labels:
+        app: rtfd
+        app.kubernetes.io/version: "2.0.0"
+      annotations:
+        rtfd.io/ports: "80,443,5000"
+        rtfd.io/repo: "https://github.com/staugur/rtfd"
+    spec:
+      containers:
+        - name: rtfd
+          image: docker.io/staugur/rtfd:v2.0.0
+          imagePullPolicy: IfNotPresent
+          # 配置文件放在数据卷之外（/etc/rtfd），避免被 /rtfd 卷挂载遮住
+          env:
+            - name: RTFD_CFG
+              value: /etc/rtfd/rtfd.cfg
+            - name: TZ
+              value: Asia/Shanghai
+          ports:
+            - containerPort: 80
+              name: http
+            # 仅当 auto_https=on（Caddy 自带证书）时才监听 443
+            - containerPort: 443
+              name: https
+            - containerPort: 5000
+              name: api
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "128Mi"
+            limits:
+              cpu: "2"
+              memory: "512Mi"
+          volumeMounts:
+            - name: rtfd-data
+              mountPath: /rtfd
+            - name: rtfd-config
+              mountPath: /etc/rtfd
+      volumes:
+        - name: rtfd-data
+          hostPath:
+            path: /data/rtfd/
+        - name: rtfd-config
+          configMap:
+            name: rtfd-cfg
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rtfd-svc
+  labels:
+    app: rtfd
+spec:
+  selector:
+    app: rtfd
+  ports:
+    - name: api
+      protocol: TCP
+      port: 5000
+      targetPort: api
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: http
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: https
+---
+# API 与文档统一经 Traefik 入口：
+# - API 域名指向容器 5000 端口；
+# - 文档使用通配子域 *.rtfd.vip 指向容器 80 端口（Caddy，auto_https=off 时仅 http）。
+# 说明：traefik.io/v1alpha1 适用于 Traefik v2.10+/v3；旧版（<2.10）请改用 traefik.containo.us/v1alpha1。
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: rtfd-ingroute
+spec:
+  entryPoints:
+  - web
+  routes:
+  - match: Host(`api.rtfd.vip`)
+    kind: Rule
+    priority: 100
+    services:
+    - name: rtfd-svc
+      port: 5000
+  - match: HostRegexp(`{subdomain:[a-z0-9-]+}.rtfd.vip`)
+    kind: Rule
+    priority: 50
+    services:
+    - name: rtfd-svc
+      port: 80

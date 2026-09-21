@@ -94,7 +94,7 @@ func apiProjectList(c echo.Context) error {
 
 // apiProjectCreate 创建项目：POST /rtfd/projects
 // 参数与CLI一致（url必需），其余字段如 latest/version/single/sourcedir/lang/
-// requirement/install/index/builder/secret/domain/sslcrt/sslkey 可选
+// requirement/install/index/builder/secret/domain 可选
 // apiProjectCreate 创建项目
 // @Summary 创建项目
 // @Description 参数与 CLI `rtfd project create` 一致：url 必需，其余字段可选、空值沿用系统默认；创建后自动汇总渲染 Caddy 配置。
@@ -115,8 +115,6 @@ func apiProjectList(c echo.Context) error {
 // @Param builder formData string false "Sphinx 构建器：html/dirhtml/singlehtml"
 // @Param secret formData string false "项目密钥（构建与 webhook 签名用）"
 // @Param domain formData string false "自定义域名（需已解析到本机）"
-// @Param sslcrt formData string false "自定义域名证书路径（与 sslkey 成对）"
-// @Param sslkey formData string false "自定义域名证书私钥路径（与 sslcrt 成对）"
 // @Security RtfdTs || RtfdNonce || RtfdSign
 // @Success 201 {object} resd{data=lib.Options} "创建成功，data 为项目配置"
 // @Failure default {object} res "参数非法、名称/自定义域名已存在或密钥校验失败"
@@ -210,8 +208,6 @@ func apiProjectInfo(c echo.Context) error {
 // @Param builder formData string false "直接传字段：Sphinx 构建器"
 // @Param secret formData string false "直接传字段：项目密钥，- 重置"
 // @Param domain formData string false "直接传字段：自定义域名，- 取消"
-// @Param sslcrt formData string false "直接传字段：证书路径（需与 sslkey 同时提供）"
-// @Param sslkey formData string false "直接传字段：证书私钥路径"
 // @Param shownav formData string false "直接传字段：是否显示挂件导航"
 // @Param hidegit formData string false "直接传字段：是否隐藏git入口"
 // @Security RtfdTs || RtfdNonce || RtfdSign

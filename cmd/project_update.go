@@ -47,8 +47,6 @@ var updateDesc = `更新文档项目配置
     hidegit：    导航中是否隐藏git信息（bool）
     secret：     api/webhook密钥
     domain：     自定义域名
-    sslcrt：     自定义域名开启HTTPS时的证书公钥
-    sslpri：     自定义域名开启HTTPS时的证书私钥
     meta：       额外配置数据，每次仅能更新一条，格式是 key=value（key不区分大小写）
 
     可一次更新一个或多个字段，格式是 -> Field:Value,Field:Value,...,Field:Value
@@ -56,8 +54,7 @@ var updateDesc = `更新文档项目配置
     请按照字段类型（如int、bool）填写值，否则可能导致异常。
     请注意：
         # bool类型仅当值为1、true、on时表示true，其他表示false
-        # domain字段值为0、false、off时表示取消自定义域名（不更改SSL相关配置）
-        # 额外字段ssl（不在列表中）值为0、false、off时表示取消自定义域名SSL
+        # domain字段值为0、false、off时表示取消自定义域名
         # 部分更新失败的字段亦可能已造成破坏性更改（如lang、latest、domain）
         # 部分字段仅在下一次构建时生效
         # 特殊字段meta系统内置字段：

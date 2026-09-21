@@ -1,7 +1,13 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# GoReleaser v2 配置（v1 → v2 迁移要点见 https://goreleaser.com/deprecations/）
+version: 2
+
 project_name: rtfd
+
 before:
   hooks:
     - go mod tidy
+
 builds:
   - env:
       - CGO_ENABLED=0
@@ -15,8 +21,11 @@ builds:
       - amd64
       - 386
       - arm64
+
 archives:
-  - id: foo
+  # v2：单数 format 已弃用，改用复数 formats（默认即 [tar.gz]，此处显式声明）
+  - id: default
+    formats: [tar.gz]
     name_template: >-
       {{- .Binary }}.
       {{- .Version }}.
@@ -24,16 +33,20 @@ archives:
       {{- if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end -}}
+
 checksum:
   name_template: 'checksums.txt'
+
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  # v2：name_template 已弃用，改用 version_template
+  version_template: "{{ incpatch .Version }}-next"
+
 changelog:
   sort: asc
   filters:
     exclude:
       - '^docs:'
       - '^test:'
-      - 'README*.md'
+      - 'README.*\.md'
       - 'NOTICE'
-      - '.github'
+      - '\.github'

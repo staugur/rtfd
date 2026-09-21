@@ -69,9 +69,6 @@ type Project struct {
 	DefaultDomain string `gorm:"size:255;not null"`
 	// CustomDomain 自定义域名，空表示未设置
 	CustomDomain string `gorm:"index:idx_custom_domain;size:255"`
-	SSL          bool
-	SSLPublic    string `gorm:"size:512"`
-	SSLPrivate   string `gorm:"size:512"`
 	Builder      string `gorm:"size:32;not null"`
 	GSP          string `gorm:"size:32"`
 	IsPublic     bool

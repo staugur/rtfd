@@ -265,18 +265,6 @@ const docTemplate = `{
                         "description": "自定义域名（需已解析到本机）",
                         "name": "domain",
                         "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "自定义域名证书路径（与 sslkey 成对）",
-                        "name": "sslcrt",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "自定义域名证书私钥路径（与 sslcrt 成对）",
-                        "name": "sslkey",
-                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -780,18 +768,6 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "直接传字段：证书路径（需与 sslkey 同时提供）",
-                        "name": "sslcrt",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "直接传字段：证书私钥路径",
-                        "name": "sslkey",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
                         "description": "直接传字段：是否显示挂件导航",
                         "name": "shownav",
                         "in": "formData"
@@ -1103,18 +1079,6 @@ const docTemplate = `{
                     "description": "依赖包文件，以半角逗号分隔多个文件",
                     "type": "string"
                 },
-                "SSL": {
-                    "description": "自定义域名开启HTTPS（自动填充）",
-                    "type": "boolean"
-                },
-                "SSLPrivate": {
-                    "description": "自定义域名的ssl私钥",
-                    "type": "string"
-                },
-                "SSLPublic": {
-                    "description": "自定义域名的ssl公钥",
-                    "type": "string"
-                },
                 "Secret": {
                     "description": "webhook secret",
                     "type": "string"
@@ -1211,18 +1175,6 @@ const docTemplate = `{
                 },
                 "Requirement": {
                     "description": "依赖包文件，以半角逗号分隔多个文件",
-                    "type": "string"
-                },
-                "SSL": {
-                    "description": "自定义域名开启HTTPS（自动填充）",
-                    "type": "boolean"
-                },
-                "SSLPrivate": {
-                    "description": "自定义域名的ssl私钥",
-                    "type": "string"
-                },
-                "SSLPublic": {
-                    "description": "自定义域名的ssl公钥",
                     "type": "string"
                 },
                 "Secret": {

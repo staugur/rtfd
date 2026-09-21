@@ -104,12 +104,6 @@ type Options struct {
 	DefaultDomain string
 	// 自定义域名
 	CustomDomain string
-	// 自定义域名开启HTTPS（自动填充）
-	SSL bool
-	// 自定义域名的ssl公钥
-	SSLPublic Path
-	// 自定义域名的ssl私钥
-	SSLPrivate Path
 	// Sphinx构建器，支持html、dirhtml、singlehtml
 	Builder BuilderType
 	// git服务提供商（自动填充）
@@ -165,9 +159,6 @@ func projectFromOptions(opt Options) *store.Project {
 		Secret:        opt.Secret,
 		DefaultDomain: opt.DefaultDomain,
 		CustomDomain:  opt.CustomDomain,
-		SSL:           opt.SSL,
-		SSLPublic:     string(opt.SSLPublic),
-		SSLPrivate:    string(opt.SSLPrivate),
 		Builder:       string(opt.Builder),
 		GSP:           opt.GSP,
 		IsPublic:      opt.IsPublic,
@@ -193,9 +184,6 @@ func optionsFromProject(p *store.Project) Options {
 		Secret:        p.Secret,
 		DefaultDomain: p.DefaultDomain,
 		CustomDomain:  p.CustomDomain,
-		SSL:           p.SSL,
-		SSLPublic:     Path(p.SSLPublic),
-		SSLPrivate:    Path(p.SSLPrivate),
 		Builder:       BuilderType(p.Builder),
 		GSP:           p.GSP,
 		IsPublic:      p.IsPublic,
@@ -218,12 +206,6 @@ func OptionKeyMap(key string) string {
 		return "DefaultDomain"
 	case "customdomain":
 		return "CustomDomain"
-	case "ssl":
-		return "SSL"
-	case "sslpublic":
-		return "SSLPublic"
-	case "sslprivate":
-		return "SSLPrivate"
 	case "gsp":
 		return "GSP"
 	case "ispublic":
@@ -331,7 +313,7 @@ func (pm *ProjectManager) SetOption(opt *Options, key string, value any) {
 	p := reflect.ValueOf(opt)
 	f := p.Elem().FieldByName(key)
 	switch key {
-	case "Single", "Install", "ShowNav", "HideGit", "SSL", "IsPublic":
+	case "Single", "Install", "ShowNav", "HideGit", "IsPublic":
 		f.SetBool(value.(bool))
 	case "Version":
 		f.SetString(fmt.Sprint(value))
@@ -347,10 +329,6 @@ func optionAlias(key string) string {
 		return "customdomain"
 	case "source":
 		return "sourcedir"
-	case "sslcrt":
-		return "sslpublic"
-	case "sslkey", "sslpri":
-		return "sslprivate"
 	default:
 		return key
 	}
@@ -377,7 +355,7 @@ func (pm *ProjectManager) SetOptionValue(opt *Options, key string, value any) er
 
 // CreateProject 创建文档项目（CLI 与 API 共用入口）：
 // rule 使用与 project update 一致的字段名（url、latest、version、single、sourcedir、
-// lang、requirement、install、index、secret、domain、sslcrt、sslkey、builder、before、after等），
+// lang、requirement、install、index、secret、domain、builder、before、after等），
 // 其中 url 必需，其余字段为空或未提供时沿用系统默认值。
 func (pm *ProjectManager) CreateProject(name string, rule map[string]any) (opt Options, err error) {
 	name = strings.ToLower(strings.TrimSpace(name))
@@ -448,14 +426,6 @@ func (pm *ProjectManager) Create(name string, opt Options) error {
 			return errors.New("this domain name already exists")
 		}
 		opt.CustomDomain = domain
-	}
-	if opt.SSLPublic != "" && opt.SSLPrivate != "" {
-		if !gtc.IsFile(opt.SSLPublic) || !gtc.IsFile(opt.SSLPrivate) {
-			return errors.New("not found ssl file")
-		}
-		opt.SSL = true
-	} else {
-		opt.SSL = false
 	}
 
 	// 汇总渲染 Caddy 配置并热加载
@@ -540,7 +510,7 @@ func (pm *ProjectManager) GetNameOption(name, key string) (val string, err error
 	p := reflect.ValueOf(&opt)
 	f := p.Elem().FieldByName(key)
 	switch key {
-	case "Single", "Install", "ShowNav", "HideGit", "SSL", "IsPublic":
+	case "Single", "Install", "ShowNav", "HideGit", "IsPublic":
 		if f.Bool() {
 			return "true", nil
 		}
@@ -649,6 +619,11 @@ func (pm *ProjectManager) writeCaddyConfig(opt *Options) (string, error) {
 	}
 	// 自动 HTTPS 开关：关闭时（内网/开发环境）站点地址加 http:// 前缀，仅提供 HTTP
 	autoHTTPS := gtc.IsTrue(pm.cfg.MustKey("caddy", "auto_https", "on"))
+	// 自定义域名的自动 HTTPS 可独立配置；留空则跟随 auto_https
+	customHTTPS := autoHTTPS
+	if v := strings.TrimSpace(pm.cfg.GetKey("caddy", "custom_auto_https")); v != "" {
+		customHTTPS = gtc.IsTrue(v)
+	}
 	copt := &caddyOptions{
 		Email:         strings.TrimSpace(pm.cfg.GetKey("caddy", "email")),
 		StaticExpires: staticExpires,
@@ -679,21 +654,24 @@ func (pm *ProjectManager) writeCaddyConfig(opt *Options) (string, error) {
 			continue
 		}
 		lang := strings.Split(p.Lang, ",")[0]
-		site := caddySite{Root: filepath.Join(DocsDir, p.Name)}
+		root := filepath.Join(DocsDir, p.Name)
+		redirect := ""
 		if p.Single {
 			// 单版本：根目录即默认语言的 latest
-			site.Root = filepath.Join(site.Root, lang, "latest")
+			root = filepath.Join(root, lang, "latest")
 		} else {
 			// 多版本：访问根路径时固定跳转到默认语言的 latest
-			site.Redirect = "/" + lang + "/latest/"
+			redirect = "/" + lang + "/latest/"
 		}
-		// 默认域名与自定义域名同属一个站点块：启用自动 HTTPS 时 Caddy 会为每个域名各自申请证书
-		addrs := []string{caddyAddress(p.DefaultDomain, autoHTTPS)}
+		custom := ""
 		if util.IsDomain(p.CustomDomain) {
-			addrs = append(addrs, caddyAddress(strings.ToLower(p.CustomDomain), autoHTTPS))
+			custom = strings.ToLower(p.CustomDomain)
 		}
-		site.Address = strings.Join(addrs, ", ")
-		copt.Sites = append(copt.Sites, site)
+		// 默认域名按 auto_https、自定义域名按 custom_auto_https 决定是否自动 HTTPS；
+		// 两者模式不同则各自成独立站点块（共用同一根目录与跳转）。
+		for _, addr := range caddySiteAddrs(p.DefaultDomain, custom, autoHTTPS, customHTTPS) {
+			copt.Sites = append(copt.Sites, caddySite{Address: addr, Root: root, Redirect: redirect})
+		}
 	}
 
 	conf, err := copt.render()

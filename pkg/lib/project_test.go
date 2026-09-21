@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -229,5 +230,62 @@ func TestInitCaddy(t *testing.T) {
 	pm.InitCaddy()
 	if _, err := os.Stat(filepath.Join(dir, "caddy", "Caddyfile")); err != nil {
 		t.Fatal("caddyfile should be created on init:", err)
+	}
+}
+
+// TestWriteCaddyCustomAutoHTTPS 校验默认域名与自定义域名可分别配置自动 HTTPS：
+// auto_https=off（默认域名走 http）+ custom_auto_https=on（自定义域名自动 HTTPS）→ 拆成两个站点块。
+func TestWriteCaddyCustomAutoHTTPS(t *testing.T) {
+	dir := t.TempDir()
+	cfgFile := filepath.Join(dir, "rtfd.cfg")
+	data := fmt.Sprintf(`
+base_dir = %s
+
+[database]
+type = sqlite
+dsn = %s/rtfd.db
+
+[caddy]
+dn = example.com
+exec = true
+auto_https = off
+custom_auto_https = on
+
+[py]
+3 = python3
+`, dir, dir)
+	if err := os.WriteFile(cfgFile, []byte(data), 0644); err != nil {
+		t.Fatal(err)
+	}
+	pm, err := New(cfgFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { pm.Close() })
+
+	opt, err := pm.GenerateOption("demo", "https://github.com/staugur/rtfd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = pm.SetOptionValue(&opt, "customdomain", "docs.example.com"); err != nil {
+		t.Fatal(err)
+	}
+	if err = pm.Create("demo", opt); err != nil {
+		t.Fatal(err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(dir, "caddy", "Caddyfile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(raw)
+	if !strings.Contains(s, "\nhttp://demo.example.com {") {
+		t.Fatalf("default domain should use http: %s", s)
+	}
+	if strings.Contains(s, "http://docs.example.com") {
+		t.Fatalf("custom domain should not be http: %s", s)
+	}
+	if !strings.Contains(s, "\ndocs.example.com {") {
+		t.Fatalf("custom domain should enable auto https: %s", s)
 	}
 }

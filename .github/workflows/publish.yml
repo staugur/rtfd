@@ -5,8 +5,10 @@ on:
     branches:
       - master
       - dev
-  release:
-    types: [published]
+    # tag 推送即构建对应镜像（原来依赖 release 事件，而内置 GITHUB_TOKEN 创建的
+    # release 不会触发其它 workflow，故改为直接监听 tag）
+    tags:
+      - '*'
 
 jobs:
   docker:

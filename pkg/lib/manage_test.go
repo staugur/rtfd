@@ -85,25 +85,6 @@ func TestParseUpdateRule(t *testing.T) {
 		t.Fatalf("reset empty field error: %v", rule)
 	}
 
-	// sslcrt与sslpri合并为ssl
-	rule, err = ParseUpdateRule("sslcrt:/tmp/a.pem,sslpri:/tmp/b.pem", ":")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rule["ssl"] != "/tmp/a.pem,/tmp/b.pem" {
-		t.Fatalf("merge ssl error: %v", rule)
-	}
-	// ssl仅支持取消
-	if _, err = ParseUpdateRule("ssl:on", ":"); err == nil {
-		t.Fatal("invalid ssl should raise error")
-	}
-	rule, err = ParseUpdateRule("ssl:off", ":")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if rule["ssl"] != "off" {
-		t.Fatalf("clear ssl error: %v", rule)
-	}
 	// 自定义分隔符与非法格式
 	rule, err = ParseUpdateRule("lang=zh_CN", "=")
 	if err != nil {

@@ -86,3 +86,26 @@ func TestCaddyAddress(t *testing.T) {
 		t.Fatalf("http address error: %s", got)
 	}
 }
+
+func TestCaddySiteAddrs(t *testing.T) {
+	// 模式一致：合并为一个站点块（逗号分隔地址）
+	if got := caddySiteAddrs("a.rtfd.vip", "docs.example.com", true, true); len(got) != 1 ||
+		got[0] != "a.rtfd.vip, docs.example.com" {
+		t.Fatalf("merge error: %v", got)
+	}
+	// 模式一致（均关闭）：都加 http:// 前缀，仍合并
+	if got := caddySiteAddrs("a.rtfd.vip", "docs.example.com", false, false); len(got) != 1 ||
+		got[0] != "http://a.rtfd.vip, http://docs.example.com" {
+		t.Fatalf("merge http error: %v", got)
+	}
+	// 模式不同：拆成两个站点块
+	if got := caddySiteAddrs("a.rtfd.vip", "docs.example.com", false, true); len(got) != 2 ||
+		got[0] != "http://a.rtfd.vip" || got[1] != "docs.example.com" {
+		t.Fatalf("split error: %v", got)
+	}
+	// 无自定义域名：仅默认域名
+	if got := caddySiteAddrs("a.rtfd.vip", "", false, true); len(got) != 1 ||
+		got[0] != "http://a.rtfd.vip" {
+		t.Fatalf("no custom domain error: %v", got)
+	}
+}

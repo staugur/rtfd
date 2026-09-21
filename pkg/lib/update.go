@@ -71,8 +71,6 @@ func (u *updateHook) handle(field string) (fn func(value any) error, err error) 
 		fn = u.customDomain
 	case "builder":
 		fn = u.builder
-	case "ssl":
-		fn = u.ssl
 	case "meta":
 		fn = u.meta
 	default:
@@ -233,34 +231,6 @@ func (u *updateHook) builder(value any) error {
 	return errors.New("invalid builder")
 }
 
-func (u *updateHook) ssl(value any) error {
-	v := value.(string)
-
-	// 取消自定义域名SSL
-	if gtc.IsFalse(v) {
-		u.opt.SSL = false
-		u.opt.SSLPublic = ""
-		u.opt.SSLPrivate = ""
-		u.render = true
-		return nil
-	}
-
-	cert := strings.Split(v, ",")
-	if len(cert) != 2 {
-		return errors.New("invalid ssl")
-	}
-	pub := cert[0]
-	pri := cert[1]
-	if !gtc.IsFile(pub) || !gtc.IsFile(pri) {
-		return errors.New("not found ssl file")
-	}
-	u.opt.SSL = true
-	u.opt.SSLPublic = pub
-	u.opt.SSLPrivate = pri
-	u.render = true
-	return nil
-}
-
 func (u *updateHook) meta(value any) error {
 	// value format key=value, update only one at a time
 	v := value.(string)
@@ -278,14 +248,12 @@ func (u *updateHook) meta(value any) error {
 
 // ParseUpdateRule 解析text形式的更新规则，返回字段->值的映射（CLI 与 API 共用）。
 // 格式：Field:Value,Field:Value（分隔符由 sep 指定，缺省是英文冒号）；
-// 其中 sslcrt 与 sslpri 合并为 ssl 字段（值以英文逗号分隔），
 // requirement、index、secret 的值可以为 - 表示重置为空。
 func ParseUpdateRule(text, sep string) (rule map[string]any, err error) {
 	if sep == "" {
 		sep = ":"
 	}
 	rule = make(map[string]any)
-	var ssl string
 	for _, kv := range strings.Split(text, ",") {
 		kvs := strings.Split(kv, sep)
 		if len(kvs) != 2 {
@@ -296,26 +264,10 @@ func ParseUpdateRule(text, sep string) (rule map[string]any, err error) {
 		if field == "" || value == "" {
 			continue
 		}
-		switch field {
-		case "sslcrt":
-			ssl = value
-		case "sslpri":
-			ssl += "," + value
-		case "ssl":
-			// ssl不在上方合并列表中，仅支持取消（值为0、false、off）
-			if !gtc.IsFalse(value) {
-				return nil, errors.New("invalid ssl")
-			}
-			ssl = value
-		default:
-			if value == vars.ResetEmpty && gtc.StrInSlice(field, allowEmptyFields) {
-				value = ""
-			}
-			rule[field] = value
+		if value == vars.ResetEmpty && gtc.StrInSlice(field, allowEmptyFields) {
+			value = ""
 		}
-	}
-	if ssl != "" {
-		rule["ssl"] = ssl
+		rule[field] = value
 	}
 	if len(rule) == 0 {
 		err = errors.New("empty rule")

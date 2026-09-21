@@ -74,8 +74,6 @@ var createCmd = &cobra.Command{
 		index := cmd.Flag("index").Value.String()
 		secret := cmd.Flag("secret").Value.String()
 		domain := cmd.Flag("domain").Value.String()
-		sslcrt := cmd.Flag("sslcrt").Value.String()
-		sslkey := cmd.Flag("sslkey").Value.String()
 		builder := cmd.Flag("builder").Value.String()
 
 		pm, err := lib.New(cfgFile)
@@ -102,8 +100,6 @@ var createCmd = &cobra.Command{
 			"index":       index,
 			"secret":      secret,
 			"domain":      domain,
-			"sslcrt":      sslcrt,
-			"sslkey":      sslkey,
 			"builder":     builder,
 		}
 		if _, err = pm.CreateProject(name, rule); err != nil {
@@ -129,6 +125,4 @@ func init() {
 	createCmd.Flags().StringP("builder", "b", "html", "Sphinx构建器，可选html、dirhtml、singlehtml")
 	createCmd.Flags().StringP("secret", "", "", "Api/Webhook密钥")
 	createCmd.Flags().StringP("domain", "", "", "自定义域名")
-	createCmd.Flags().StringP("sslcrt", "", "", "自定义域名的SSL证书公钥")
-	createCmd.Flags().StringP("sslkey", "", "", "自定义域名的SSL证书私钥")
 }

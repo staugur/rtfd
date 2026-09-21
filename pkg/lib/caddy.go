@@ -53,6 +53,22 @@ func caddyAddress(domain string, autoHTTPS bool) string {
 	return "http://" + domain
 }
 
+// caddySiteAddrs 生成一个项目域名对应的 Caddy 站点地址列表：
+// 默认域名与自定义域名的 auto_https 模式一致时合并为一个站点块（单元素，地址以逗号分隔）；
+// 不一致时拆成两个元素（各自成独立站点块，共用同一根目录），使两类域名可分别启用/禁用自动 HTTPS。
+// customDomain 为空时仅返回默认域名。
+func caddySiteAddrs(defaultDomain, customDomain string, defaultHTTPS, customHTTPS bool) []string {
+	defaultAddr := caddyAddress(defaultDomain, defaultHTTPS)
+	if customDomain == "" {
+		return []string{defaultAddr}
+	}
+	customAddr := caddyAddress(customDomain, customHTTPS)
+	if customHTTPS == defaultHTTPS {
+		return []string{defaultAddr + ", " + customAddr}
+	}
+	return []string{defaultAddr, customAddr}
+}
+
 // render 渲染 Caddy 单实例 Caddyfile 配置
 func (opt *caddyOptions) render() (conf string, err error) {
 	if opt.Now == "" {
